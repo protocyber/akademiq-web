@@ -29,7 +29,7 @@ SHELL := /usr/bin/env bash
 PNPM := pnpm
 
 .DEFAULT_GOAL := help
-.PHONY: help dev start build build-image migrate test lint up down corepack
+.PHONY: help dev start build build-image migrate test test-unit test-e2e lint typecheck up down corepack
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -60,11 +60,21 @@ build-image: ## Build the production Docker image
 migrate: ## No-op for the web app
 	@echo ">> migrate: web has no migrations."
 
-test: corepack ## Run tests
-	@$(PNPM) test
+test: corepack ## Run unit tests
+	@$(PNPM) test:unit
+
+test-unit: corepack ## Run vitest unit tests
+	@$(PNPM) test:unit
+
+test-e2e: corepack ## Run Playwright e2e (auto-starts pnpm dev)
+	@$(PNPM) exec playwright install --with-deps chromium >/dev/null 2>&1 || true
+	@$(PNPM) test:e2e
 
 lint: corepack ## Run lints
 	@$(PNPM) lint
+
+typecheck: corepack ## Run TypeScript typecheck
+	@$(PNPM) typecheck
 
 up: dev ## Alias for `dev` (web has no compose stack)
 

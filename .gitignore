@@ -16,6 +16,11 @@ build/
 # Test / coverage
 coverage/
 .nyc_output/
+playwright-report/
+test-results/
+
+# TypeScript build cache
+tsconfig.tsbuildinfo
 
 # Environment / secrets
 .env
