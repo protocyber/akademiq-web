@@ -1,0 +1,17 @@
+{
+  "name": "akademiq-web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AcademiQ web frontend (Next.js). Scaffold pending; this package only provides placeholder scripts and the pnpm package-manager pin.",
+  "packageManager": "pnpm@11.5.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "node -e \"console.log('>> dev: Next.js scaffold not yet added. Once create-next-app runs, this script becomes \\'next dev -p \\$WEB_PORT\\'.')\"",
+    "start": "node -e \"console.log('>> start: Next.js scaffold not yet added. Will become \\'next start -p \\$WEB_PORT\\'.')\"",
+    "build": "node -e \"console.log('>> build: Next.js scaffold not yet added. Will become \\'next build\\'.')\"",
+    "lint": "node -e \"console.log('>> lint: ESLint not yet wired. Will become \\'next lint\\'.')\"",
+    "test": "node -e \"console.log('>> test: test runner not yet wired (Vitest planned).')\""
+  }
+}
