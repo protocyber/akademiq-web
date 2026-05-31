@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toaster";
+import { PublicOnly } from "@/components/features/public-only";
 import { useLogin } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { ApiHttpError } from "@/lib/api/types";
@@ -20,7 +21,9 @@ import { loginSchema, type LoginFormValues } from "@/lib/schemas/login";
 export default function LoginPage() {
   return (
     <React.Suspense fallback={<LoginSkeleton />}>
-      <LoginForm />
+      <PublicOnly>
+        <LoginForm />
+      </PublicOnly>
     </React.Suspense>
   );
 }

@@ -11,12 +11,42 @@ import { Spinner } from "@/components/ui/spinner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "@/components/ui/toaster";
+import { AuthGuard } from "@/components/features/auth-guard";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useToggleModule } from "@/lib/query/mutations/use-toggle-module";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { ApiHttpError } from "@/lib/api/types";
 
 export default function ModulesPage() {
+  return (
+    <AuthGuard fallback={<ModulesSkeleton />}>
+      <ModulesContent />
+    </AuthGuard>
+  );
+}
+
+function ModulesSkeleton() {
+  return (
+    <main className="container mx-auto max-w-3xl space-y-6 px-4 py-10">
+      <Skeleton className="h-9 w-40" />
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-32" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-6 w-11 rounded-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+function ModulesContent() {
   const tenant = useTenantMe();
   const toggle = useToggleModule();
   const logout = useLogout();

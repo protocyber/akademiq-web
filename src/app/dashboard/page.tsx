@@ -7,32 +7,45 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AuthGuard } from "@/components/features/auth-guard";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 
 export default function DashboardPage() {
+  return (
+    <AuthGuard fallback={<DashboardSkeleton />}>
+      <DashboardContent />
+    </AuthGuard>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
+      <Skeleton className="h-10 w-1/2" />
+      <Skeleton className="h-6 w-1/3" />
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-48" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+    </main>
+  );
+}
+
+function DashboardContent() {
   const me = useMe();
   const tenant = useTenantMe();
   const logout = useLogout();
   const router = useRouter();
 
   if (tenant.isLoading || me.isLoading) {
-    return (
-      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-        <Skeleton className="h-10 w-1/2" />
-        <Skeleton className="h-6 w-1/3" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-48" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-24 w-full" />
-          </CardContent>
-        </Card>
-      </main>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (tenant.error || me.error) {
