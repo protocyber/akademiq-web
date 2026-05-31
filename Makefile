@@ -1,0 +1,72 @@
+# =============================================================================
+# AcademiQ Web — Makefile
+# =============================================================================
+# Standard target list per
+# docs/internal/13_engineering_standards/12_makefile_standards.md (parent repo):
+#
+#   make dev         # run Next.js dev server (Next fast-refresh, host process)
+#   make migrate     # no-op for the web app
+#   make test        # run tests
+#   make build       # produce a Next.js production build
+#   make up          # alias for `dev` (web has no compose stack)
+#   make down        # no-op (web has no compose stack)
+#
+# Convenience targets:
+#
+#   make start       # run the production server (after `make build`)
+#   make lint        # run linters
+#   make build-image # build a production Docker image
+#   make help        # list targets
+#
+# All ports/credentials live in .env (see .env.example). `make dev` runs on
+# the host (not in Docker) for the best Next.js HMR experience on macOS.
+# =============================================================================
+
+-include .env
+export
+
+SHELL := /usr/bin/env bash
+PNPM := pnpm
+
+.DEFAULT_GOAL := help
+.PHONY: help dev start build build-image migrate test lint up down corepack
+
+help: ## Show this help
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+corepack: ## Enable corepack and activate the pinned pnpm version
+	@command -v corepack >/dev/null || { echo "corepack not found — install Node >= 16.13"; exit 1; }
+	@corepack enable >/dev/null 2>&1 || true
+
+dev: corepack ## Start the Next.js dev server on $$WEB_PORT (default 3000)
+	@if [ ! -f .env ]; then \
+		echo ">> .env not found — copying from .env.example"; \
+		cp .env.example .env; \
+	fi
+	@$(PNPM) install --silent
+	@echo ">> Starting dev server on port $${WEB_PORT:-3000}"
+	@WEB_PORT=$${WEB_PORT:-3000} $(PNPM) dev
+
+start: corepack ## Run the production server (requires `make build` first)
+	@WEB_PORT=$${WEB_PORT:-3000} $(PNPM) start
+
+build: corepack ## Build the Next.js production bundle
+	@$(PNPM) install --silent
+	@$(PNPM) build
+
+build-image: ## Build the production Docker image
+	docker build -t akademiq-web:local .
+
+migrate: ## No-op for the web app
+	@echo ">> migrate: web has no migrations."
+
+test: corepack ## Run tests
+	@$(PNPM) test
+
+lint: corepack ## Run lints
+	@$(PNPM) lint
+
+up: dev ## Alias for `dev` (web has no compose stack)
+
+down: ## No-op (web has no compose stack)
+	@echo ">> down: web has no compose stack to stop."
