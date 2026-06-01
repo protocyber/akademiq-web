@@ -15,6 +15,7 @@
 #
 #   make start       # run the production server (after `make build`)
 #   make lint        # run linters
+#   make ps          # show web dev server status and listening port
 #   make build-image # build a production Docker image
 #   make help        # list targets
 #
@@ -29,7 +30,7 @@ SHELL := /usr/bin/env bash
 PNPM := pnpm
 
 .DEFAULT_GOAL := help
-.PHONY: help dev start build build-image migrate test test-unit test-e2e lint typecheck up down corepack
+.PHONY: help dev start build build-image migrate test test-unit test-e2e lint typecheck ps up down corepack
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -80,3 +81,10 @@ up: dev ## Alias for `dev` (web has no compose stack)
 
 down: ## No-op (web has no compose stack)
 	@echo ">> down: web has no compose stack to stop."
+
+ps: ## Show web dev server status and listening port
+	@echo "=== web dev server ==="
+	@pgrep -fl "node.*next" 2>/dev/null | grep -v "grep" || echo "  (none)"
+	@echo ""
+	@echo "=== listening port ==="
+	@lsof -nP -i :$${WEB_PORT:-3000} 2>/dev/null | grep LISTEN || echo "  (none)"
