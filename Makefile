@@ -6,7 +6,7 @@
 #
 #   make dev         # run Next.js dev server (Next fast-refresh, host process)
 #   make migrate     # no-op for the web app
-#   make test        # run tests
+#   make test        # run unit tests
 #   make build       # produce a Next.js production build
 #   make up          # alias for `dev` (web has no compose stack)
 #   make down        # no-op (web has no compose stack)
@@ -16,6 +16,9 @@
 #   make start       # run the production server (after `make build`)
 #   make lint        # run linters
 #   make ps          # show web dev server status and listening port
+#   make stop        # kill the Next.js dev server process
+#   make clean       # delete .next build artefacts
+#   make purge       # DESTRUCTIVE: delete .next and node_modules (with confirmation)
 #   make build-image # build a production Docker image
 #   make help        # list targets
 #
@@ -30,7 +33,7 @@ SHELL := /usr/bin/env bash
 PNPM := pnpm
 
 .DEFAULT_GOAL := help
-.PHONY: help dev start build build-image migrate test test-unit test-e2e lint typecheck ps up down corepack
+.PHONY: help dev start build build-image migrate test test-unit test-e2e lint typecheck ps stop clean purge up down corepack
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -77,14 +80,41 @@ lint: corepack ## Run lints
 typecheck: corepack ## Run TypeScript typecheck
 	@$(PNPM) typecheck
 
-up: dev ## Alias for `dev` (web has no compose stack)
-
-down: ## No-op (web has no compose stack)
-	@echo ">> down: web has no compose stack to stop."
-
 ps: ## Show web dev server status and listening port
 	@echo "=== web dev server ==="
 	@pgrep -fl "node.*next" 2>/dev/null | grep -v "grep" || echo "  (none)"
 	@echo ""
 	@echo "=== listening port ==="
 	@lsof -nP -i :$${WEB_PORT:-3000} 2>/dev/null | grep LISTEN || echo "  (none)"
+
+stop: ## Kill the Next.js dev server process (SIGTERM)
+	@pkill -TERM -f "node.*next" 2>/dev/null \
+		&& echo "  next dev server stopped" \
+		|| echo "  next dev server: not running"
+
+clean: ## Delete Next.js build artefacts (.next)
+	@rm -rf .next
+	@echo ">> .next deleted (node_modules preserved — run 'make purge' to delete them)"
+
+purge: ## DESTRUCTIVE: delete .next and node_modules (requires confirmation)
+	@printf '\033[0;31m\n'
+	@echo "  ╔══════════════════════════════════════════════════════════╗"
+	@echo "  ║  WARNING: purge will permanently DELETE:                 ║"
+	@echo "  ║    • .next/  (build output)                              ║"
+	@echo "  ║    • node_modules/  (all installed packages)             ║"
+	@echo "  ║  You will need to run 'pnpm install' before 'make dev'.  ║"
+	@echo "  ╚══════════════════════════════════════════════════════════╝"
+	@printf '\033[0m\n'
+	@printf "  Type 'yes' to continue, anything else to abort: "; \
+	read -r ans; \
+	if [ "$$ans" = "yes" ]; then \
+		rm -rf .next node_modules; \
+		echo ">> purge complete."; \
+	else \
+		echo ">> aborted."; \
+	fi
+
+up: dev ## Alias for `dev` (web has no compose stack)
+
+down: ## No-op (web has no compose stack)
+	@echo ">> down: web has no compose stack to stop."
