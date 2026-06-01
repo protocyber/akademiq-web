@@ -97,22 +97,7 @@ clean: ## Delete Next.js build artefacts (.next)
 	@echo ">> .next deleted (node_modules preserved — run 'make purge' to delete them)"
 
 purge: ## DESTRUCTIVE: delete .next and node_modules (requires confirmation)
-	@printf '\033[0;31m\n'
-	@echo "  ╔══════════════════════════════════════════════════════════╗"
-	@echo "  ║  WARNING: purge will permanently DELETE:                 ║"
-	@echo "  ║    • .next/  (build output)                              ║"
-	@echo "  ║    • node_modules/  (all installed packages)             ║"
-	@echo "  ║  You will need to run 'pnpm install' before 'make dev'.  ║"
-	@echo "  ╚══════════════════════════════════════════════════════════╝"
-	@printf '\033[0m\n'
-	@printf "  Type 'yes' to continue, anything else to abort: "; \
-	read -r ans; \
-	if [ "$$ans" = "yes" ]; then \
-		rm -rf .next node_modules; \
-		echo ">> purge complete."; \
-	else \
-		echo ">> aborted."; \
-	fi
+	@bash scripts/purge.sh
 
 up: dev ## Alias for `dev` (web has no compose stack)
 
