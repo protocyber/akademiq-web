@@ -82,13 +82,13 @@ typecheck: corepack ## Run TypeScript typecheck
 
 ps: ## Show web dev server status and listening port
 	@echo "=== web dev server ==="
-	@pgrep -fl "node.*next" 2>/dev/null | grep -v "grep" || echo "  (none)"
+	@pgrep -fl "[n]ode.*next" 2>/dev/null || echo "  (none)"
 	@echo ""
 	@echo "=== listening port ==="
 	@lsof -nP -i :$${WEB_PORT:-3000} 2>/dev/null | grep LISTEN || echo "  (none)"
 
 stop: ## Kill the Next.js dev server process (SIGTERM)
-	@pkill -TERM -f "node.*next" 2>/dev/null \
+	@pkill -TERM -f "[n]ode.*next" 2>/dev/null \
 		&& echo "  next dev server stopped" \
 		|| echo "  next dev server: not running"
 
