@@ -1,9 +1,21 @@
 import type { Metadata } from "next";
 
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+
 import { QueryProvider } from "@/lib/query/provider";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-display",
+});
 
 export const metadata: Metadata = {
   title: "AcademiQ",
@@ -17,7 +29,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className={`${inter.variable} ${plusJakartaSans.variable} min-h-screen bg-background font-sans antialiased`}>
         <QueryProvider>
           <TooltipProvider delayDuration={150}>
             {children}
