@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { AuthGuard } from "@/components/features/auth-guard";
+import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useLogout } from "@/lib/query/mutations/use-logout";
@@ -87,77 +89,82 @@ function DashboardContent() {
   const u = me.data!;
 
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t.school_name}</h1>
-          <p className="text-muted-foreground">
-            {u.full_name} · {u.email}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href="/settings/modules">Modul</Link>
-          </Button>
-          <Button
-            variant="ghost"
-            loading={logout.isPending}
-            onClick={async () => {
-              await logout.mutateAsync();
-              router.push("/login");
-            }}
-          >
-            Keluar
-          </Button>
-        </div>
-      </header>
+    <SidebarLayout
+      schoolName={t.school_name}
+      userName={u.full_name}
+      userEmail={u.email}
+      isLoggingOut={logout.isPending}
+      onLogout={async () => {
+        await logout.mutateAsync();
+        router.push("/login");
+      }}
+    >
+      <div>
+        <h1 className="text-3xl font-extrabold font-display tracking-tight text-foreground">Dasbor Sekolah</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Pantau status langganan dan atur modul aktif sekolah Anda.
+        </p>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Langganan</CardTitle>
-          <CardDescription>
-            Status: <span className="font-medium">{t.status}</span>
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Plan saat ini:{" "}
-            <span className="font-medium text-foreground">
-              {t.current_plan?.name ?? "—"}
-            </span>
-          </p>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="border border-border shadow-sm">
+          <CardHeader className="pb-4 border-b">
+            <CardTitle className="text-lg flex items-center gap-2">
+              Status Langganan
+            </CardTitle>
+            <CardDescription>
+              Detail paket langganan aktif saat ini.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Paket Aktif:</span>
+              <span className="text-sm font-bold text-foreground bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+                {t.current_plan?.name ?? "—"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">Status Pembayaran:</span>
+              <Badge variant={t.status === "active" ? "default" : "secondary"} className="uppercase tracking-wide text-xs">
+                {t.status}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Modul aktif</CardTitle>
-          <CardDescription>
-            Atur modul yang aktif di halaman Modul.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="grid gap-2 sm:grid-cols-2">
-            {t.modules.map((m) => (
-              <li
-                key={m.feature_code}
-                className="flex items-center justify-between rounded-md border px-3 py-2 text-sm"
-              >
-                <span className={m.plan_entitled ? "" : "text-muted-foreground"}>
-                  {m.feature_code}
-                </span>
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">
-                  {!m.plan_entitled
-                    ? "tidak termasuk"
-                    : m.enabled
-                      ? "aktif"
-                      : "nonaktif"}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-    </main>
+        <Card className="border border-border shadow-sm">
+          <CardHeader className="pb-4 border-b">
+            <CardTitle className="text-lg">Modul Aktif</CardTitle>
+            <CardDescription>
+              Atur modul yang aktif di halaman Modul.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <ul className="grid gap-3">
+              {t.modules.map((m) => (
+                <li
+                  key={m.feature_code}
+                  className="flex items-center justify-between rounded-lg border p-3 text-sm bg-muted/20"
+                >
+                  <span className={`font-medium ${m.plan_entitled ? "" : "text-muted-foreground"}`}>
+                    {m.feature_code}
+                  </span>
+                  <Badge
+                    variant={!m.plan_entitled ? "destructive" : m.enabled ? "default" : "secondary"}
+                    className="text-xs"
+                  >
+                    {!m.plan_entitled
+                      ? "Tidak Termasuk"
+                      : m.enabled
+                        ? "Aktif"
+                        : "Nonaktif"}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+    </SidebarLayout>
   );
 }
