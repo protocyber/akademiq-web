@@ -1,22 +1,22 @@
 "use client";
- 
+
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { 
-  Check, 
-  GraduationCap, 
-  TrendingUp, 
-  Users, 
-  Lock, 
-  Mail, 
-  Eye, 
-  EyeOff, 
-  ArrowRight 
+import {
+  Check,
+  GraduationCap,
+  TrendingUp,
+  Users,
+  Lock,
+  Mail,
+  Eye,
+  EyeOff,
+  ArrowRight
 } from "lucide-react";
- 
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -30,7 +30,7 @@ import { useLogin } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { ApiHttpError } from "@/lib/api/types";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/login";
- 
+
 export default function LoginPage() {
   return (
     <React.Suspense fallback={<LoginSkeleton />}>
@@ -40,7 +40,7 @@ export default function LoginPage() {
     </React.Suspense>
   );
 }
- 
+
 function LoginSkeleton() {
   return (
     <main className="container mx-auto flex min-h-screen items-center justify-center px-4 py-12">
@@ -54,21 +54,21 @@ function LoginSkeleton() {
     </main>
   );
 }
- 
+
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
   const [showPassword, setShowPassword] = React.useState(false);
- 
+
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "", remember_device: false },
   });
- 
+
   const login = useLogin();
   const [topError, setTopError] = React.useState<string | null>(null);
- 
+
   const onSubmit = form.handleSubmit(async (values) => {
     setTopError(null);
     try {
@@ -85,7 +85,7 @@ function LoginForm() {
       toast.error(message);
     }
   });
- 
+
   return (
     <main className="min-h-screen flex flex-col md:flex-row bg-background">
       {/* Left side: branding & illustration */}
@@ -94,7 +94,7 @@ function LoginForm() {
           <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-white blur-[120px]" />
           <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-primary-foreground blur-[100px]" />
         </div>
-        
+
         <div className="relative z-10 w-full max-w-2xl">
           <div className="mb-8">
             <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold mb-4">
@@ -102,14 +102,14 @@ function LoginForm() {
               Dipercaya oleh 500+ Sekolah
             </span>
             <h1 className="text-4xl md:text-5xl font-extrabold font-display leading-tight mb-4">
-              Manajemen Sekolah Modern, <br/>
+              Manajemen Sekolah Modern, <br />
               <span className="text-emerald-300">Lebih Mudah & Efisien.</span>
             </h1>
             <p className="text-lg text-white/80 max-w-md">
               Platform all-in-one untuk administrasi sekolah, akademik, kehadiran, dan pembayaran dalam satu dasbor terpadu.
             </p>
           </div>
-          
+
           {/* Floating Cards (Bento Style) */}
           <div className="grid grid-cols-2 gap-4 mt-8">
             <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white shadow-lg">
@@ -123,7 +123,7 @@ function LoginForm() {
                 </CardDescription>
               </CardHeader>
             </Card>
-            
+
             <Card className="bg-white/10 backdrop-blur-md border-white/20 text-white shadow-lg translate-y-4">
               <CardHeader className="pb-4">
                 <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center mb-2">
@@ -136,7 +136,7 @@ function LoginForm() {
               </CardHeader>
             </Card>
           </div>
-          
+
           {/* Main Illustration Image */}
           <div className="mt-12 relative rounded-xl overflow-hidden shadow-2xl border border-white/10">
             <div
@@ -152,7 +152,7 @@ function LoginForm() {
           </div>
         </div>
       </section>
-      
+
       {/* Right side: Login form */}
       <section className="w-full md:w-1/2 lg:w-2/5 flex flex-col justify-center items-center p-8">
         <div className="w-full max-w-md space-y-6">
@@ -168,7 +168,7 @@ function LoginForm() {
               Silakan masukkan email Anda untuk masuk ke dasbor.
             </p>
           </div>
-          
+
           <Card className="border border-border shadow-sm">
             <CardHeader className="pb-4">
               <CardTitle className="text-xl">Masuk</CardTitle>
@@ -196,7 +196,6 @@ function LoginForm() {
                               className="pl-10"
                               type="email"
                               autoComplete="email"
-                              placeholder="e.g. admin@sekolah.sch.id"
                               {...field}
                             />
                           </FormControl>
@@ -223,7 +222,6 @@ function LoginForm() {
                               className="pl-10 pr-10"
                               type={showPassword ? "text" : "password"}
                               autoComplete="current-password"
-                              placeholder="••••••••"
                               {...field}
                             />
                           </FormControl>
@@ -241,7 +239,7 @@ function LoginForm() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <FormField
                     control={form.control}
                     name="remember_device"
@@ -263,7 +261,7 @@ function LoginForm() {
                       </FormItem>
                     )}
                   />
-                  
+
                   <Button
                     type="submit"
                     className="w-full flex items-center justify-center gap-1.5"
@@ -282,7 +280,7 @@ function LoginForm() {
               </Link>
             </CardFooter>
           </Card>
-          
+
           <footer className="text-center space-y-4 pt-4 text-xs text-muted-foreground">
             <div className="flex justify-center gap-4">
               <Link className="hover:text-primary transition-colors" href="#">Kebijakan Privasi</Link>

@@ -20,12 +20,14 @@ export class ApiHttpError extends Error {
   status: number;
   code: string;
   fields?: FieldErrors;
+  payload?: unknown;
 
-  constructor(status: number, payload: ApiError) {
+  constructor(status: number, payload: ApiError, raw?: unknown) {
     super(payload.message || payload.code);
     this.status = status;
     this.code = payload.code;
     this.fields = payload.fields;
+    this.payload = raw;
     this.name = "ApiHttpError";
   }
 
