@@ -42,7 +42,7 @@ export function QuerySelect<TItem>({
     <Select value={value} onValueChange={onValueChange} disabled={isDisabled}>
       <SelectTrigger>
         {isLoading ? (
-          <span className="flex items-center gap-2 text-muted-foreground">
+          <span className="flex items-center gap-2 text-muted-foreground/40">
             <Spinner size="sm" />
             {loadingText}
           </span>

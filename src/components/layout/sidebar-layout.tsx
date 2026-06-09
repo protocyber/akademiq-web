@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, User } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarLayoutProps {
@@ -35,6 +35,11 @@ export function SidebarLayout({
       href: "/settings/modules",
       label: "Modul Aktif",
       icon: Boxes,
+    },
+    {
+      href: "/settings/users",
+      label: "Pengguna",
+      icon: Users,
     },
     {
       href: "/settings/academic/years",
