@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, User, Users } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarLayoutProps {
@@ -47,6 +47,12 @@ export function SidebarLayout({
       label: "Akademik",
       icon: BookOpen,
     },
+    {
+      href: "/students",
+      activePrefixes: ["/students", "/teachers", "/homerooms", "/teaching-assignments", "/import"],
+      label: "Operasional",
+      icon: School,
+    },
   ];
 
   return (
@@ -67,7 +73,10 @@ export function SidebarLayout({
         {/* Navigation Links */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
-            const active = pathname === item.href || Boolean(item.activePrefix && pathname.startsWith(item.activePrefix));
+            const active =
+              pathname === item.href ||
+              Boolean(item.activePrefix && pathname.startsWith(item.activePrefix)) ||
+              Boolean(item.activePrefixes?.some((prefix) => pathname.startsWith(prefix)));
             const Icon = item.icon;
             return (
               <Button

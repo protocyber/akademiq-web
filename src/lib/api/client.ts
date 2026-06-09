@@ -8,11 +8,13 @@ const BILLING_BASE =
   process.env.NEXT_PUBLIC_BILLING_BASE_URL ?? "http://localhost:8082";
 const ACADEMIC_CONFIG_BASE =
   process.env.NEXT_PUBLIC_ACADEMIC_CONFIG_BASE_URL ?? "http://localhost:8083";
+const ACADEMIC_OPS_BASE =
+  process.env.NEXT_PUBLIC_ACADEMIC_OPS_BASE_URL ?? "http://localhost:8084";
 
 const ACCESS_KEY = "akademiq.access_token";
 const REFRESH_KEY = "akademiq.refresh_token";
 
-type Service = "iam" | "billing" | "academic-config";
+type Service = "iam" | "billing" | "academic-config" | "academic-ops";
 
 function baseFor(service: Service): string {
   switch (service) {
@@ -22,6 +24,8 @@ function baseFor(service: Service): string {
       return BILLING_BASE;
     case "academic-config":
       return ACADEMIC_CONFIG_BASE;
+    case "academic-ops":
+      return ACADEMIC_OPS_BASE;
   }
 }
 
@@ -102,7 +106,8 @@ async function performFetch<T>(
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
-  if (options.body !== undefined) {
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  if (options.body !== undefined && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
   if (options.authenticated) {
@@ -117,10 +122,16 @@ async function performFetch<T>(
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  const requestBody: BodyInit | undefined = options.body === undefined
+    ? undefined
+    : isFormData
+      ? (options.body as FormData)
+      : JSON.stringify(options.body);
+
   const resp = await fetch(url, {
     method: options.method ?? "GET",
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    body: requestBody,
     credentials: "omit",
   });
 
@@ -153,7 +164,7 @@ async function performFetch<T>(
       clearTokens();
       redirectToLogin();
     }
-    throw new ApiHttpError(resp.status, payload);
+    throw new ApiHttpError(resp.status, payload, json);
   }
 
   return (json as ApiSuccess<T>).data;
