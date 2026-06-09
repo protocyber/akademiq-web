@@ -22,6 +22,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
 import { useLogin } from "@/lib/query/mutations/use-login";
@@ -61,7 +63,7 @@ function LoginForm() {
  
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: "", password: "", remember_device: false },
   });
  
   const login = useLogin();
@@ -70,7 +72,9 @@ function LoginForm() {
   const onSubmit = form.handleSubmit(async (values) => {
     setTopError(null);
     try {
-      await login.mutateAsync(values);
+      const { remember_device: _rememberDevice, ...input } = values;
+      // The backend login contract has no remember-device field yet; keep the UI RHF-bound without changing the request.
+      await login.mutateAsync(input);
       router.push(next);
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
@@ -135,10 +139,14 @@ function LoginForm() {
           
           {/* Main Illustration Image */}
           <div className="mt-12 relative rounded-xl overflow-hidden shadow-2xl border border-white/10">
-            <img
-              alt="Kolaborasi Akademik"
-              className="w-full h-[320px] object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiFuJe9x0H_3e-VcVvAXYYcc2cePpaN82YKu9SxtF2aP7GEMihjrPYBi-1Y420erhlI6W3Zkdhosnl-ogbIerox4Uiu-UlsQ3ptzBd_BAuIOFzjaga-vFyPQ_vbf_8rLRgEgZY42ZEVyfXeeCXHb5ShbotFpo4cRlbmO_VnB3BSYsD9kUcWjZ-Xr2wSs1p5b1Xqz-25doQjZPTvvVI1PAu3z_Q06_vzsqurB51rtCvvLiEdcXu58-QcvfZryp9BY9RED8R63LhsyTs"
+            <div
+              role="img"
+              aria-label="Kolaborasi Akademik"
+              className="h-[320px] w-full bg-cover bg-center"
+              style={{
+                backgroundImage:
+                  "url(https://lh3.googleusercontent.com/aida-public/AB6AXuBiFuJe9x0H_3e-VcVvAXYYcc2cePpaN82YKu9SxtF2aP7GEMihjrPYBi-1Y420erhlI6W3Zkdhosnl-ogbIerox4Uiu-UlsQ3ptzBd_BAuIOFzjaga-vFyPQ_vbf_8rLRgEgZY42ZEVyfXeeCXHb5ShbotFpo4cRlbmO_VnB3BSYsD9kUcWjZ-Xr2wSs1p5b1Xqz-25doQjZPTvvVI1PAu3z_Q06_vzsqurB51rtCvvLiEdcXu58-QcvfZryp9BY9RED8R63LhsyTs)",
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           </div>
@@ -219,32 +227,42 @@ function LoginForm() {
                               {...field}
                             />
                           </FormControl>
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                           >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
+                          </Button>
                         </div>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   
-                  <div className="flex items-center space-x-2 py-1">
-                    <input
-                      type="checkbox"
-                      id="remember"
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-                    />
-                    <label
-                      htmlFor="remember"
-                      className="text-xs text-muted-foreground cursor-pointer select-none"
-                    >
-                      Ingat perangkat ini selama 30 hari
-                    </label>
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="remember_device"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0 py-1">
+                        <FormControl>
+                          <Checkbox
+                            id="remember_device"
+                            checked={field.value}
+                            onCheckedChange={(checked) => field.onChange(checked === true)}
+                          />
+                        </FormControl>
+                        <Label
+                          htmlFor="remember_device"
+                          className="cursor-pointer select-none text-xs text-muted-foreground"
+                        >
+                          Ingat perangkat ini selama 30 hari
+                        </Label>
+                      </FormItem>
+                    )}
+                  />
                   
                   <Button
                     type="submit"

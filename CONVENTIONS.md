@@ -13,10 +13,12 @@ of a maintenance bill.
 - All interactive UI MUST be composed from shadcn/ui components installed
   under `src/components/ui/`. Buttons come from `<Button>`, inputs from
   `<Input>`, switches from `<Switch>`, and so on.
-- Native HTML form controls — `<button>`, `<input>`, `<select>`,
-  `<textarea>` — and bare `<form>` without React Hook Form wiring are
-  forbidden in `src/app/`, `src/components/features/`, and
+- Native interactive HTML form controls — `<button>`, `<input>`,
+  `<select>`, `<textarea>` — and bare `<form>` without React Hook Form
+  wiring are forbidden in `src/app/`, `src/components/features/`, and
   `src/components/pages/`. ESLint blocks them via `react/forbid-elements`.
+  `<input type="hidden">` is form plumbing, not an interactive UI control;
+  prefer React Hook Form `register`/`setValue` without rendering one.
 - Structural elements (`<div>`, `<section>`, `<main>`, `<header>`,
   `<nav>`, `<ul>`, `<li>`, `<p>`, `<span>`, headings) remain allowed.
 - In-app navigation MUST use Next.js `<Link>`. The same ESLint rule
@@ -27,7 +29,8 @@ of a maintenance bill.
 ## 2. All data access through TanStack Query
 
 - Reads use `useQuery` or `useInfiniteQuery`. Writes use `useMutation`.
-- `lib/api/client.ts` is the only place `fetch()` is called. Components
+- Raw `fetch()` is limited to `lib/api/client.ts` for client-side API calls
+  and `lib/query/server.ts` for server-side TanStack prefetch. Components
   consume hooks from `lib/query/queries/*` and `lib/query/mutations/*`.
 - No `useEffect`-based fetching anywhere. The hook returned by TanStack
   is the lifecycle.
