@@ -56,6 +56,7 @@ export function DatePicker({
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
+          fixedWeeks
           mode="single"
           selected={selected}
           defaultMonth={selected}
