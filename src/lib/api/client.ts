@@ -6,11 +6,13 @@ const IAM_BASE =
   process.env.NEXT_PUBLIC_IAM_BASE_URL ?? "http://localhost:8081";
 const BILLING_BASE =
   process.env.NEXT_PUBLIC_BILLING_BASE_URL ?? "http://localhost:8082";
+const ACADEMIC_CONFIG_BASE =
+  process.env.NEXT_PUBLIC_ACADEMIC_CONFIG_BASE_URL ?? "http://localhost:8083";
 
 const ACCESS_KEY = "akademiq.access_token";
 const REFRESH_KEY = "akademiq.refresh_token";
 
-type Service = "iam" | "billing";
+type Service = "iam" | "billing" | "academic-config";
 
 function baseFor(service: Service): string {
   switch (service) {
@@ -18,6 +20,8 @@ function baseFor(service: Service): string {
       return IAM_BASE;
     case "billing":
       return BILLING_BASE;
+    case "academic-config":
+      return ACADEMIC_CONFIG_BASE;
   }
 }
 
