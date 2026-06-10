@@ -21,6 +21,14 @@ export function useCreateTeacher() {
   return useMutation({ mutationFn: (input: TeacherForm) => apiFetch<Teacher>({ service: "academic-ops", path: "/api/v1/academic-ops/teachers", method: "POST", authenticated: true, body: input }), onSuccess: () => qc.invalidateQueries({ queryKey: TEACHERS_QUERY_KEY }) });
 }
 
+export function useLinkTeacherAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teacherId, userId }: { teacherId: string; userId: string }) => apiFetch<Teacher>({ service: "academic-ops", path: `/api/v1/academic-ops/teachers/${teacherId}/account`, method: "PATCH", authenticated: true, body: { user_id: userId } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TEACHERS_QUERY_KEY }),
+  });
+}
+
 export function useCreateHomeroom() {
   const qc = useQueryClient();
   return useMutation({ mutationFn: (input: HomeroomForm) => apiFetch<Homeroom>({ service: "academic-ops", path: "/api/v1/academic-ops/homerooms", method: "POST", authenticated: true, body: input }), onSuccess: () => qc.invalidateQueries({ queryKey: HOMEROOMS_QUERY_KEY }) });

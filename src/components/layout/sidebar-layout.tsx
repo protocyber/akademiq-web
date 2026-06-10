@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarLayoutProps {
@@ -52,6 +52,12 @@ export function SidebarLayout({
       activePrefixes: ["/students", "/teachers", "/homerooms", "/teaching-assignments", "/import"],
       label: "Operasional",
       icon: School,
+    },
+    {
+      href: "/grading/entry",
+      activePrefix: "/grading",
+      label: "Nilai",
+      icon: ClipboardList,
     },
   ];
 

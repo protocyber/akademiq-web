@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
 
 export type Student = { student_id: string; nis: string; full_name: string; gender: string; birth_date: string };
-export type Teacher = { teacher_id: string; nip: string; full_name: string };
+export type Teacher = { teacher_id: string; user_id?: string | null; nip: string; full_name: string };
 export type Homeroom = { homeroom_id: string; name: string; grade_level: string; capacity: number; academic_year_id: string };
 export type TeachingAssignment = { assignment_id: string; teacher_id: string; subject_id: string; homeroom_id: string; academic_year_id: string };
 
