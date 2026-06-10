@@ -23,8 +23,9 @@ import { ApiHttpError } from "@/lib/api/types";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useAcademicYears, useSubjects, useCurriculumVersions } from "@/lib/query/queries/use-academic-config";
-import { useAssignTeaching, useCreateHomeroom, useCreateStudent, useCreateTeacher, useEnrollStudent, useImportStudents, useImportTeachers, useUpdateStudent } from "@/lib/query/mutations/use-academic-ops";
+import { useAssignTeaching, useCreateHomeroom, useCreateStudent, useCreateTeacher, useEnrollStudent, useImportStudents, useImportTeachers, useLinkTeacherAccount, useUpdateStudent } from "@/lib/query/mutations/use-academic-ops";
 import { useHomeroomRoster, useHomerooms, useStudents, useTeachers, useTeachingAssignments, type Student } from "@/lib/query/queries/use-academic-ops";
+import { useTenantUsers } from "@/lib/query/queries/use-tenant-users";
 import { enrollmentSchema, homeroomSchema, studentSchema, teacherSchema, teachingAssignmentSchema, type EnrollmentForm, type HomeroomForm, type StudentForm, type TeacherForm, type TeachingAssignmentForm } from "@/lib/schemas/academic-ops";
 
 const opsNav = [
@@ -119,9 +120,12 @@ function StudentFormView({ form, canManage, upgradeMessage, loading, onSubmit }:
 
 export function TeachersPanel({ canManage, upgradeMessage }: Context) {
   const teachers = useTeachers();
+  const users = useTenantUsers();
   const create = useCreateTeacher();
+  const link = useLinkTeacherAccount();
   const form = useForm<TeacherForm>({ resolver: zodResolver(teacherSchema), defaultValues: { nip: "", full_name: "" } });
-  return <ResourceCard title="Data Guru" description="Kelola master data guru.">{teachers.isLoading ? <ListSkeleton /> : <div className="grid gap-3 lg:grid-cols-[1fr_360px]"><List items={teachers.data ?? []} empty="Belum ada guru" render={(t) => <span>{t.full_name}<span className="ml-2 text-xs text-muted-foreground">{t.nip}</span></span>} /><Form {...form}><form onSubmit={form.handleSubmit(async (values) => { await create.mutateAsync(values); form.reset(); toast.success("Guru ditambahkan."); })} className="space-y-3 rounded-lg border p-4"><Field control={form.control} name="nip" label="NIP" /><Field control={form.control} name="full_name" label="Nama lengkap" /><GuardedButton enabled={canManage} message={upgradeMessage} loading={create.isPending}>Simpan Guru</GuardedButton></form></Form></div>}</ResourceCard>;
+  const teacherUsers = (users.data ?? []).filter((user) => user.role_code === "teacher" || user.role_code === "homeroom_teacher");
+  return <ResourceCard title="Data Guru" description="Kelola master data guru dan hubungkan dengan akun login guru.">{teachers.isLoading ? <ListSkeleton /> : <div className="grid gap-3 lg:grid-cols-[1fr_360px]"><List items={teachers.data ?? []} empty="Belum ada guru" render={(t) => <div className="space-y-2"><div><span>{t.full_name}<span className="ml-2 text-xs text-muted-foreground">{t.nip}</span></span><p className="text-xs text-muted-foreground">{t.user_id ? "Akun guru sudah terhubung" : "Belum terhubung ke akun login"}</p></div><div className="flex gap-2"><QuerySelect items={teacherUsers} isLoading={users.isLoading} value={t.user_id ?? ""} onValueChange={async (userId) => { await link.mutateAsync({ teacherId: t.teacher_id, userId }); toast.success("Akun guru terhubung."); }} getValue={(user) => user.user_id} getLabel={(user) => `${user.full_name} (${user.email})`} placeholder="Hubungkan akun guru" emptyText="Belum ada akun guru" /><Button size="sm" variant="outline" loading={link.isPending} disabled={!canManage || link.isPending}>Link</Button></div></div>} /><Form {...form}><form onSubmit={form.handleSubmit(async (values) => { await create.mutateAsync(values); form.reset(); toast.success("Guru ditambahkan."); })} className="space-y-3 rounded-lg border p-4"><Field control={form.control} name="nip" label="NIP" /><Field control={form.control} name="full_name" label="Nama lengkap" /><GuardedButton enabled={canManage} message={upgradeMessage} loading={create.isPending}>Simpan Guru</GuardedButton></form></Form></div>}</ResourceCard>;
 }
 
 export function HomeroomsPanel({ canManage, upgradeMessage }: Context) {

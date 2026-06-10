@@ -10,11 +10,13 @@ const ACADEMIC_CONFIG_BASE =
   process.env.NEXT_PUBLIC_ACADEMIC_CONFIG_BASE_URL ?? "http://localhost:8083";
 const ACADEMIC_OPS_BASE =
   process.env.NEXT_PUBLIC_ACADEMIC_OPS_BASE_URL ?? "http://localhost:8084";
+const GRADING_BASE =
+  process.env.NEXT_PUBLIC_GRADING_BASE_URL ?? "http://localhost:8086";
 
 const ACCESS_KEY = "akademiq.access_token";
 const REFRESH_KEY = "akademiq.refresh_token";
 
-type Service = "iam" | "billing" | "academic-config" | "academic-ops";
+type Service = "iam" | "billing" | "academic-config" | "academic-ops" | "grading";
 
 function baseFor(service: Service): string {
   switch (service) {
@@ -26,6 +28,8 @@ function baseFor(service: Service): string {
       return ACADEMIC_CONFIG_BASE;
     case "academic-ops":
       return ACADEMIC_OPS_BASE;
+    case "grading":
+      return GRADING_BASE;
   }
 }
 
