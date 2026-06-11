@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { QuerySelect } from "@/components/ui/query-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { useRecordGrade, useUpdateGrade } from "@/lib/query/mutations/use-grading";
 import { useAcademicYears, useCurriculumVersions, useSubjects } from "@/lib/query/queries/use-academic-config";
@@ -104,8 +105,8 @@ function GradeRow({ student, grade, yearId, subjectId, homeroomId, canWrite, loc
       if (grade) await update.mutateAsync({ gradeId: grade.grade_id, score: parsed.data.score });
       else await record.mutateAsync(parsed.data);
       toast.success(`Nilai ${student.full_name} disimpan.`);
-    } catch {
-      toast.error("Nilai gagal disimpan.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Nilai gagal disimpan." }));
     }
   }
   const saving = record.isPending || update.isPending;

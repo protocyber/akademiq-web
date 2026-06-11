@@ -16,7 +16,7 @@ import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useToggleModule } from "@/lib/query/mutations/use-toggle-module";
 import { useLogout } from "@/lib/query/mutations/use-logout";
-import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 
 export default function ModulesPage() {
   return (
@@ -89,11 +89,7 @@ function ModulesContent() {
     try {
       await toggle.mutateAsync({ feature_code, enabled });
     } catch (err) {
-      const message =
-        err instanceof ApiHttpError
-          ? err.message
-          : "Tidak bisa mengubah modul.";
-      toast.error(message);
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah modul." }));
     }
   }
 

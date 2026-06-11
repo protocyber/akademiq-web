@@ -20,6 +20,7 @@ import { toast } from "@/components/ui/toaster";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useAcademicYears, useSubjects, useCurriculumVersions } from "@/lib/query/queries/use-academic-config";
@@ -171,7 +172,7 @@ export function ImportPanel({ canManage, upgradeMessage }: Context) {
   const [rowErrors, setRowErrors] = React.useState<Array<{ row: number; errors: Record<string, string[]> }>>([]);
   async function runUpload(action: () => Promise<{ imported: number }>, label: string) {
     try { setRowErrors([]); const out = await action(); toast.success(`${out.imported} ${label} diimport.`); }
-    catch (err) { const rows = extractImportRows(err); setRowErrors(rows); toast.error(rows.length ? "Import gagal. Periksa error baris." : "Import gagal."); }
+    catch (err) { const rows = extractImportRows(err); setRowErrors(rows); toast.error(getErrorMessage(err, { fallback: rows.length ? "Import gagal. Periksa error baris." : "Import gagal." })); }
   }
   return <ResourceCard title="Import Excel" description="Upload file Excel untuk import data siswa atau guru secara massal."><div className="grid gap-4 md:grid-cols-2"><ImportBox title="Import Siswa" templateHref="/templates/students-template.xlsx" templateLabel="Unduh Template Siswa" file={studentFile} setFile={setStudentFile} loading={importStudents.isPending} canManage={canManage} message={upgradeMessage} onUpload={() => runUpload(() => importStudents.mutateAsync(studentFile as File), "siswa")} /><ImportBox title="Import Guru" templateHref="/templates/teachers-template.xlsx" templateLabel="Unduh Template Guru" file={teacherFile} setFile={setTeacherFile} loading={importTeachers.isPending} canManage={canManage} message={upgradeMessage} onUpload={() => runUpload(() => importTeachers.mutateAsync(teacherFile as File), "guru")} /></div>{rowErrors.length ? <Alert variant="destructive" className="mt-4"><AlertTitle>Import validation failed</AlertTitle><AlertDescription><div className="space-y-1">{rowErrors.map((row) => <p key={row.row}>Baris {row.row}: {Object.entries(row.errors).map(([field, messages]) => `${field} ${messages.join(", ")}`).join("; ")}</p>)}</div></AlertDescription></Alert> : null}</ResourceCard>;
 }

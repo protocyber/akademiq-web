@@ -28,7 +28,7 @@ import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
 import { useLogin } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
-import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/login";
 
 export default function LoginPage() {
@@ -79,8 +79,7 @@ function LoginForm() {
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length > 0) return;
-      const message =
-        err instanceof ApiHttpError ? err.message : "Tidak bisa masuk. Coba lagi.";
+      const message = getErrorMessage(err, { fallback: "Tidak bisa masuk. Coba lagi." });
       setTopError(message);
       toast.error(message);
     }

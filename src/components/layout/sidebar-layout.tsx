@@ -59,6 +59,12 @@ export function SidebarLayout({
       label: "Nilai",
       icon: ClipboardList,
     },
+    {
+      href: "/grading/report-cards",
+      activePrefix: "/grading/report-cards",
+      label: "Rapor",
+      icon: GraduationCap,
+    },
   ];
 
   return (

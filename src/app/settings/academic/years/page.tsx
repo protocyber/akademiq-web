@@ -26,7 +26,7 @@ import {
   AcademicSettingsPage,
   EntitlementTooltip,
 } from "@/components/features/academic-config/academic-settings";
-import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useCreateAcademicYear, useTransitionAcademicYear } from "@/lib/query/mutations/use-academic-config";
 import { AcademicYear, useAcademicYears } from "@/lib/query/queries/use-academic-config";
@@ -73,7 +73,7 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length === 0) {
-        toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa membuat tahun ajaran.");
+        toast.error(getErrorMessage(err, { fallback: "Tidak bisa membuat tahun ajaran." }));
       }
     }
   }
@@ -188,7 +188,7 @@ function YearRow({ year, canManage, upgradeMessage }: { year: AcademicYear; canM
       await transition.mutateAsync({ status: nextStatus as never });
       toast.success("Status tahun ajaran diperbarui.");
     } catch (err) {
-      toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa mengubah status.");
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah status." }));
     }
   }
 

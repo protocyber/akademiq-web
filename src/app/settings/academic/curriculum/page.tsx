@@ -12,7 +12,7 @@ import { QuerySelect } from "@/components/ui/query-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { AcademicSettingsPage, EntitlementTooltip, YearPicker } from "@/components/features/academic-config/academic-settings";
-import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useAddCurriculumVersion, useAddSubject } from "@/lib/query/mutations/use-academic-config";
 import { useAcademicYears, useCurriculumVersions, useSubjects } from "@/lib/query/queries/use-academic-config";
@@ -69,7 +69,7 @@ function CurriculumContent({ canManage, upgradeMessage }: { canManage: boolean; 
       toast.success("Kurikulum ditambahkan.");
     } catch (err) {
       const applied = applyServerFieldErrors(curriculumForm, err);
-      if (applied.length === 0) toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa menambah kurikulum.");
+      if (applied.length === 0) toast.error(getErrorMessage(err, { fallback: "Tidak bisa menambah kurikulum." }));
     }
   }
 
@@ -81,7 +81,7 @@ function CurriculumContent({ canManage, upgradeMessage }: { canManage: boolean; 
       toast.success("Mata pelajaran ditambahkan.");
     } catch (err) {
       const applied = applyServerFieldErrors(subjectForm, err);
-      if (applied.length === 0) toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa menambah mata pelajaran.");
+      if (applied.length === 0) toast.error(getErrorMessage(err, { fallback: "Tidak bisa menambah mata pelajaran." }));
     }
   }
 

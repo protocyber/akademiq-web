@@ -29,6 +29,7 @@ import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { ApiHttpError } from "@/lib/api/types";
 import { ErrorView } from "@/components/ui/error-view";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import {
@@ -230,7 +231,7 @@ function InviteDialog() {
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length === 0) {
-        toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa membuat undangan.");
+        toast.error(getErrorMessage(err, { fallback: "Tidak bisa membuat undangan." }));
       }
     }
   }
@@ -311,7 +312,7 @@ function TenantUserRow({ user }: { user: TenantUser }) {
       await changeRole.mutateAsync({ role: role as never });
       toast.success("Role pengguna diperbarui.");
     } catch (err) {
-      toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa mengubah role.");
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah role." }));
     }
   }
 
@@ -320,7 +321,7 @@ function TenantUserRow({ user }: { user: TenantUser }) {
       await setEnabled.mutateAsync();
       toast.success(enabled ? "Akun dinonaktifkan." : "Akun diaktifkan.");
     } catch (err) {
-      toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa mengubah status akun.");
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah status akun." }));
     }
   }
 
@@ -361,7 +362,7 @@ function InvitationCard({ invitation }: { invitation: TenantInvitation }) {
       await revoke.mutateAsync();
       toast.success("Undangan dibatalkan.");
     } catch (err) {
-      toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa membatalkan undangan.");
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa membatalkan undangan." }));
     }
   }
 

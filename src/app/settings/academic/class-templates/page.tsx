@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { AcademicSettingsPage, EntitlementTooltip, YearPicker } from "@/components/features/academic-config/academic-settings";
-import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useAddClassTemplate } from "@/lib/query/mutations/use-academic-config";
 import { useAcademicYears, useClassTemplates } from "@/lib/query/queries/use-academic-config";
@@ -57,7 +57,7 @@ function ClassTemplatesContent({ canManage, upgradeMessage }: { canManage: boole
       toast.success("Template kelas ditambahkan.");
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
-      if (applied.length === 0) toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa menambah template kelas.");
+      if (applied.length === 0) toast.error(getErrorMessage(err, { fallback: "Tidak bisa menambah template kelas." }));
     }
   }
 
