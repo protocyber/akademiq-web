@@ -32,6 +32,9 @@ of a maintenance bill.
 - Raw `fetch()` is limited to `lib/api/client.ts` for client-side API calls
   and `lib/query/server.ts` for server-side TanStack prefetch. Components
   consume hooks from `lib/query/queries/*` and `lib/query/mutations/*`.
+- Pages and feature components MUST NOT import `apiFetch`, token helpers, or
+  low-level API utilities directly. Add or extend a TanStack query/mutation hook
+  instead.
 - No `useEffect`-based fetching anywhere. The hook returned by TanStack
   is the lifecycle.
 - A `QueryClientProvider` is mounted once in `src/app/layout.tsx`. In
@@ -97,6 +100,12 @@ Rules:
 - Exactly one `<Toaster />` is mounted in `src/app/layout.tsx`. Use
   `toast.success(...)` / `toast.error(...)` from
   `@/components/ui/toaster` for transient feedback.
+- User-facing API/backend error copy MUST be centralized in
+  `src/lib/errors/messages.ts`. Pages and feature components call
+  `getErrorMessage(error, { fallback })` for `toast.error`, destructive
+  alerts, and mutation error text; they must not display raw
+  `ApiHttpError.message` or map backend error codes inline. Local validation
+  text from Zod/RHF can stay with the schema or field.
 - For form-level errors (non-field, non-validation), render a top-of-
   form shadcn `<Alert variant="destructive">` *and* fire a toast. The
   alert sticks; the toast is the prompt.

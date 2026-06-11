@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
-import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useAcceptInvitation } from "@/lib/query/mutations/use-tenant-users";
 import { acceptInvitationSchema, type AcceptInvitationForm } from "@/lib/schemas/tenant-user-management";
@@ -70,7 +70,7 @@ function AcceptInvitationFormContent() {
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length > 0) return;
-      const message = err instanceof ApiHttpError ? err.message : "Tidak bisa menerima undangan.";
+      const message = getErrorMessage(err, { fallback: "Tidak bisa menerima undangan." });
       setTopError(message);
       toast.error(message);
     }

@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { usePlans, type PlanView } from "@/lib/query/queries/use-plans";
 import { useRegisterTenant } from "@/lib/query/mutations/use-register-tenant";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
-import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { registerSchema, type RegisterFormValues } from "@/lib/schemas/register";
 
 const STEPS = [
@@ -66,10 +66,7 @@ export function RegisterClient() {
         else setStep("admin");
         return;
       }
-      const message =
-        err instanceof ApiHttpError
-          ? err.message
-          : "Pendaftaran gagal. Coba lagi.";
+      const message = getErrorMessage(err, { fallback: "Pendaftaran gagal. Coba lagi." });
       setTopError(message);
       toast.error(message);
     }

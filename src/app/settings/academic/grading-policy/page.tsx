@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/toaster";
 import { AcademicSettingsPage, EntitlementTooltip, YearPicker } from "@/components/features/academic-config/academic-settings";
 import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useUpsertGradingPolicy } from "@/lib/query/mutations/use-academic-config";
 import { useAcademicYears, useGradingPolicy } from "@/lib/query/queries/use-academic-config";
@@ -65,7 +66,7 @@ function GradingPolicyContent({ canManage, upgradeMessage }: { canManage: boolea
       toast.success("Kebijakan nilai disimpan.");
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
-      if (applied.length === 0) toast.error(err instanceof ApiHttpError ? err.message : "Tidak bisa menyimpan kebijakan nilai.");
+      if (applied.length === 0) toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan kebijakan nilai." }));
     }
   }
 
@@ -80,7 +81,7 @@ function GradingPolicyContent({ canManage, upgradeMessage }: { canManage: boolea
         {policy.isLoading ? <Skeleton className="h-32 w-full" /> : null}
         {policy.error instanceof ApiHttpError && policy.error.status !== 404 ? (
           <p className="rounded-lg border border-destructive/40 p-3 text-sm text-destructive">
-            {policy.error.message}
+            {getErrorMessage(policy.error, { fallback: "Tidak bisa memuat kebijakan nilai." })}
           </p>
         ) : null}
         <Form {...form}>
