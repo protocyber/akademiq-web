@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { apiFetch, clearTokens, getAccessToken, getRefreshToken } from "@/lib/api/client";
+import { apiFetch, clearAllTokens, getAccessToken, getRefreshToken } from "@/lib/api/client";
 
 export function useLogout() {
   const qc = useQueryClient();
@@ -23,7 +23,7 @@ export function useLogout() {
           // Best-effort; tokens are cleared regardless.
         }
       }
-      clearTokens();
+      clearAllTokens();
       qc.clear();
     },
   });

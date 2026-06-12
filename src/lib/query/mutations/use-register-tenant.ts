@@ -39,7 +39,7 @@ export function useRegisterTenant() {
         service: "iam",
         path: "/api/v1/iam/auth/login",
         method: "POST",
-        body: { email: input.admin_email, password: input.admin_password },
+        body: { identifier: input.admin_email, password: input.admin_password },
       });
       setTokens(tokens.access_token, tokens.refresh_token);
       return data;

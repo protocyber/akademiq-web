@@ -26,7 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
-import { useLogin } from "@/lib/query/mutations/use-login";
+import { useLogin, useMyTenants, useEnterTenant } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/login";
@@ -63,19 +63,34 @@ function LoginForm() {
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "", remember_device: false },
+    defaultValues: { identifier: "", password: "", remember_device: false },
   });
 
   const login = useLogin();
+  const myTenants = useMyTenants();
+  const enterTenant = useEnterTenant();
   const [topError, setTopError] = React.useState<string | null>(null);
 
   const onSubmit = form.handleSubmit(async (values) => {
     setTopError(null);
     try {
       const { remember_device: _rememberDevice, ...input } = values;
-      // The backend login contract has no remember-device field yet; keep the UI RHF-bound without changing the request.
       await login.mutateAsync(input);
-      router.push(next);
+
+      // After login we always get an identity token. Now resolve tenant context.
+      const tenants = await myTenants.mutateAsync();
+
+      if (tenants.length === 1) {
+        // Single-tenant fast path: auto-enter and proceed to app.
+        await enterTenant.mutateAsync({ tenantId: tenants[0].tenant_id });
+        router.push(next);
+      } else if (tenants.length === 0) {
+        // 0-tenant: go to empty state.
+        router.push("/tenant-select");
+      } else {
+        // N tenants: go to picker.
+        router.push("/tenant-select");
+      }
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length > 0) return;
@@ -164,7 +179,7 @@ function LoginForm() {
             </div>
             <h2 className="text-2xl font-bold font-display text-foreground">Selamat Datang</h2>
             <p className="text-muted-foreground text-sm">
-              Silakan masukkan email Anda untuk masuk ke dasbor.
+              Silakan masukkan email atau username Anda untuk masuk ke dasbor.
             </p>
           </div>
 
@@ -184,17 +199,18 @@ function LoginForm() {
                   ) : null}
                   <FormField
                     control={form.control}
-                    name="email"
+                    name="identifier"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email atau username</FormLabel>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <FormControl>
                             <Input
                               className="pl-10"
-                              type="email"
-                              autoComplete="email"
+                              type="text"
+                              autoComplete="username"
+                              placeholder="nama@sekolah.sch.id atau nama_pengguna"
                               {...field}
                             />
                           </FormControl>
@@ -264,7 +280,8 @@ function LoginForm() {
                   <Button
                     type="submit"
                     className="w-full flex items-center justify-center gap-1.5"
-                    loading={login.isPending}
+                    disabled={login.isPending || myTenants.isPending || enterTenant.isPending}
+                    loading={login.isPending || myTenants.isPending || enterTenant.isPending}
                   >
                     Masuk
                     <ArrowRight className="h-4 w-4" />
@@ -274,8 +291,8 @@ function LoginForm() {
             </CardContent>
             <CardFooter className="text-sm text-muted-foreground justify-center border-t p-4 bg-muted/30">
               Belum punya akun?&nbsp;
-              <Link className="text-primary font-medium hover:underline" href="/register">
-                Daftar sekolah
+              <Link className="text-primary font-medium hover:underline" href="/signup">
+                Daftar sekarang
               </Link>
             </CardFooter>
           </Card>

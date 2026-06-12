@@ -52,11 +52,11 @@ dev: corepack ## Start the Next.js dev server on $$WEB_PORT (default 3000)
 	@WEB_PORT=$${WEB_PORT:-3000} $(PNPM) dev
 
 start: corepack ## Run the production server (requires `make build` first)
-	@WEB_PORT=$${WEB_PORT:-3000} $(PNPM) start
+	@NODE_ENV=production WEB_PORT=$${WEB_PORT:-3000} $(PNPM) start
 
 build: corepack ## Build the Next.js production bundle
 	@$(PNPM) install --silent
-	@$(PNPM) build
+	@NODE_ENV=production $(PNPM) build
 
 build-image: ## Build the production Docker image
 	docker build -t akademiq-web:local .

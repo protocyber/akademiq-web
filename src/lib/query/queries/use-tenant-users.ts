@@ -19,7 +19,8 @@ export type TenantInvitation = {
 export type TenantUser = {
   user_id: string;
   tenant_id: string;
-  email: string;
+  username: string;
+  email: string | null;
   full_name: string;
   status: string;
   role_code: string;

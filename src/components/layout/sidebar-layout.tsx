@@ -8,7 +8,7 @@ interface SidebarLayoutProps {
   children: React.ReactNode;
   schoolName: string;
   userName: string;
-  userEmail: string;
+  userEmail: string | null;
   isLoggingOut: boolean;
   onLogout: () => void;
   className?: string;
@@ -118,7 +118,7 @@ export function SidebarLayout({
             </div>
             <div className="truncate">
               <p className="text-xs font-semibold text-white leading-none truncate">{userName}</p>
-              <p className="text-[10px] text-slate-400 truncate mt-1">{userEmail}</p>
+              <p className="text-[10px] text-slate-400 truncate mt-1">{userEmail ?? "No email"}</p>
             </div>
           </div>
           <Button

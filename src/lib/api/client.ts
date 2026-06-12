@@ -13,6 +13,10 @@ const ACADEMIC_OPS_BASE =
 const GRADING_BASE =
   process.env.NEXT_PUBLIC_GRADING_BASE_URL ?? "http://localhost:8086";
 
+// ----- Token storage keys -----
+// Identity token: issued by login/register, no tenant/role
+const IDENTITY_KEY = "akademiq.identity_token";
+// Tenant-scoped token pair: issued by /enter
 const ACCESS_KEY = "akademiq.access_token";
 const REFRESH_KEY = "akademiq.refresh_token";
 
@@ -38,10 +42,30 @@ export type RequestOptions = {
   path: string;
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
+  /** Use identity token (typ:"identity") for tenant-less routes. */
+  identityAuthenticated?: boolean;
+  /** Use access token (typ:"access") for tenant-scoped routes. */
   authenticated?: boolean;
 };
 
-let refreshInFlight: Promise<boolean> | null = null;
+// --- identity token helpers -------------------------------------------------
+
+export function getIdentityToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(IDENTITY_KEY);
+}
+
+export function setIdentityToken(token: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(IDENTITY_KEY, token);
+}
+
+export function clearIdentityToken() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(IDENTITY_KEY);
+}
+
+// --- scoped token helpers ---------------------------------------------------
 
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -64,6 +88,15 @@ export function clearTokens() {
   window.localStorage.removeItem(ACCESS_KEY);
   window.localStorage.removeItem(REFRESH_KEY);
 }
+
+export function clearAllTokens() {
+  clearIdentityToken();
+  clearTokens();
+}
+
+// --- refresh ----------------------------------------------------------------
+
+let refreshInFlight: Promise<boolean> | null = null;
 
 async function tryRefresh(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
@@ -102,6 +135,11 @@ function redirectToLogin() {
   window.location.href = `/login?next=${next}`;
 }
 
+function redirectToTenantSelect() {
+  if (typeof window === "undefined") return;
+  window.location.href = `/tenant-select`;
+}
+
 async function performFetch<T>(
   options: RequestOptions,
   retried: boolean,
@@ -114,10 +152,27 @@ async function performFetch<T>(
   if (options.body !== undefined && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
-  if (options.authenticated) {
-    const token = getAccessToken();
+
+  if (options.identityAuthenticated) {
+    const token = getIdentityToken();
     if (!token) {
       redirectToLogin();
+      throw new ApiHttpError(401, {
+        code: "UNAUTHENTICATED",
+        message: "missing identity token",
+      });
+    }
+    headers["Authorization"] = `Bearer ${token}`;
+  } else if (options.authenticated) {
+    const token = getAccessToken();
+    if (!token) {
+      // If we have an identity token but no access token, the user hasn't
+      // selected a tenant yet — redirect to tenant selection rather than login.
+      if (getIdentityToken()) {
+        redirectToTenantSelect();
+      } else {
+        redirectToLogin();
+      }
       throw new ApiHttpError(401, {
         code: "UNAUTHENTICATED",
         message: "missing access token",
@@ -166,7 +221,12 @@ async function performFetch<T>(
         return performFetch<T>(options, true);
       }
       clearTokens();
-      redirectToLogin();
+      // Fall back to tenant select if we still have an identity token.
+      if (getIdentityToken()) {
+        redirectToTenantSelect();
+      } else {
+        redirectToLogin();
+      }
     }
     throw new ApiHttpError(resp.status, payload, json);
   }

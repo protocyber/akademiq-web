@@ -332,7 +332,7 @@ function TenantUserRow({ user }: { user: TenantUser }) {
           <h3 className="truncate font-semibold text-foreground">{user.full_name}</h3>
           <Badge variant={enabled ? "secondary" : "destructive"}>{user.status}</Badge>
         </div>
-        <p className="truncate text-sm text-muted-foreground">{user.email}</p>
+        <p className="truncate text-sm text-muted-foreground">{user.email ?? user.username}</p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <Select value={user.role_code} onValueChange={onRoleChange} disabled={changeRole.isPending}>
@@ -346,7 +346,7 @@ function TenantUserRow({ user }: { user: TenantUser }) {
           </SelectContent>
         </Select>
         <div className="flex items-center gap-2">
-          <Switch checked={enabled} disabled={setEnabled.isPending} onCheckedChange={onToggleEnabled} aria-label={`Aktifkan ${user.email}`} />
+          <Switch checked={enabled} disabled={setEnabled.isPending} onCheckedChange={onToggleEnabled} aria-label={`Aktifkan ${user.email ?? user.username}`} />
           <span className="text-xs text-muted-foreground">{enabled ? "Aktif" : "Nonaktif"}</span>
         </div>
       </div>

@@ -5,22 +5,18 @@ import { registerSchema } from "@/lib/schemas/register";
 import { moduleToggleSchema } from "@/lib/schemas/module-toggle";
 
 describe("loginSchema", () => {
-  it("accepts a valid email and password", () => {
-    const r = loginSchema.safeParse({ email: "a@b.test", password: "x" });
+  it("accepts a valid email identifier and password", () => {
+    const r = loginSchema.safeParse({ identifier: "a@b.test", password: "x" });
     expect(r.success).toBe(true);
   });
 
-  it("rejects an invalid email", () => {
-    const r = loginSchema.safeParse({ email: "not-email", password: "x" });
-    expect(r.success).toBe(false);
-    if (!r.success) {
-      const fields = r.error.flatten().fieldErrors;
-      expect(fields.email?.[0]).toMatch(/valid/i);
-    }
+  it("accepts a username identifier", () => {
+    const r = loginSchema.safeParse({ identifier: "teacher_one", password: "x" });
+    expect(r.success).toBe(true);
   });
 
   it("rejects an empty password", () => {
-    const r = loginSchema.safeParse({ email: "a@b.test", password: "" });
+    const r = loginSchema.safeParse({ identifier: "a@b.test", password: "" });
     expect(r.success).toBe(false);
   });
 });
