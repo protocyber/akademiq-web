@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GraduationCap, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { GraduationCap, Mail, Lock, User, ArrowRight, Eye, EyeOff, MailCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
 import { usePublicSignup } from "@/lib/query/mutations/use-signup";
+import { googleLoginStartUrl } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { signupSchema, type SignupFormValues } from "@/lib/schemas/signup";
@@ -54,6 +55,10 @@ function SignupForm() {
   });
 
   const signup = usePublicSignup();
+
+  function handleGoogleLogin() {
+    window.location.href = googleLoginStartUrl();
+  }
 
   const onSubmit = form.handleSubmit(async (values) => {
     setTopError(null);
@@ -198,6 +203,21 @@ function SignupForm() {
                 >
                   Buat Akun
                   <ArrowRight className="h-4 w-4" />
+                </Button>
+
+                <div className="relative py-1 text-center text-xs text-muted-foreground">
+                  <span className="bg-background px-2">atau</span>
+                  <div className="absolute inset-x-0 top-1/2 -z-10 border-t" />
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full gap-2"
+                  onClick={handleGoogleLogin}
+                >
+                  <MailCheck className="h-4 w-4" />
+                  Login with Gmail
                 </Button>
               </form>
             </Form>

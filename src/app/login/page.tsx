@@ -14,7 +14,8 @@ import {
   Mail,
   Eye,
   EyeOff,
-  ArrowRight
+  ArrowRight,
+  MailCheck
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
-import { useLogin, useMyTenants, useEnterTenant } from "@/lib/query/mutations/use-login";
+import { googleLoginStartUrl, useLogin, useMyTenants, useEnterTenant } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/login";
@@ -59,6 +60,7 @@ function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
+  const oauthError = params.get("oauth_error");
   const [showPassword, setShowPassword] = React.useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -70,6 +72,20 @@ function LoginForm() {
   const myTenants = useMyTenants();
   const enterTenant = useEnterTenant();
   const [topError, setTopError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!oauthError) return;
+    const message = getErrorMessage(
+      { code: oauthError, message: oauthError },
+      { fallback: "Login dengan Gmail gagal. Coba lagi." },
+    );
+    setTopError(message);
+    toast.error(message);
+  }, [oauthError]);
+
+  function handleGoogleLogin() {
+    window.location.href = googleLoginStartUrl();
+  }
 
   const onSubmit = form.handleSubmit(async (values) => {
     setTopError(null);
@@ -285,6 +301,21 @@ function LoginForm() {
                   >
                     Masuk
                     <ArrowRight className="h-4 w-4" />
+                  </Button>
+
+                  <div className="relative py-1 text-center text-xs text-muted-foreground">
+                    <span className="bg-background px-2">atau</span>
+                    <div className="absolute inset-x-0 top-1/2 -z-10 border-t" />
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={handleGoogleLogin}
+                  >
+                    <MailCheck className="h-4 w-4" />
+                    Login with Gmail
                   </Button>
                 </form>
               </Form>

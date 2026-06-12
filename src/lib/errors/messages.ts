@@ -15,6 +15,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   IMPORT_VALIDATION_FAILED: "Import gagal. Periksa error pada baris data yang ditandai.",
   INVALID_STATE_TRANSITION: "Status sudah berubah atau aksi ini tidak valid untuk status saat ini. Muat ulang halaman lalu coba lagi.",
   INVALID_TOKEN: "Sesi Anda tidak valid. Silakan masuk kembali.",
+  exchange_failed: "Login dengan Gmail gagal saat menghubungi Google. Coba lagi.",
+  google_denied: "Login dengan Gmail dibatalkan.",
+  invalid_state: "Sesi Login dengan Gmail sudah kedaluwarsa. Coba lagi.",
+  missing_code: "Respons Login dengan Gmail tidak lengkap. Coba lagi.",
+  missing_identity_token: "Login dengan Gmail tidak menghasilkan token sesi. Coba lagi.",
+  verification_failed: "Akun Google tidak bisa diverifikasi. Coba lagi.",
   NOT_ASSIGNED: "Akun guru belum ditugaskan untuk kelas, mata pelajaran, dan tahun ajaran ini.",
   STUDENT_NOT_ENROLLED: "Siswa belum terdaftar aktif pada tahun ajaran ini.",
   TEACHER_ACCOUNT_NOT_LINKED: "Data guru belum terhubung ke akun pengguna. Hubungi admin untuk menghubungkan akun guru.",
@@ -37,6 +43,10 @@ export function getErrorMessage(error: unknown, options: ErrorMessageOptions = {
   }
   if (error instanceof Error && error.message) {
     return options.fallback ?? error.message;
+  }
+  if (error && typeof error === "object" && "code" in error) {
+    const code = String((error as { code: unknown }).code);
+    return ERROR_MESSAGES[code] ?? options.fallback ?? "Terjadi kesalahan. Coba lagi.";
   }
   return options.fallback ?? "Terjadi kesalahan. Coba lagi.";
 }

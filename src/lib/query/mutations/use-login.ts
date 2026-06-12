@@ -4,6 +4,8 @@ import { useMutation } from "@tanstack/react-query";
 
 import { apiFetch, setIdentityToken, setTokens } from "@/lib/api/client";
 
+const IAM_BASE = process.env.NEXT_PUBLIC_IAM_BASE_URL ?? "http://localhost:8081";
+
 export type LoginInput = {
   identifier: string;
   password: string;
@@ -43,6 +45,14 @@ export function useLogin() {
       return data;
     },
   });
+}
+
+export function googleLoginStartUrl() {
+  return `${IAM_BASE}/api/v1/iam/auth/google/start`;
+}
+
+export function storeIdentityToken(identityToken: string) {
+  setIdentityToken(identityToken);
 }
 
 export function useMyTenants() {
