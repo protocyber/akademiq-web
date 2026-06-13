@@ -146,7 +146,18 @@ function redirectToTenantSelect() {
 async function performFetch<T>(
   options: RequestOptions,
   retried: boolean,
-): Promise<T> {
+  envelope: true,
+): Promise<ApiSuccess<T>>;
+async function performFetch<T>(
+  options: RequestOptions,
+  retried: boolean,
+  envelope?: false,
+): Promise<T>;
+async function performFetch<T>(
+  options: RequestOptions,
+  retried: boolean,
+  envelope = false,
+): Promise<T | ApiSuccess<T>> {
   const url = `${baseFor(options.service)}${options.path}`;
   const headers: Record<string, string> = {
     Accept: "application/json",
@@ -227,7 +238,7 @@ async function performFetch<T>(
     ) {
       const ok = await tryRefresh();
       if (ok) {
-        return performFetch<T>(options, true);
+        return envelope ? performFetch<T>(options, true, true) : performFetch<T>(options, true);
       }
       clearTokens();
       // Fall back to tenant select if we still have an identity token.
@@ -240,9 +251,13 @@ async function performFetch<T>(
     throw new ApiHttpError(resp.status, payload, json);
   }
 
-  return (json as ApiSuccess<T>).data;
+  return envelope ? (json as ApiSuccess<T>) : (json as ApiSuccess<T>).data;
 }
 
 export function apiFetch<T>(options: RequestOptions): Promise<T> {
   return performFetch<T>(options, false);
+}
+
+export function apiFetchEnvelope<T>(options: RequestOptions): Promise<ApiSuccess<T>> {
+  return performFetch<T>(options, false, true);
 }

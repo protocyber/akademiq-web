@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch, clearAllTokens, setTokens } from "@/lib/api/client";
+import { serializeTenantUsersParams, type TenantUsersParams } from "@/lib/schemas/tenant-users-params";
 import {
   TENANT_INVITATIONS_QUERY_KEY,
   TENANT_USERS_QUERY_KEY,
@@ -131,6 +132,85 @@ export function useSetTenantUserEnabled(userId: string, enabled: boolean) {
       qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
     },
   });
+}
+
+export type BulkTenantUserResult = {
+  user_id: string;
+  success: boolean;
+  reason: string | null;
+};
+
+function invalidateTenantUsers(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
+}
+
+export function useBulkEnableTenantUsers() {
+  const qc = useQueryClient();
+  return useMutation<BulkTenantUserResult[], unknown, { user_ids: string[] }>({
+    mutationFn: (input) =>
+      apiFetch<BulkTenantUserResult[]>({
+        service: "iam",
+        path: "/api/v1/iam/tenants/me/users/bulk/enable",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => invalidateTenantUsers(qc),
+  });
+}
+
+export function useBulkDisableTenantUsers() {
+  const qc = useQueryClient();
+  return useMutation<BulkTenantUserResult[], unknown, { user_ids: string[] }>({
+    mutationFn: (input) =>
+      apiFetch<BulkTenantUserResult[]>({
+        service: "iam",
+        path: "/api/v1/iam/tenants/me/users/bulk/disable",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => invalidateTenantUsers(qc),
+  });
+}
+
+export function useBulkChangeTenantUserRole() {
+  const qc = useQueryClient();
+  return useMutation<BulkTenantUserResult[], unknown, { user_ids: string[]; role: string }>({
+    mutationFn: (input) =>
+      apiFetch<BulkTenantUserResult[]>({
+        service: "iam",
+        path: "/api/v1/iam/tenants/me/users/bulk/role",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => invalidateTenantUsers(qc),
+  });
+}
+
+export function useResetTenantUserPassword() {
+  return useMutation<{ temporary_password: string }, unknown, { userId: string }>({
+    mutationFn: ({ userId }) =>
+      apiFetch<{ temporary_password: string }>({
+        service: "iam",
+        path: `/api/v1/iam/tenants/me/users/${userId}/reset-password`,
+        method: "POST",
+        authenticated: true,
+      }),
+  });
+}
+
+export async function exportTenantUsers(params: TenantUsersParams) {
+  const query = serializeTenantUsersParams({ ...params, page: 1 });
+  const response = await fetch(`/api/v1/iam/tenants/me/users/export${query ? `?${query}` : ""}`);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "tenant-users.csv";
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export function useRevokeInvitation(invitationId: string) {

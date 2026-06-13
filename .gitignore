@@ -43,3 +43,8 @@ pnpm-debug.log*
 # OS noise
 .DS_Store
 Thumbs.db
+
+# Agent skills (symlinks into parent repo .agent/skills)
+.agent/
+.claude/
+.opencode/

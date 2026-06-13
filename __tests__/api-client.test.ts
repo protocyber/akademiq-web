@@ -11,8 +11,8 @@ import {
 } from "@/lib/api/client";
 import { ApiHttpError } from "@/lib/api/types";
 
-const IAM_BASE = "http://localhost:8081";
-const BILLING_BASE = "http://localhost:8082";
+const IAM_BASE = process.env.NEXT_PUBLIC_IAM_BASE_URL ?? "http://localhost:8081";
+const BILLING_BASE = process.env.NEXT_PUBLIC_BILLING_BASE_URL ?? "http://localhost:8082";
 
 const originalLocation = window.location;
 

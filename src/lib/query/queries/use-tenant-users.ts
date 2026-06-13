@@ -2,7 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchEnvelope } from "@/lib/api/client";
+import { DEFAULT_TENANT_USERS_PARAMS, serializeTenantUsersParams, tenantUsersParamsKey, type TenantUsersParams } from "@/lib/schemas/tenant-users-params";
 
 export type TenantInvitation = {
   invitation_id: string;
@@ -26,6 +27,15 @@ export type TenantUser = {
   roles: string[];
 };
 
+export type PaginatedTenantUsers = {
+  data: TenantUser[];
+  meta: {
+    page: number;
+    page_size: number;
+    total: number;
+  };
+};
+
 export const TENANT_INVITATIONS_QUERY_KEY = ["iam", "tenant-invitations"] as const;
 export const TENANT_USERS_QUERY_KEY = ["iam", "tenant-users"] as const;
 
@@ -41,14 +51,20 @@ export function useTenantInvitations() {
   });
 }
 
-export function useTenantUsers() {
+export function useTenantUsers(params: TenantUsersParams = DEFAULT_TENANT_USERS_PARAMS) {
+  const query = serializeTenantUsersParams(params);
   return useQuery({
-    queryKey: TENANT_USERS_QUERY_KEY,
-    queryFn: () =>
-      apiFetch<TenantUser[]>({
+    queryKey: [...TENANT_USERS_QUERY_KEY, ...tenantUsersParamsKey(params)],
+    queryFn: async (): Promise<PaginatedTenantUsers> => {
+      const envelope = await apiFetchEnvelope<TenantUser[]>({
         service: "iam",
-        path: "/api/v1/iam/tenants/me/users",
+        path: `/api/v1/iam/tenants/me/users${query ? `?${query}` : ""}`,
         authenticated: true,
-      }),
+      });
+      return {
+        data: envelope.data,
+        meta: envelope.meta as PaginatedTenantUsers["meta"],
+      };
+    },
   });
 }
