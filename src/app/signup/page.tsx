@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { GraduationCap, Mail, Lock, User, ArrowRight, Eye, EyeOff, MailCheck } from "lucide-react";
+import { GraduationCap, Mail, Lock, User, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { GoogleIcon } from "@/components/icons/google-icon";
 import {
   Card,
   CardContent,
@@ -216,8 +217,8 @@ function SignupForm() {
                   className="w-full gap-2"
                   onClick={handleGoogleLogin}
                 >
-                  <MailCheck className="h-4 w-4" />
-                  Login with Gmail
+                  <GoogleIcon className="h-4 w-4" />
+                  Login dengan Gmail
                 </Button>
               </form>
             </Form>
@@ -233,3 +234,4 @@ function SignupForm() {
     </main>
   );
 }
+
