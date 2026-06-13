@@ -7,6 +7,7 @@ import {
   TENANT_INVITATIONS_QUERY_KEY,
   TENANT_USERS_QUERY_KEY,
 } from "@/lib/query/queries/use-tenant-users";
+import { TENANT_ROLES_QUERY_KEY } from "@/lib/query/queries/use-tenant-roles";
 import type {
   AcceptInvitationForm,
   InviteTenantUserForm,
@@ -16,7 +17,7 @@ import type {
 export type InviteTenantUserResult = {
   invitation_id: string;
   email: string;
-  role_code: string;
+  roles: string[];
   status: string;
   expires_at: string;
   activation_link: string;
@@ -78,6 +79,40 @@ export function useChangeTenantUserRole(userId: string) {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
+    },
+  });
+}
+
+export function useAddTenantUserRole(userId: string) {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, { roleId: string }>({
+    mutationFn: ({ roleId }) =>
+      apiFetch<void>({
+        service: "iam",
+        path: `/api/v1/iam/tenants/me/users/${userId}/roles/${roleId}`,
+        method: "POST",
+        authenticated: true,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: TENANT_ROLES_QUERY_KEY });
+    },
+  });
+}
+
+export function useRemoveTenantUserRole(userId: string) {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, { roleId: string }>({
+    mutationFn: ({ roleId }) =>
+      apiFetch<void>({
+        service: "iam",
+        path: `/api/v1/iam/tenants/me/users/${userId}/roles/${roleId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: TENANT_ROLES_QUERY_KEY });
     },
   });
 }

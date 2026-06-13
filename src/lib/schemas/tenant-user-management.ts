@@ -10,7 +10,7 @@ export const tenantAssignableRoles = [
 
 export const inviteTenantUserSchema = z.object({
   email: z.string().email("Email tidak valid"),
-  role: z.enum(tenantAssignableRoles),
+  roles: z.array(z.string().min(1)).min(1, "Pilih minimal satu role"),
 });
 
 export const acceptInvitationSchema = z.object({

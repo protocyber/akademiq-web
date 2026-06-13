@@ -28,7 +28,7 @@ export type EnterTenantResult = {
 export type TenantEntry = {
   tenant_id: string;
   tenant_name: string;
-  role_code: string;
+  roles: string[];
 };
 
 export function useLogin() {

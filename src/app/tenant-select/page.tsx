@@ -123,7 +123,7 @@ function TenantSelectContent() {
                     <div>
                       <CardTitle className="text-base">{t.tenant_name}</CardTitle>
                       <CardDescription className="text-xs capitalize">
-                        {t.role_code.replace(/_/g, " ")}
+                        {t.roles.map((role) => role.replace(/_/g, " ")).join(", ")}
                       </CardDescription>
                     </div>
                   </div>

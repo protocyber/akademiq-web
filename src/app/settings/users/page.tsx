@@ -4,7 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { MailPlus } from "lucide-react";
+import { MailPlus, X } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -33,13 +34,15 @@ import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import {
-  useChangeTenantUserRole,
+  useAddTenantUserRole,
   useInviteTenantUser,
+  useRemoveTenantUserRole,
   useRevokeInvitation,
   useSetTenantUserEnabled,
 } from "@/lib/query/mutations/use-tenant-users";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { TenantRole, useTenantRoles } from "@/lib/query/queries/use-tenant-roles";
 import {
   TenantInvitation,
   TenantUser,
@@ -48,7 +51,6 @@ import {
 } from "@/lib/query/queries/use-tenant-users";
 import {
   inviteTenantUserSchema,
-  tenantAssignableRoles,
   type InviteTenantUserForm,
 } from "@/lib/schemas/tenant-user-management";
 
@@ -96,11 +98,12 @@ function UsersContent() {
   const tenant = useTenantMe();
   const me = useMe();
   const users = useTenantUsers();
+  const roles = useTenantRoles();
   const invitations = useTenantInvitations();
   const logout = useLogout();
   const router = useRouter();
 
-  if (tenant.isLoading || me.isLoading || users.isLoading || invitations.isLoading) {
+  if (tenant.isLoading || me.isLoading || users.isLoading || roles.isLoading || invitations.isLoading) {
     return <UsersSkeleton />;
   }
 
@@ -119,7 +122,7 @@ function UsersContent() {
     );
   }
 
-  const dataError = users.error || invitations.error;
+  const dataError = users.error || roles.error || invitations.error;
   if (dataError) {
     const status = dataError instanceof ApiHttpError ? dataError.status : undefined;
     return (
@@ -137,8 +140,9 @@ function UsersContent() {
         <ErrorView
           status={status}
           onRetry={() => {
-            users.refetch();
-            invitations.refetch();
+             users.refetch();
+             roles.refetch();
+             invitations.refetch();
           }}
         />
       </SidebarLayout>
@@ -164,7 +168,7 @@ function UsersContent() {
             Undang guru, wali kelas, kepala sekolah, siswa, dan orang tua untuk masuk ke AcademiQ.
           </p>
         </div>
-        <InviteDialog />
+        <InviteDialog roles={roles.data ?? []} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
@@ -177,7 +181,7 @@ function UsersContent() {
             {users.data?.length ? (
               <div className="divide-y rounded-lg border">
                 {users.data.map((user) => (
-                  <TenantUserRow key={user.user_id} user={user} />
+                  <TenantUserRow key={user.user_id} user={user} roles={roles.data ?? []} />
                 ))}
               </div>
             ) : (
@@ -212,13 +216,13 @@ function UsersContent() {
   );
 }
 
-function InviteDialog() {
+function InviteDialog({ roles }: { roles: TenantRole[] }) {
   const [open, setOpen] = React.useState(false);
   const [activationLink, setActivationLink] = React.useState<string | null>(null);
   const invite = useInviteTenantUser();
   const form = useForm<InviteTenantUserForm>({
     resolver: zodResolver(inviteTenantUserSchema),
-    defaultValues: { email: "", role: "teacher" },
+    defaultValues: { email: "", roles: [roles[0]?.code ?? "teacher"] },
   });
 
   async function onSubmit(values: InviteTenantUserForm) {
@@ -226,7 +230,7 @@ function InviteDialog() {
     try {
       const result = await invite.mutateAsync(values);
       setActivationLink(result.activation_link);
-      form.reset({ email: "", role: values.role });
+      form.reset({ email: "", roles: values.roles });
       toast.success("Undangan dibuat.");
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
@@ -266,22 +270,29 @@ function InviteDialog() {
             />
             <FormField
               control={form.control}
-              name="role"
+              name="roles"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Role</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {tenantAssignableRoles.map((role) => (
-                        <SelectItem key={role} value={role}>{roleLabels[role]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {roles.map((role) => {
+                      const checked = field.value.includes(role.code);
+                      return (
+                        <label key={role.role_id} className="flex items-center gap-2 rounded-md border p-3 text-sm">
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={(next) => {
+                              const value = next
+                                ? [...field.value, role.code]
+                                : field.value.filter((code) => code !== role.code);
+                              field.onChange(value);
+                            }}
+                          />
+                          <span>{roleLabels[role.code] ?? role.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -302,17 +313,27 @@ function InviteDialog() {
   );
 }
 
-function TenantUserRow({ user }: { user: TenantUser }) {
-  const changeRole = useChangeTenantUserRole(user.user_id);
+function TenantUserRow({ user, roles }: { user: TenantUser; roles: TenantRole[] }) {
+  const addRole = useAddTenantUserRole(user.user_id);
+  const removeRole = useRemoveTenantUserRole(user.user_id);
   const setEnabled = useSetTenantUserEnabled(user.user_id, user.status !== "active");
   const enabled = user.status === "active";
 
-  async function onRoleChange(role: string) {
+  async function onAddRole(roleId: string) {
     try {
-      await changeRole.mutateAsync({ role: role as never });
-      toast.success("Role pengguna diperbarui.");
+      await addRole.mutateAsync({ roleId });
+      toast.success("Role ditambahkan.");
     } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah role." }));
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menambahkan role." }));
+    }
+  }
+
+  async function onRemoveRole(role: TenantRole) {
+    try {
+      await removeRole.mutateAsync({ roleId: role.role_id });
+      toast.success("Role dihapus dari pengguna.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus role pengguna." }));
     }
   }
 
@@ -335,13 +356,36 @@ function TenantUserRow({ user }: { user: TenantUser }) {
         <p className="truncate text-sm text-muted-foreground">{user.email ?? user.username}</p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <Select value={user.role_code} onValueChange={onRoleChange} disabled={changeRole.isPending}>
+        <div className="flex max-w-md flex-wrap gap-2">
+          {user.roles.map((code) => {
+            const role = roles.find((candidate) => candidate.code === code);
+            return (
+              <Badge key={code} variant="secondary" className="gap-1">
+                {roleLabels[code] ?? role?.name ?? code}
+                {role ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-4 w-4 p-0"
+                    loading={removeRole.isPending}
+                    onClick={() => onRemoveRole(role)}
+                    aria-label={`Hapus role ${code}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                ) : null}
+              </Badge>
+            );
+          })}
+        </div>
+        <Select onValueChange={onAddRole} disabled={addRole.isPending}>
           <SelectTrigger className="w-full sm:w-44">
-            <SelectValue />
+            <SelectValue placeholder="Tambah role" />
           </SelectTrigger>
           <SelectContent>
-            {tenantAssignableRoles.map((role) => (
-              <SelectItem key={role} value={role}>{roleLabels[role]}</SelectItem>
+            {roles.filter((role) => !user.roles.includes(role.code)).map((role) => (
+              <SelectItem key={role.role_id} value={role.role_id}>{roleLabels[role.code] ?? role.name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -371,7 +415,7 @@ function InvitationCard({ invitation }: { invitation: TenantInvitation }) {
       <div className="space-y-1">
         <p className="break-all text-sm font-semibold text-foreground">{invitation.email}</p>
         <p className="text-xs text-muted-foreground">
-          {roleLabels[invitation.role_code] ?? invitation.role_code} · kedaluwarsa {new Date(invitation.expires_at).toLocaleDateString("id-ID")}
+          {invitation.roles.map((role) => roleLabels[role] ?? role).join(", ")} · kedaluwarsa {new Date(invitation.expires_at).toLocaleDateString("id-ID")}
         </p>
       </div>
       <div className="mt-4 flex gap-2">

@@ -6,7 +6,7 @@ import { apiFetch } from "@/lib/api/client";
 
 export type Membership = {
   tenant_id: string;
-  role_code: string;
+  roles: string[];
 };
 
 export type MeView = {

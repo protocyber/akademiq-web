@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +39,11 @@ const navItems = [
     href: "/settings/users",
     label: "Pengguna",
     icon: Users,
+  },
+  {
+    href: "/settings/roles",
+    label: "Role & Izin",
+    icon: ShieldCheck,
   },
   {
     href: "/settings/academic/years",
