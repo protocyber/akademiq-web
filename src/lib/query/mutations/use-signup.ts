@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 
-import { apiFetch, setIdentityToken } from "@/lib/api/client";
+import { apiFetch, clearAllTokens, setIdentityToken } from "@/lib/api/client";
 
 export type PublicSignupInput = {
   email: string;
@@ -18,6 +18,8 @@ export type PublicSignupResult = {
 export function usePublicSignup() {
   return useMutation<PublicSignupResult, unknown, PublicSignupInput>({
     mutationFn: async (input) => {
+      // Clear any stale tokens so a fresh signup starts from a clean slate.
+      clearAllTokens();
       const data = await apiFetch<PublicSignupResult>({
         service: "iam",
         path: "/api/v1/iam/auth/register",
