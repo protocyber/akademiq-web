@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { apiFetch, setTokens } from "@/lib/api/client";
+import { apiFetch, clearAllTokens, setTokens } from "@/lib/api/client";
 import {
   TENANT_INVITATIONS_QUERY_KEY,
   TENANT_USERS_QUERY_KEY,
@@ -49,6 +49,10 @@ export function useInviteTenantUser() {
 export function useAcceptInvitation() {
   return useMutation<AcceptInvitationResult, unknown, AcceptInvitationForm>({
     mutationFn: async (input) => {
+      // Drop any stale tokens from a previous session/tenant first. Accepting
+      // an invitation with an already-registered email otherwise leaves a
+      // mismatched token mix in localStorage that breaks auth resolution.
+      clearAllTokens();
       const data = await apiFetch<AcceptInvitationResult>({
         service: "iam",
         path: "/api/v1/iam/invitations/accept",

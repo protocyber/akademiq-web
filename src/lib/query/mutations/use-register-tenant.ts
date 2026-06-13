@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 
-import { apiFetch, setTokens } from "@/lib/api/client";
+import { apiFetch, clearAllTokens, setTokens } from "@/lib/api/client";
 
 export type RegisterTenantInput = {
   school_name: string;
@@ -22,6 +22,9 @@ export type RegisterTenantResult = {
 export function useRegisterTenant() {
   return useMutation<RegisterTenantResult, unknown, RegisterTenantInput>({
     mutationFn: async (input) => {
+      // Clear any stale tokens before registering a brand-new tenant so we
+      // don't carry over a previous session's identity/scoped tokens.
+      clearAllTokens();
       const data = await apiFetch<RegisterTenantResult>({
         service: "billing",
         path: "/api/v1/billing/tenants/register",

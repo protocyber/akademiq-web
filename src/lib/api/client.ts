@@ -131,6 +131,9 @@ async function tryRefresh(): Promise<boolean> {
 
 function redirectToLogin() {
   if (typeof window === "undefined") return;
+  // Already on the login page: navigating again (and nesting `next`) would
+  // produce an infinite redirect loop, so do nothing.
+  if (window.location.pathname === "/login") return;
   const next = encodeURIComponent(window.location.pathname + window.location.search);
   window.location.href = `/login?next=${next}`;
 }
@@ -154,7 +157,13 @@ async function performFetch<T>(
   }
 
   if (options.identityAuthenticated) {
-    const token = getIdentityToken();
+    // `/me` and other identity-scoped endpoints accept either token type.
+    // Prefer the identity token, but fall back to the tenant-scoped access
+    // token when the identity token is absent (e.g. a user who has entered a
+    // tenant but whose identity token was cleared/expired). Without this
+    // fallback, holding only a scoped access token caused an infinite
+    // redirect loop on /login.
+    const token = getIdentityToken() ?? getAccessToken();
     if (!token) {
       redirectToLogin();
       throw new ApiHttpError(401, {
