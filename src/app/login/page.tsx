@@ -14,11 +14,11 @@ import {
   Mail,
   Eye,
   EyeOff,
-  ArrowRight,
-  MailCheck
+  ArrowRight
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { GoogleIcon } from "@/components/icons/google-icon";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -314,8 +314,8 @@ function LoginForm() {
                     className="w-full gap-2"
                     onClick={handleGoogleLogin}
                   >
-                    <MailCheck className="h-4 w-4" />
-                    Login with Gmail
+                    <GoogleIcon className="h-4 w-4" />
+                    Login dengan Gmail
                   </Button>
                 </form>
               </Form>
@@ -341,3 +341,4 @@ function LoginForm() {
     </main>
   );
 }
+

@@ -48,7 +48,17 @@ function ReportCardDetailShell() {
   const teacherNameBySubjectId = new Map((assignments.data ?? []).map((assignment) => [assignment.subject_id, teacherNameById.get(assignment.teacher_id)]));
   return (
     <SidebarLayout schoolName={tenant.data.school_name} userName={me.data.full_name} userEmail={me.data.email} isLoggingOut={logout.isPending} onLogout={async () => { await logout.mutateAsync(); router.push("/login"); }} className="mx-auto max-w-5xl">
-      <div className="space-y-2"><h1 className="font-display text-3xl font-extrabold tracking-tight">Detail Rapor</h1><p className="text-sm text-muted-foreground">{studentName ?? "Siswa tidak ditemukan"} - Status saat ini: <span className="font-semibold text-foreground">{statusLabel(card.status)}</span></p></div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight">Detail Rapor</h1>
+          <p className="text-sm text-muted-foreground">{studentName ?? "Siswa tidak ditemukan"} - Status saat ini: <span className="font-semibold text-foreground">{statusLabel(card.status)}</span></p>
+        </div>
+        <Button asChild className="bg-emerald-700 hover:bg-emerald-800 text-white">
+          <a href={`/grading/report-cards/${params.id}/print`} target="_blank" rel="noopener noreferrer">
+            Cetak Rapor
+          </a>
+        </Button>
+      </div>
       <CurrentAction reportCardId={card.report_card_id} status={card.status} homeroomId={card.homeroom_id} academicYearId={card.academic_year_id} />
       <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
         <Card><CardHeader><CardTitle>Nilai dan Kelulusan</CardTitle><CardDescription>Pass/fail berasal dari kebijakan nilai saat draft dibuat.</CardDescription></CardHeader><CardContent className="space-y-3">{detail.data.grades.length === 0 ? <p className="text-sm text-muted-foreground">Belum ada nilai.</p> : detail.data.grades.map((grade) => { const summary = card.summary.subjects?.find((item) => item.subject_id === grade.subject_id); const teacherName = teacherNameBySubjectId.get(grade.subject_id) ?? teacherNameByUserId.get(grade.recorded_by); return <div key={grade.grade_id} className="flex items-center justify-between rounded-lg border p-3 text-sm"><div><p className="font-medium">{subjectNameById.get(grade.subject_id) ?? "Subject tidak ditemukan"}</p><p className="text-xs text-muted-foreground">Guru: {teacherName ?? "Guru tidak ditemukan"} - Nilai {grade.score}</p></div><span className={summary?.passed ? "text-emerald-600" : "text-destructive"}>{summary?.passed ? "Lulus" : "Remedial"}</span></div>; })}</CardContent></Card>
