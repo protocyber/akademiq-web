@@ -11,8 +11,10 @@ import {
 import { TENANT_ROLES_QUERY_KEY } from "@/lib/query/queries/use-tenant-roles";
 import type {
   AcceptInvitationForm,
+  CreateTenantUserForm,
   InviteTenantUserForm,
   RoleChangeForm,
+  UpdateTenantUserForm,
 } from "@/lib/schemas/tenant-user-management";
 
 export type InviteTenantUserResult = {
@@ -44,6 +46,91 @@ export function useInviteTenantUser() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: TENANT_INVITATIONS_QUERY_KEY });
+    },
+  });
+}
+
+export type CreatedTenantUser = {
+  user_id: string;
+  username: string;
+  email: string | null;
+  full_name: string;
+  roles: string[];
+};
+
+/** Build the create-user request body, dropping empty optional fields. */
+function createTenantUserBody(input: CreateTenantUserForm) {
+  const body: Record<string, unknown> = {
+    username: input.username,
+    full_name: input.full_name,
+    roles: input.roles,
+  };
+  if (input.email) body.email = input.email;
+  if (input.password) body.password = input.password;
+  return body;
+}
+
+export function useCreateTenantUser() {
+  const qc = useQueryClient();
+  return useMutation<CreatedTenantUser, unknown, CreateTenantUserForm>({
+    mutationFn: (input) =>
+      apiFetch<CreatedTenantUser>({
+        service: "iam",
+        path: "/api/v1/iam/tenants/me/users",
+        method: "POST",
+        authenticated: true,
+        body: createTenantUserBody(input),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
+    },
+  });
+}
+
+export type UpdatedTenantUser = {
+  user_id: string;
+  username: string;
+  email: string | null;
+  full_name: string;
+  status: string;
+};
+
+export function useUpdateTenantUser(userId: string) {
+  const qc = useQueryClient();
+  return useMutation<UpdatedTenantUser, unknown, UpdateTenantUserForm>({
+    mutationFn: (input) => {
+      const body: Record<string, unknown> = {
+        username: input.username,
+        full_name: input.full_name,
+        // Send null to clear, a string to set.
+        email: input.email ? input.email : null,
+      };
+      return apiFetch<UpdatedTenantUser>({
+        service: "iam",
+        path: `/api/v1/iam/tenants/me/users/${userId}`,
+        method: "PATCH",
+        authenticated: true,
+        body,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
+    },
+  });
+}
+
+export function useRemoveTenantUser(userId: string) {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, void>({
+    mutationFn: () =>
+      apiFetch<void>({
+        service: "iam",
+        path: `/api/v1/iam/tenants/me/users/${userId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
     },
   });
 }
@@ -174,18 +261,43 @@ export function useBulkDisableTenantUsers() {
   });
 }
 
-export function useBulkChangeTenantUserRole() {
+/**
+ * Bulk "add role" routed through the per-user add-role endpoint (by `role_id`)
+ * so the `LAST_ROLE` / `LAST_ADMIN` guards run. This intentionally does NOT use
+ * the legacy single-role `change_user_role` replace path (which bypasses the
+ * guards and overwrites the audit-log payload).
+ */
+export function useBulkAddTenantUserRole() {
   const qc = useQueryClient();
-  return useMutation<BulkTenantUserResult[], unknown, { user_ids: string[]; role: string }>({
-    mutationFn: (input) =>
-      apiFetch<BulkTenantUserResult[]>({
-        service: "iam",
-        path: "/api/v1/iam/tenants/me/users/bulk/role",
-        method: "POST",
-        authenticated: true,
-        body: input,
-      }),
-    onSuccess: () => invalidateTenantUsers(qc),
+  return useMutation<
+    BulkTenantUserResult[],
+    unknown,
+    { user_ids: string[]; role_id: string }
+  >({
+    mutationFn: async ({ user_ids, role_id }) => {
+      const results = await Promise.all(
+        user_ids.map(async (user_id): Promise<BulkTenantUserResult> => {
+          try {
+            await apiFetch<void>({
+              service: "iam",
+              path: `/api/v1/iam/tenants/me/users/${user_id}/roles/${role_id}`,
+              method: "POST",
+              authenticated: true,
+            });
+            return { user_id, success: true, reason: null };
+          } catch (error) {
+            const reason =
+              error instanceof Error ? error.message : "gagal";
+            return { user_id, success: false, reason };
+          }
+        }),
+      );
+      return results;
+    },
+    onSuccess: () => {
+      invalidateTenantUsers(qc);
+      qc.invalidateQueries({ queryKey: TENANT_ROLES_QUERY_KEY });
+    },
   });
 }
 

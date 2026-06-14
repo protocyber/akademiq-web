@@ -16,9 +16,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_STATE_TRANSITION: "Status sudah berubah atau aksi ini tidak valid untuk status saat ini. Muat ulang halaman lalu coba lagi.",
   INVALID_TOKEN: "Sesi Anda tidak valid. Silakan masuk kembali.",
   LAST_ADMIN: "Tidak bisa menghapus otoritas admin terakhir di tenant ini.",
+  LAST_ROLE: "Tidak bisa menghapus role terakhir pengguna. Gunakan aksi \"Keluarkan dari tenant\" untuk mengeluarkan pengguna.",
   PRIVILEGE_ESCALATION: "Anda hanya bisa memberi izin yang juga Anda miliki.",
   ROLE_CODE_EXISTS: "Kode role sudah digunakan.",
   ROLE_IN_USE: "Role masih dipakai pengguna dan tidak bisa dihapus.",
+  USERNAME_TAKEN: "Username sudah digunakan. Pilih username lain.",
   exchange_failed: "Login dengan Gmail gagal saat menghubungi Google. Coba lagi.",
   google_denied: "Login dengan Gmail dibatalkan.",
   invalid_state: "Sesi Login dengan Gmail sudah kedaluwarsa. Coba lagi.",
@@ -35,6 +37,19 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export function isApiError(error: unknown, code: string): boolean {
   return error instanceof ApiHttpError && error.code === code;
+}
+
+/**
+ * Field-level copy for the create-user form when a `USERNAME_TAKEN` /
+ * `EMAIL_ALREADY_EXISTS` conflict means the person already has an account —
+ * steer the admin to the invitation flow instead of implying a typo.
+ */
+export const CREATE_USER_ALREADY_EXISTS_MESSAGE =
+  "Orang ini sudah punya akun. Gunakan alur undangan untuk menambahkannya ke tenant ini.";
+
+/** Confirmation prompt for the explicit remove-from-tenant action. */
+export function removeFromTenantConfirm(name: string): string {
+  return `Keluarkan ${name} dari tenant ini? Semua role mereka di tenant akan dihapus. Akun global tidak dihapus.`;
 }
 
 export function getErrorMessage(error: unknown, options: ErrorMessageOptions = {}): string {

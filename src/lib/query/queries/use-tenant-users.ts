@@ -9,7 +9,8 @@ export type TenantInvitation = {
   invitation_id: string;
   tenant_id: string;
   email: string;
-  roles: string[];
+  role_code?: string;
+  roles?: string[];
   status: string;
   expires_at: string;
   invited_by: string;
