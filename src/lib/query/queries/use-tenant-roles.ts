@@ -2,7 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, apiFetchEnvelope } from "@/lib/api/client";
+import {
+  DEFAULT_TENANT_ROLES_PARAMS,
+  serializeTenantRolesParams,
+  tenantRolesParamsKey,
+  type TenantRolesParams,
+} from "@/lib/schemas/tenant-roles-params";
 
 export type Permission = {
   code: string;
@@ -16,6 +22,16 @@ export type TenantRole = {
   name: string;
   is_builtin: boolean;
   permissions: string[];
+  user_count: number;
+};
+
+export type PaginatedTenantRoles = {
+  data: TenantRole[];
+  meta: {
+    page: number;
+    page_size: number;
+    total: number;
+  };
 };
 
 export const TENANT_PERMISSIONS_QUERY_KEY = ["iam", "tenant-permissions"] as const;
@@ -34,15 +50,37 @@ export function useTenantPermissions(enabled = true) {
   });
 }
 
-export function useTenantRoles(enabled = true) {
+export function useTenantRoles(params: TenantRolesParams = DEFAULT_TENANT_ROLES_PARAMS) {
+  const query = serializeTenantRolesParams(params);
   return useQuery({
-    queryKey: TENANT_ROLES_QUERY_KEY,
-    queryFn: () =>
-      apiFetch<TenantRole[]>({
+    queryKey: [...TENANT_ROLES_QUERY_KEY, ...tenantRolesParamsKey(params)],
+    queryFn: async (): Promise<PaginatedTenantRoles> => {
+      const envelope = await apiFetchEnvelope<TenantRole[]>({
         service: "iam",
-        path: "/api/v1/iam/tenants/me/roles",
+        path: `/api/v1/iam/tenants/me/roles${query ? `?${query}` : ""}`,
         authenticated: true,
-      }),
-    enabled,
+      });
+      return {
+        data: envelope.data,
+        meta: envelope.meta as PaginatedTenantRoles["meta"],
+      };
+    },
   });
+}
+
+/**
+ * Non-paginated role list for screens that just need the full role set
+ * (e.g. the users screen's role dropdowns). Fetches a large page and
+ * returns `TenantRole[]` directly.
+ */
+export function useAllTenantRoles() {
+  const query = useTenantRoles({
+    page: 1,
+    page_size: 100,
+    sort: "name",
+  });
+  return {
+    ...query,
+    data: query.data?.data,
+  };
 }

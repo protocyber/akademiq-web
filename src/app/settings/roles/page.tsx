@@ -2,16 +2,36 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { Copy, ShieldCheck, Trash2 } from "lucide-react";
+import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
+  Copy,
+  MoreHorizontal,
+  Pencil,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable } from "@/components/ui/data-table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,14 +41,25 @@ import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { ErrorView } from "@/components/ui/error-view";
 import { ApiHttpError } from "@/lib/api/types";
 import { hasAccessPerm } from "@/lib/auth/access-claims";
-import { getErrorMessage } from "@/lib/errors/messages";
+import {
+  BULK_DELETE_BUILTIN_BLOCKED,
+  bulkDeleteRolesConfirm,
+  getErrorMessage,
+} from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useLogout } from "@/lib/query/mutations/use-logout";
-import { useCreateTenantRole, useDeleteTenantRole, useUpdateTenantRole } from "@/lib/query/mutations/use-tenant-roles";
+import { useBulkDeleteTenantRoles, useCreateTenantRole, useUpdateTenantRole } from "@/lib/query/mutations/use-tenant-roles";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { Permission, TenantRole, useTenantPermissions, useTenantRoles } from "@/lib/query/queries/use-tenant-roles";
 import { createTenantRoleSchema, type CreateTenantRoleForm } from "@/lib/schemas/tenant-role-management";
+import {
+  parseTenantRolesParams,
+  serializeTenantRolesParams,
+  tenantRolesParamsKey,
+  type TenantRolesParams,
+  type TenantRolesSort,
+} from "@/lib/schemas/tenant-roles-params";
 
 export default function SettingsRolesPage() {
   return (
@@ -42,11 +73,13 @@ function RolesSkeleton() {
   return (
     <main className="container mx-auto max-w-5xl space-y-6 px-4 py-10">
       <Skeleton className="h-9 w-56" />
-      <div className="grid gap-4 md:grid-cols-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-52 w-full" />
-        ))}
-      </div>
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </CardContent>
+      </Card>
     </main>
   );
 }
@@ -54,11 +87,27 @@ function RolesSkeleton() {
 function RolesContent() {
   const tenant = useTenantMe();
   const me = useMe();
-  const roles = useTenantRoles();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const params = React.useMemo(() => parseTenantRolesParams(searchParams), [searchParams]);
+  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
+  const roles = useTenantRoles(params);
   const permissions = useTenantPermissions();
   const logout = useLogout();
-  const router = useRouter();
   const canManageRoles = hasAccessPerm("role.manage");
+
+  React.useEffect(() => {
+    setSearchDraft(params.search ?? "");
+  }, [params.search]);
+
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => {
+      if ((params.search ?? "") !== searchDraft) {
+        replaceRolesParams(router, { ...params, search: searchDraft || undefined, page: 1 });
+      }
+    }, 350);
+    return () => window.clearTimeout(handle);
+  }, [params, router, searchDraft]);
 
   if (tenant.isLoading || me.isLoading || roles.isLoading || permissions.isLoading) {
     return <RolesSkeleton />;
@@ -97,62 +146,366 @@ function RolesContent() {
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {(roles.data ?? []).map((role) => (
-          <RoleCard key={role.role_id} role={role} permissions={permissions.data ?? []} />
-        ))}
-      </div>
+      <RolesTableSection
+        roles={roles.data?.data ?? []}
+        meta={roles.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
+        permissions={permissions.data ?? []}
+        params={params}
+        searchDraft={searchDraft}
+        onSearchDraftChange={setSearchDraft}
+        onParamsChange={(next) => replaceRolesParams(router, next)}
+      />
     </SidebarLayout>
   );
 }
 
-function RoleCard({ role, permissions }: { role: TenantRole; permissions: Permission[] }) {
-  const remove = useDeleteTenantRole(role.role_id);
+function replaceRolesParams(router: ReturnType<typeof useRouter>, params: TenantRolesParams) {
+  const query = serializeTenantRolesParams(params);
+  router.replace(query ? `/settings/roles?${query}` : "/settings/roles", { scroll: false });
+}
 
-  async function onDelete() {
+type Meta = { page: number; page_size: number; total: number };
+
+type RolesTableSectionProps = {
+  roles: TenantRole[];
+  meta: Meta;
+  permissions: Permission[];
+  params: TenantRolesParams;
+  searchDraft: string;
+  onSearchDraftChange: (value: string) => void;
+  onParamsChange: (params: TenantRolesParams) => void;
+};
+
+const SORT_FIELDS: Record<string, { asc: TenantRolesSort; desc: TenantRolesSort }> = {
+  name: { asc: "name", desc: "-name" },
+  type: { asc: "type", desc: "-type" },
+  users: { asc: "users", desc: "-users" },
+};
+
+function RolesTableSection(props: RolesTableSectionProps) {
+  const {
+    roles,
+    meta,
+    permissions,
+    params,
+    searchDraft,
+    onSearchDraftChange,
+    onParamsChange,
+  } = props;
+  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [editing, setEditing] = React.useState<TenantRole | null>(null);
+  const [cloning, setCloning] = React.useState<TenantRole | null>(null);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+
+  // Clear selection when the page / data changes to avoid stale selections.
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [params.page, params.search, params.sort]);
+
+  function toggleSort(field: keyof typeof SORT_FIELDS) {
+    const { asc, desc } = SORT_FIELDS[field];
+    const next = params.sort === asc ? desc : asc;
+    onParamsChange({ ...params, sort: next, page: 1 });
+  }
+
+  function sortIcon(field: keyof typeof SORT_FIELDS) {
+    const { asc, desc } = SORT_FIELDS[field];
+    if (params.sort === asc) return <ArrowUp className="h-3.5 w-3.5" />;
+    if (params.sort === desc) return <ArrowDown className="h-3.5 w-3.5" />;
+    return <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />;
+  }
+
+  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
+  const selectedRoles = roles.filter((r) => selectedIds.includes(r.role_id));
+  const selectionHasBuiltin = selectedRoles.some((r) => r.is_builtin);
+
+  const allSelected = roles.length > 0 && roles.every((r) => rowSelection[r.role_id]);
+  const someSelected = roles.some((r) => rowSelection[r.role_id]);
+
+  const columns: ColumnDef<TenantRole>[] = [
+    {
+      id: "select",
+      size: 40,
+      header: () => (
+        <Checkbox
+          checked={allSelected ? true : someSelected ? "indeterminate" : false}
+          onCheckedChange={(checked) => {
+            const next: RowSelectionState = { ...rowSelection };
+            roles.forEach((r) => {
+              if (checked) next[r.role_id] = true;
+              else delete next[r.role_id];
+            });
+            setRowSelection(next);
+          }}
+          aria-label="Pilih semua"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={Boolean(rowSelection[row.original.role_id])}
+          onCheckedChange={(checked) => {
+            const next: RowSelectionState = { ...rowSelection };
+            if (checked) next[row.original.role_id] = true;
+            else delete next[row.original.role_id];
+            setRowSelection(next);
+          }}
+          aria-label={`Pilih ${row.original.name}`}
+        />
+      ),
+    },
+    {
+      id: "name",
+      header: () => (
+        <Button variant="ghost" size="sm" className="-ml-3 gap-1" onClick={() => toggleSort("name")}>
+          Nama {sortIcon("name")}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 truncate font-semibold text-foreground">
+            {row.original.is_builtin ? <ShieldCheck className="h-4 w-4 text-primary" /> : null}
+            {row.original.name}
+          </p>
+          <p className="truncate text-sm text-muted-foreground">{row.original.code}</p>
+        </div>
+      ),
+    },
+    {
+      id: "type",
+      header: () => (
+        <Button variant="ghost" size="sm" className="-ml-3 gap-1" onClick={() => toggleSort("type")}>
+          Tipe {sortIcon("type")}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <Badge variant={row.original.is_builtin ? "secondary" : "outline"}>
+          {row.original.is_builtin ? "Bawaan" : "Custom"}
+        </Badge>
+      ),
+    },
+    {
+      id: "users",
+      header: () => (
+        <Button variant="ghost" size="sm" className="-ml-3 gap-1" onClick={() => toggleSort("users")}>
+          Jumlah User {sortIcon("users")}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="tabular-nums text-foreground">{row.original.user_count}</span>
+      ),
+    },
+    {
+      id: "actions",
+      size: 64,
+      header: () => <span className="sr-only">Aksi</span>,
+      cell: ({ row }) => {
+        const role = row.original;
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="gap-1">
+                <MoreHorizontal className="h-4 w-4" /> Aksi
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>{role.name}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={role.is_builtin}
+                onClick={() => setEditing(role)}
+              >
+                <Pencil className="h-4 w-4" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setCloning(role)}>
+                <Copy className="h-4 w-4" /> Clone
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={role.is_builtin}
+                className="text-destructive focus:text-destructive"
+                onClick={() => {
+                  setRowSelection({ [role.role_id]: true });
+                  setConfirmDelete(true);
+                }}
+              >
+                <Trash2 className="h-4 w-4" /> Hapus
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <Input
+        value={searchDraft}
+        onChange={(event) => onSearchDraftChange(event.target.value)}
+        placeholder="Cari nama atau kode role"
+      />
+
+      {selectedIds.length > 0 ? (
+        <BulkActionBar
+          selectedCount={selectedIds.length}
+          selectedIds={selectedIds}
+          selectionHasBuiltin={selectionHasBuiltin}
+          onConfirm={() => setConfirmDelete(true)}
+        />
+      ) : null}
+
+      <DataTable
+        columns={columns}
+        data={roles}
+        getRowId={(row) => row.role_id}
+        rowSelection={rowSelection}
+        emptyText="Tidak ada role yang cocok."
+      />
+
+      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>
+          Halaman {meta.page} dari {pageCount} · {meta.total} role
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page <= 1}
+            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
+          >
+            Sebelumnya
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page >= pageCount}
+            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
+          >
+            Berikutnya
+          </Button>
+        </div>
+      </div>
+
+      {editing ? (
+        <RoleDialog
+          role={editing}
+          permissions={permissions}
+          open={Boolean(editing)}
+          onOpenChange={(open) => {
+            if (!open) setEditing(null);
+          }}
+        />
+      ) : null}
+      {cloning ? (
+        <RoleDialog
+          cloneFrom={cloning}
+          permissions={permissions}
+          open={Boolean(cloning)}
+          onOpenChange={(open) => {
+            if (!open) setCloning(null);
+          }}
+        />
+      ) : null}
+
+      <BulkDeleteConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        selectedIds={selectedIds}
+        onDone={() => setRowSelection({})}
+      />
+    </div>
+  );
+}
+
+function BulkActionBar({
+  selectedCount,
+  selectedIds,
+  selectionHasBuiltin,
+  onConfirm,
+}: {
+  selectedCount: number;
+  selectedIds: string[];
+  selectionHasBuiltin: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+      <span>{selectedCount} dipilih</span>
+      <Button
+        size="sm"
+        variant="destructive"
+        className="gap-1"
+        disabled={selectionHasBuiltin}
+        onClick={onConfirm}
+      >
+        <Trash2 className="h-4 w-4" /> Hapus
+      </Button>
+      {selectionHasBuiltin ? (
+        <span className="text-xs text-destructive">{BULK_DELETE_BUILTIN_BLOCKED}</span>
+      ) : null}
+      <span className="sr-only">{selectedIds.length} role dipilih</span>
+    </div>
+  );
+}
+
+function BulkDeleteConfirmDialog({
+  open,
+  onOpenChange,
+  selectedIds,
+  onDone,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedIds: string[];
+  onDone: () => void;
+}) {
+  const bulkDelete = useBulkDeleteTenantRoles();
+  const count = selectedIds.length;
+
+  async function onConfirm() {
     try {
-      await remove.mutateAsync();
-      toast.success("Role dihapus.");
+      await bulkDelete.mutateAsync(selectedIds);
+      toast.success(`${count} role dihapus.`);
+      onOpenChange(false);
+      onDone();
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus role." }));
     }
   }
 
   return (
-    <Card className="border border-border shadow-sm">
-      <CardHeader className="space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <ShieldCheck className="h-4 w-4 text-primary" />
-              {role.name}
-            </CardTitle>
-            <CardDescription>{role.code}</CardDescription>
-          </div>
-          <Badge variant={role.is_builtin ? "secondary" : "outline"}>{role.is_builtin ? "Bawaan" : "Custom"}</Badge>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {role.permissions.length ? role.permissions.map((permission) => (
-            <Badge key={permission} variant="secondary">{permission}</Badge>
-          )) : <span className="text-sm text-muted-foreground">Tidak ada izin.</span>}
-        </div>
-        <div className="flex gap-2">
-          <RoleDialog role={role} permissions={permissions} />
-          <RoleDialog cloneFrom={role} permissions={permissions} />
-          <Button size="sm" variant="destructive" loading={remove.isPending} disabled={role.is_builtin} onClick={onDelete}>
-            <Trash2 className="h-4 w-4" />
-            Hapus
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Hapus ${count} role?`}
+      description={bulkDeleteRolesConfirm(count)}
+      confirmLabel="Hapus"
+      loadingLabel="Menghapus..."
+      loading={bulkDelete.isPending}
+      destructive
+      canConfirm={count > 0}
+      onConfirm={onConfirm}
+    />
   );
 }
 
-function RoleDialog({ role, cloneFrom, permissions }: { role?: TenantRole; cloneFrom?: TenantRole; permissions: Permission[] }) {
-  const [open, setOpen] = React.useState(false);
+function RoleDialog({
+  role,
+  cloneFrom,
+  permissions,
+  open,
+  onOpenChange,
+}: {
+  role?: TenantRole;
+  cloneFrom?: TenantRole;
+  permissions: Permission[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  const isOpen = open !== undefined ? open : internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+
   const create = useCreateTenantRole();
   const update = useUpdateTenantRole(role?.role_id ?? "");
   const defaultValues = React.useMemo<CreateTenantRoleForm>(() => ({
@@ -191,14 +544,18 @@ function RoleDialog({ role, cloneFrom, permissions }: { role?: TenantRole; clone
     }
   }
 
+  const trigger = open === undefined ? (
+    <DialogTrigger asChild>
+      <Button variant={role ? "outline" : cloneFrom ? "secondary" : "default"}>
+        {cloneFrom ? <Copy className="h-4 w-4" /> : null}
+        {role ? "Edit" : cloneFrom ? "Clone" : "Buat Role"}
+      </Button>
+    </DialogTrigger>
+  ) : null;
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size={role || cloneFrom ? "sm" : "default"} variant={role ? "outline" : cloneFrom ? "secondary" : "default"} disabled={role?.is_builtin}>
-          {cloneFrom ? <Copy className="h-4 w-4" /> : null}
-          {role ? "Edit" : cloneFrom ? "Clone" : "Buat Role"}
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setOpen}>
+      {trigger}
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

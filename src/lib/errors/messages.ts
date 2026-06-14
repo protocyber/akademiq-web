@@ -7,6 +7,7 @@ type ErrorMessageOptions = {
 
 const ERROR_MESSAGES: Record<string, string> = {
   ACTIVE_YEAR_EXISTS: "Sudah ada tahun ajaran aktif. Arsipkan atau tutup tahun ajaran aktif sebelum mengaktifkan yang lain.",
+  BUILT_IN_ROLE_IMMUTABLE: "Role bawaan tidak bisa diubah atau dihapus. Clone ke role custom untuk memodifikasi.",
   EMAIL_ALREADY_EXISTS: "Email sudah terdaftar. Gunakan email lain atau cek daftar pengguna.",
   EXPIRED_ACCESS_TOKEN: "Sesi Anda sudah berakhir. Silakan masuk kembali.",
   FEATURE_NOT_AVAILABLE: "Fitur ini belum aktif untuk sekolah Anda. Aktifkan modul atau cek paket langganan.",
@@ -51,6 +52,20 @@ export const CREATE_USER_ALREADY_EXISTS_MESSAGE =
 export function removeFromTenantConfirm(name: string): string {
   return `Keluarkan ${name} dari tenant ini? Semua role mereka di tenant akan dihapus. Akun global tidak dihapus.`;
 }
+
+/** Confirmation prompt for the admin-triggered password reset. */
+export function resetPasswordConfirm(name: string): string {
+  return `Reset password untuk ${name}? Password baru akan dibuat dan ditampilkan sekali.`;
+}
+
+/** Confirmation prompt for bulk role deletion. */
+export function bulkDeleteRolesConfirm(count: number): string {
+  return `Hapus ${count} role custom yang dipilih? Pengguna yang memegang role ini akan kehilangan akses terkait.`;
+}
+
+/** Helper text shown when bulk delete is blocked by a built-in role in the selection. */
+export const BULK_DELETE_BUILTIN_BLOCKED =
+  "Lepaskan role bawaan dari pilihan untuk menghapus.";
 
 export function getErrorMessage(error: unknown, options: ErrorMessageOptions = {}): string {
   if (error instanceof ApiHttpError) {

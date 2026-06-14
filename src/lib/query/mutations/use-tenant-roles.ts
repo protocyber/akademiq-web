@@ -66,3 +66,21 @@ export function useDeleteTenantRole(roleId: string) {
     },
   });
 }
+
+export function useBulkDeleteTenantRoles() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string[]>({
+    mutationFn: (roleIds) =>
+      apiFetch<void>({
+        service: "iam",
+        path: "/api/v1/iam/tenants/me/roles/bulk/delete",
+        method: "POST",
+        authenticated: true,
+        body: { role_ids: roleIds },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TENANT_ROLES_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: TENANT_USERS_QUERY_KEY });
+    },
+  });
+}

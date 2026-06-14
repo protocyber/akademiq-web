@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import {
   Dialog,
@@ -58,6 +59,7 @@ import {
   getErrorMessage,
   isApiError,
   removeFromTenantConfirm,
+  resetPasswordConfirm,
 } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useLogout } from "@/lib/query/mutations/use-logout";
@@ -78,7 +80,7 @@ import {
 } from "@/lib/query/mutations/use-tenant-users";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
-import { TenantRole, useTenantRoles } from "@/lib/query/queries/use-tenant-roles";
+import { TenantRole, useAllTenantRoles } from "@/lib/query/queries/use-tenant-roles";
 import {
   TenantInvitation,
   TenantUser,
@@ -148,7 +150,7 @@ function UsersContent() {
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const [selected, setSelected] = React.useState<RowSelectionState>({});
   const users = useTenantUsers(params);
-  const roles = useTenantRoles();
+  const roles = useAllTenantRoles();
   const invitations = useTenantInvitations();
   const logout = useLogout();
 
@@ -748,6 +750,8 @@ function EditUserDialog({
   const enabled = user.status === "active";
   const setEnabled = useSetTenantUserEnabled(user.user_id, !enabled);
   const remove = useRemoveTenantUser(user.user_id);
+  const [confirmReset, setConfirmReset] = React.useState(false);
+  const [confirmRemove, setConfirmRemove] = React.useState(false);
 
   const form = useForm<UpdateTenantUserForm>({
     resolver: zodResolver(updateTenantUserSchema),
@@ -806,20 +810,20 @@ function EditUserDialog({
   }
 
   async function onResetPassword() {
-    if (!window.confirm(`Reset password untuk ${user.full_name}?`)) return;
     try {
       const result = await resetPassword.mutateAsync({ userId: user.user_id });
       toast.success(`Password sementara: ${result.temporary_password}`);
+      setConfirmReset(false);
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Tidak bisa reset password." }));
     }
   }
 
   async function onRemoveFromTenant() {
-    if (!window.confirm(removeFromTenantConfirm(user.full_name))) return;
     try {
       await remove.mutateAsync();
       toast.success("Pengguna dikeluarkan dari tenant.");
+      setConfirmRemove(false);
       onOpenChange(false);
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengeluarkan pengguna." }));
@@ -934,7 +938,7 @@ function EditUserDialog({
             />
             <span className="text-sm text-muted-foreground">{enabled ? "Aktif" : "Nonaktif"}</span>
           </div>
-          <Button size="sm" variant="outline" loading={resetPassword.isPending} onClick={onResetPassword}>
+          <Button size="sm" variant="outline" loading={resetPassword.isPending} onClick={() => setConfirmReset(true)}>
             Reset password
           </Button>
         </div>
@@ -944,11 +948,32 @@ function EditUserDialog({
             variant="destructive"
             className="w-full"
             loading={remove.isPending}
-            onClick={onRemoveFromTenant}
+            onClick={() => setConfirmRemove(true)}
           >
             Keluarkan dari tenant
           </Button>
         </div>
+
+        <ConfirmDialog
+          open={confirmReset}
+          onOpenChange={setConfirmReset}
+          title="Reset password?"
+          description={resetPasswordConfirm(user.full_name)}
+          confirmLabel="Reset"
+          loading={resetPassword.isPending}
+          onConfirm={onResetPassword}
+        />
+
+        <ConfirmDialog
+          open={confirmRemove}
+          onOpenChange={setConfirmRemove}
+          title="Keluarkan dari tenant?"
+          description={removeFromTenantConfirm(user.full_name)}
+          confirmLabel="Keluarkan"
+          destructive
+          loading={remove.isPending}
+          onConfirm={onRemoveFromTenant}
+        />
       </DialogContent>
     </Dialog>
   );
