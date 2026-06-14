@@ -19,8 +19,7 @@ import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 
 const academicNav = [
   { href: "/settings/academic/years", label: "Tahun Ajaran" },
-  { href: "/settings/academic/curriculum", label: "Kurikulum" },
-  { href: "/settings/academic/grading-policy", label: "Kebijakan Nilai" },
+  { href: "/settings/academic/subjects", label: "Mata Pelajaran" },
   { href: "/settings/academic/class-templates", label: "Template Kelas" },
 ];
 

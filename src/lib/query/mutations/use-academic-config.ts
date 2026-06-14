@@ -7,14 +7,21 @@ import {
   ACADEMIC_YEARS_QUERY_KEY,
   AcademicYear,
   ClassTemplate,
+  CLASS_TEMPLATES_QUERY_KEY,
   CurriculumVersion,
+  CURRICULUM_VERSIONS_QUERY_KEY,
   GradingPolicy,
   Subject,
+  SUBJECTS_QUERY_KEY,
 } from "@/lib/query/queries/use-academic-config";
 import type { AcademicYearForm, YearStatusForm } from "@/lib/schemas/academic-year";
 import type { ClassTemplateForm } from "@/lib/schemas/class-template";
 import type { GradingPolicyForm } from "@/lib/schemas/grading-policy";
 import type { CurriculumVersionForm, SubjectForm } from "@/lib/schemas/subject";
+
+// ---------------------------------------------------------------------------
+// Academic years
+// ---------------------------------------------------------------------------
 
 export function useCreateAcademicYear() {
   const qc = useQueryClient();
@@ -46,6 +53,39 @@ export function useTransitionAcademicYear(academicYearId: string) {
   });
 }
 
+export function useDeleteAcademicYear() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationFn: (academicYearId) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${academicYearId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY }),
+  });
+}
+
+export function useBulkDeleteAcademicYears() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string[]>({
+    mutationFn: (ids) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: "/api/v1/academic-config/academic-years/bulk/delete",
+        method: "POST",
+        authenticated: true,
+        body: { ids },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Curriculum versions
+// ---------------------------------------------------------------------------
+
 export function useAddCurriculumVersion(academicYearId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -57,11 +97,57 @@ export function useAddCurriculumVersion(academicYearId: string) {
         authenticated: true,
         body: input,
       }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["academic-config", "curriculum-versions", academicYearId] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CURRICULUM_VERSIONS_QUERY_KEY }),
   });
 }
+
+export function useUpdateCurriculumVersion(curriculumVersionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CurriculumVersionForm) =>
+      apiFetch<CurriculumVersion>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/curriculum-versions/${curriculumVersionId}`,
+        method: "PATCH",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CURRICULUM_VERSIONS_QUERY_KEY }),
+  });
+}
+
+export function useDeleteCurriculumVersion() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationFn: (curriculumVersionId) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/curriculum-versions/${curriculumVersionId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CURRICULUM_VERSIONS_QUERY_KEY }),
+  });
+}
+
+export function useBulkDeleteCurriculumVersions() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string[]>({
+    mutationFn: (ids) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: "/api/v1/academic-config/curriculum-versions/bulk/delete",
+        method: "POST",
+        authenticated: true,
+        body: { ids },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CURRICULUM_VERSIONS_QUERY_KEY }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Subjects
+// ---------------------------------------------------------------------------
 
 export function useAddSubject(curriculumVersionId: string) {
   const qc = useQueryClient();
@@ -74,11 +160,57 @@ export function useAddSubject(curriculumVersionId: string) {
         authenticated: true,
         body: input,
       }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["academic-config", "subjects", curriculumVersionId] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECTS_QUERY_KEY }),
   });
 }
+
+export function useUpdateSubject(subjectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<SubjectForm, "curriculum_version_id">) =>
+      apiFetch<Subject>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/subjects/${subjectId}`,
+        method: "PATCH",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECTS_QUERY_KEY }),
+  });
+}
+
+export function useDeleteSubject() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationFn: (subjectId) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/subjects/${subjectId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECTS_QUERY_KEY }),
+  });
+}
+
+export function useBulkDeleteSubjects() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string[]>({
+    mutationFn: (ids) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: "/api/v1/academic-config/subjects/bulk/delete",
+        method: "POST",
+        authenticated: true,
+        body: { ids },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECTS_QUERY_KEY }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Grading policy
+// ---------------------------------------------------------------------------
 
 export function useUpsertGradingPolicy(academicYearId: string) {
   const qc = useQueryClient();
@@ -92,10 +224,16 @@ export function useUpsertGradingPolicy(academicYearId: string) {
         body: input,
       }),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["academic-config", "grading-policy", academicYearId] });
+      await qc.invalidateQueries({
+        queryKey: ["academic-config", "grading-policy", academicYearId],
+      });
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Class templates
+// ---------------------------------------------------------------------------
 
 export function useAddClassTemplate(academicYearId: string) {
   const qc = useQueryClient();
@@ -108,8 +246,50 @@ export function useAddClassTemplate(academicYearId: string) {
         authenticated: true,
         body: input,
       }),
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["academic-config", "class-templates", academicYearId] });
-    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLASS_TEMPLATES_QUERY_KEY }),
+  });
+}
+
+export function useUpdateClassTemplate(templateId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<ClassTemplateForm, "academic_year_id">) =>
+      apiFetch<ClassTemplate>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/class-templates/${templateId}`,
+        method: "PATCH",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLASS_TEMPLATES_QUERY_KEY }),
+  });
+}
+
+export function useDeleteClassTemplate() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationFn: (templateId) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/class-templates/${templateId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLASS_TEMPLATES_QUERY_KEY }),
+  });
+}
+
+export function useBulkDeleteClassTemplates() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string[]>({
+    mutationFn: (ids) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: "/api/v1/academic-config/class-templates/bulk/delete",
+        method: "POST",
+        authenticated: true,
+        body: { ids },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: CLASS_TEMPLATES_QUERY_KEY }),
   });
 }

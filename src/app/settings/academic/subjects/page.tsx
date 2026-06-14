@@ -39,78 +39,93 @@ import {
 import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import {
-  useAddClassTemplate,
-  useBulkDeleteClassTemplates,
-  useDeleteClassTemplate,
-  useUpdateClassTemplate,
+  useAddSubject,
+  useBulkDeleteSubjects,
+  useDeleteSubject,
+  useUpdateSubject,
 } from "@/lib/query/mutations/use-academic-config";
 import {
-  type ClassTemplate,
+  type Subject,
   useAcademicYears,
-  useClassTemplatesTable,
+  useCurriculumVersions,
+  useSubjectsTable,
 } from "@/lib/query/queries/use-academic-config";
 import {
-  classTemplateSchema,
-  type ClassTemplateForm,
-} from "@/lib/schemas/class-template";
+  subjectSchema,
+  type SubjectForm,
+} from "@/lib/schemas/subject";
 import {
-  parseAcademicClassTemplatesParams,
-  serializeAcademicClassTemplatesParams,
-  type AcademicClassTemplatesParams,
-  type AcademicClassTemplatesSort,
-} from "@/lib/schemas/academic-class-templates-params";
+  parseAcademicSubjectsParams,
+  serializeAcademicSubjectsParams,
+  type AcademicSubjectsParams,
+  type AcademicSubjectsSort,
+} from "@/lib/schemas/academic-subjects-params";
+import { QuerySelect } from "@/components/ui/query-select";
 
-const SORT_FIELDS: Record<string, { asc: AcademicClassTemplatesSort; desc: AcademicClassTemplatesSort }> = {
-  grade_level: { asc: "grade_level", desc: "-grade_level" },
-  default_capacity: { asc: "default_capacity", desc: "-default_capacity" },
+const SORT_FIELDS: Record<string, { asc: AcademicSubjectsSort; desc: AcademicSubjectsSort }> = {
+  name: { asc: "name", desc: "-name" },
+  code: { asc: "code", desc: "-code" },
+  passing_grade: { asc: "passing_grade", desc: "-passing_grade" },
 };
 
-export default function ClassTemplatesPage() {
+export default function AcademicSubjectsPage() {
   return (
     <AcademicSettingsPage
-      title="Template Kelas"
-      description="Template kapasitas kelas per tahun ajaran."
+      title="Mata Pelajaran"
+      description="Kelola mata pelajaran per versi kurikulum."
     >
       {({ canManageAcademicConfig, upgradeMessage }) => (
-        <ClassTemplatesContent canManage={canManageAcademicConfig} upgradeMessage={upgradeMessage} />
+        <SubjectsContent canManage={canManageAcademicConfig} upgradeMessage={upgradeMessage} />
       )}
     </AcademicSettingsPage>
   );
 }
 
-function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessage: string }) {
+function SubjectsContent({ canManage }: { canManage: boolean; upgradeMessage: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const params = React.useMemo(() => parseAcademicClassTemplatesParams(searchParams), [searchParams]);
-  const years = useAcademicYears();
-  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
+  const params = React.useMemo(() => parseAcademicSubjectsParams(searchParams), [searchParams]);
 
-  const tableParams: AcademicClassTemplatesParams = {
-    academic_year_id: params.academic_year_id,
-    search: params.search,
-    page: params.page,
-    page_size: params.page_size,
-    sort: params.sort,
-  };
-  const templates = useClassTemplatesTable(tableParams);
+  const years = useAcademicYears();
+  const versions = useCurriculumVersions(params.academic_year_id);
+  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
 
   function onYearChange(yearId: string) {
     router.replace(
-      `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams({
-        page: 1,
-        page_size: 25,
-        sort: "grade_level",
+      `/settings/academic/subjects?${serializeAcademicSubjectsParams({
+        ...DEFAULTS(),
         academic_year_id: yearId,
       })}`,
       { scroll: false },
     );
   }
 
+  function onVersionChange(versionId: string) {
+    router.replace(
+      `/settings/academic/subjects?${serializeAcademicSubjectsParams({
+        ...params,
+        curriculum_version_id: versionId,
+        page: 1,
+      })}`,
+      { scroll: false },
+    );
+  }
+
+  const tableParams: AcademicSubjectsParams = {
+    academic_year_id: params.academic_year_id,
+    curriculum_version_id: params.curriculum_version_id,
+    search: params.search,
+    page: params.page,
+    page_size: params.page_size,
+    sort: params.sort,
+  };
+  const subjects = useSubjectsTable(tableParams);
+
   React.useEffect(() => {
     const handle = window.setTimeout(() => {
       if ((params.search ?? "") !== searchDraft) {
         router.replace(
-          `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams({
+          `/settings/academic/subjects?${serializeAcademicSubjectsParams({
             ...params,
             search: searchDraft || undefined,
             page: 1,
@@ -122,20 +137,35 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
-  const meta = templates.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
+  const meta = subjects.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
 
   return (
     <div className="space-y-4">
-      <YearPicker
-        years={years.data ?? []}
-        isLoading={years.isLoading}
-        value={params.academic_year_id ?? ""}
-        onChange={onYearChange}
-      />
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <YearPicker
+            years={years.data ?? []}
+            isLoading={years.isLoading}
+            value={params.academic_year_id ?? ""}
+            onChange={onYearChange}
+          />
+          <QuerySelect
+            items={versions.data ?? []}
+            isLoading={Boolean(versions.isLoading)}
+            value={params.curriculum_version_id ?? ""}
+            onValueChange={onVersionChange}
+            getValue={(v) => v.curriculum_version_id}
+            getLabel={(v) => v.name}
+            placeholder="Pilih versi kurikulum"
+            emptyText="Belum ada versi kurikulum"
+            disabled={!params.academic_year_id}
+          />
+        </div>
+      </div>
 
-      {params.academic_year_id ? (
-        <ClassTemplatesTableSection
-          templates={templates.data?.data ?? []}
+      {params.curriculum_version_id ? (
+        <SubjectsTableSection
+          subjects={subjects.data?.data ?? []}
           meta={meta}
           params={tableParams}
           canManage={canManage}
@@ -143,17 +173,17 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
           onSearchDraftChange={setSearchDraft}
           onParamsChange={(next) =>
             router.replace(
-              `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams(next)}`,
+              `/settings/academic/subjects?${serializeAcademicSubjectsParams(next)}`,
               { scroll: false },
             )
           }
-          isLoading={templates.isLoading}
-          academicYearId={params.academic_year_id}
+          isLoading={subjects.isLoading}
+          curriculumVersionId={params.curriculum_version_id}
         />
       ) : (
         <Card>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Pilih tahun ajaran untuk menampilkan template kelas.
+            Pilih tahun ajaran dan versi kurikulum untuk menampilkan mata pelajaran.
           </CardContent>
         </Card>
       )}
@@ -161,8 +191,8 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
   );
 }
 
-function ClassTemplatesTableSection({
-  templates,
+function SubjectsTableSection({
+  subjects,
   meta,
   params,
   canManage,
@@ -170,31 +200,31 @@ function ClassTemplatesTableSection({
   onSearchDraftChange,
   onParamsChange,
   isLoading,
-  academicYearId,
+  curriculumVersionId,
 }: {
-  templates: ClassTemplate[];
+  subjects: Subject[];
   meta: { page: number; page_size: number; total: number };
-  params: AcademicClassTemplatesParams;
+  params: AcademicSubjectsParams;
   canManage: boolean;
   searchDraft: string;
   onSearchDraftChange: (value: string) => void;
-  onParamsChange: (next: AcademicClassTemplatesParams) => void;
+  onParamsChange: (next: AcademicSubjectsParams) => void;
   isLoading: boolean;
-  academicYearId: string;
+  curriculumVersionId: string;
 }) {
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [targetId, setTargetId] = React.useState<string | null>(null);
-  const [editing, setEditing] = React.useState<ClassTemplate | null>(null);
+  const [editing, setEditing] = React.useState<Subject | null>(null);
   const [creating, setCreating] = React.useState(false);
 
   React.useEffect(() => {
     setRowSelection({});
-  }, [params.page, params.search, params.sort, academicYearId]);
+  }, [params.page, params.search, params.sort, curriculumVersionId]);
 
   const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
-  const allSelected = templates.length > 0 && templates.every((t) => rowSelection[t.template_id]);
-  const someSelected = templates.some((t) => rowSelection[t.template_id]);
+  const allSelected = subjects.length > 0 && subjects.every((s) => rowSelection[s.subject_id]);
+  const someSelected = subjects.some((s) => rowSelection[s.subject_id]);
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
@@ -210,7 +240,7 @@ function ClassTemplatesTableSection({
     return <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />;
   }
 
-  const columns: ColumnDef<ClassTemplate>[] = [
+  const columns: ColumnDef<Subject>[] = [
     {
       id: "select",
       size: 40,
@@ -219,9 +249,9 @@ function ClassTemplatesTableSection({
           checked={allSelected ? true : someSelected ? "indeterminate" : false}
           onCheckedChange={(checked) => {
             const next: RowSelectionState = { ...rowSelection };
-            templates.forEach((t) => {
-              if (checked) next[t.template_id] = true;
-              else delete next[t.template_id];
+            subjects.forEach((s) => {
+              if (checked) next[s.subject_id] = true;
+              else delete next[s.subject_id];
             });
             setRowSelection(next);
           }}
@@ -230,35 +260,46 @@ function ClassTemplatesTableSection({
       ),
       cell: ({ row }) => (
         <Checkbox
-          checked={Boolean(rowSelection[row.original.template_id])}
+          checked={Boolean(rowSelection[row.original.subject_id])}
           onCheckedChange={(checked) => {
             const next: RowSelectionState = { ...rowSelection };
-            if (checked) next[row.original.template_id] = true;
-            else delete next[row.original.template_id];
+            if (checked) next[row.original.subject_id] = true;
+            else delete next[row.original.subject_id];
             setRowSelection(next);
           }}
-          aria-label={`Pilih ${row.original.grade_level}`}
+          aria-label={`Pilih ${row.original.name}`}
         />
       ),
     },
     {
-      id: "grade_level",
+      id: "name",
       header: () => (
-        <Button variant="ghost" size="sm" className="-ml-3" onClick={() => toggleSort("grade_level")}>
-          Tingkat {sortIcon("grade_level")}
+        <Button variant="ghost" size="sm" className="-ml-3" onClick={() => toggleSort("name")}>
+          Nama {sortIcon("name")}
         </Button>
       ),
-      cell: ({ row }) => <span className="font-semibold text-foreground">{row.original.grade_level}</span>,
+      cell: ({ row }) => <span className="font-semibold text-foreground">{row.original.name}</span>,
     },
     {
-      id: "default_capacity",
+      id: "code",
       header: () => (
-        <Button variant="ghost" size="sm" className="-ml-3" onClick={() => toggleSort("default_capacity")}>
-          Kapasitas {sortIcon("default_capacity")}
+        <Button variant="ghost" size="sm" className="-ml-3" onClick={() => toggleSort("code")}>
+          Kode {sortIcon("code")}
         </Button>
       ),
       cell: ({ row }) => (
-        <span className="tabular-nums text-foreground">{row.original.default_capacity}</span>
+        <span className="text-sm text-muted-foreground">{row.original.code ?? "—"}</span>
+      ),
+    },
+    {
+      id: "passing_grade",
+      header: () => (
+        <Button variant="ghost" size="sm" className="-ml-3" onClick={() => toggleSort("passing_grade")}>
+          KKM {sortIcon("passing_grade")}
+        </Button>
+      ),
+      cell: ({ row }) => (
+        <span className="tabular-nums text-foreground">{row.original.passing_grade}</span>
       ),
     },
     {
@@ -266,7 +307,7 @@ function ClassTemplatesTableSection({
       size: 80,
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => {
-        const template = row.original;
+        const subject = row.original;
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -275,16 +316,16 @@ function ClassTemplatesTableSection({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{template.grade_level}</DropdownMenuLabel>
+              <DropdownMenuLabel>{subject.name}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setEditing(template)}>
+              <DropdownMenuItem onClick={() => setEditing(subject)}>
                 <Pencil className="h-4 w-4" /> Edit
               </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={!canManage}
                 className="text-destructive focus:text-destructive"
                 onClick={() => {
-                  setTargetId(template.template_id);
+                  setTargetId(subject.subject_id);
                   setConfirmDelete(true);
                 }}
               >
@@ -303,11 +344,11 @@ function ClassTemplatesTableSection({
         <Input
           value={searchDraft}
           onChange={(event) => onSearchDraftChange(event.target.value)}
-          placeholder="Cari tingkat"
+          placeholder="Cari nama atau kode"
           className="md:w-72"
         />
         <Button disabled={!canManage} onClick={() => setCreating(true)} className="gap-1">
-          <Plus className="h-4 w-4" /> Tambah Template
+          <Plus className="h-4 w-4" /> Tambah Mapel
         </Button>
       </div>
 
@@ -333,11 +374,11 @@ function ClassTemplatesTableSection({
           <CardContent className="p-0">
             <DataTable
               columns={columns}
-              data={templates}
-              getRowId={(row) => row.template_id}
+              data={subjects}
+              getRowId={(row) => row.subject_id}
               rowSelection={rowSelection}
               onRowSelectionChange={setRowSelection}
-              emptyText="Belum ada template kelas."
+              emptyText="Belum ada mata pelajaran."
             />
           </CardContent>
         </Card>
@@ -345,7 +386,7 @@ function ClassTemplatesTableSection({
 
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} template
+          Halaman {meta.page} dari {pageCount} · {meta.total} mapel
         </span>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" disabled={meta.page <= 1} onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}>
@@ -357,10 +398,10 @@ function ClassTemplatesTableSection({
         </div>
       </div>
 
-      <ClassTemplateDialog open={creating} onOpenChange={setCreating} mode="create" academicYearId={academicYearId} />
-      <ClassTemplateDialog open={Boolean(editing)} onOpenChange={(o) => { if (!o) setEditing(null); }} mode="edit" template={editing ?? undefined} academicYearId={academicYearId} />
+      <SubjectDialog open={creating} onOpenChange={setCreating} mode="create" curriculumVersionId={curriculumVersionId} />
+      <SubjectDialog open={Boolean(editing)} onOpenChange={(o) => { if (!o) setEditing(null); }} mode="edit" subject={editing ?? undefined} curriculumVersionId={curriculumVersionId} />
 
-      <ClassTemplateDeleteConfirm
+      <SubjectDeleteConfirm
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
         targetId={targetId}
@@ -372,53 +413,55 @@ function ClassTemplatesTableSection({
   );
 }
 
-function ClassTemplateDialog({
+function SubjectDialog({
   open,
   onOpenChange,
   mode,
-  template,
-  academicYearId,
+  subject,
+  curriculumVersionId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
-  template?: ClassTemplate;
-  academicYearId: string;
+  subject?: Subject;
+  curriculumVersionId: string;
 }) {
-  const add = useAddClassTemplate(academicYearId);
-  const update = useUpdateClassTemplate(template?.template_id ?? "");
-  const form = useForm<ClassTemplateForm>({
-    resolver: zodResolver(classTemplateSchema),
+  const add = useAddSubject(curriculumVersionId);
+  const update = useUpdateSubject(subject?.subject_id ?? "");
+  const form = useForm<SubjectForm>({
+    resolver: zodResolver(subjectSchema),
     defaultValues: {
-      academic_year_id: academicYearId,
-      grade_level: template?.grade_level ?? "",
-      default_capacity: template?.default_capacity ?? 30,
+      curriculum_version_id: curriculumVersionId,
+      name: subject?.name ?? "",
+      code: subject?.code ?? "",
+      passing_grade: subject?.passing_grade ?? 75,
     },
   });
 
   React.useEffect(() => {
     form.reset({
-      academic_year_id: academicYearId,
-      grade_level: template?.grade_level ?? "",
-      default_capacity: template?.default_capacity ?? 30,
+      curriculum_version_id: curriculumVersionId,
+      name: subject?.name ?? "",
+      code: subject?.code ?? "",
+      passing_grade: subject?.passing_grade ?? 75,
     });
-  }, [form, template, academicYearId]);
+  }, [form, subject, curriculumVersionId]);
 
-  async function onSubmit(values: ClassTemplateForm) {
-    const { academic_year_id: _ignored, ...input } = values;
+  async function onSubmit(values: SubjectForm) {
+    const { curriculum_version_id: _ignored, ...input } = values;
     try {
       if (mode === "create") {
         await add.mutateAsync(input);
-        toast.success("Template kelas ditambahkan.");
-      } else if (template) {
+        toast.success("Mata pelajaran ditambahkan.");
+      } else if (subject) {
         await update.mutateAsync(input);
-        toast.success("Template kelas diperbarui.");
+        toast.success("Mata pelajaran diperbarui.");
       }
       onOpenChange(false);
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length === 0) {
-        toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan template kelas." }));
+        toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan mata pelajaran." }));
       }
     }
   }
@@ -427,20 +470,33 @@ function ClassTemplateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{mode === "create" ? "Tambah Template Kelas" : "Edit Template Kelas"}</DialogTitle>
-          <DialogDescription>Tingkat dan kapasitas default.</DialogDescription>
+          <DialogTitle>{mode === "create" ? "Tambah Mata Pelajaran" : "Edit Mata Pelajaran"}</DialogTitle>
+          <DialogDescription>Nama, kode, dan kriteria ketuntasan minimal (KKM).</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nama</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Matematika" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="grade_level"
+                name="code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tingkat</FormLabel>
+                    <FormLabel>Kode</FormLabel>
                     <FormControl>
-                      <Input placeholder="X" {...field} />
+                      <Input placeholder="MTK" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -448,10 +504,10 @@ function ClassTemplateDialog({
               />
               <FormField
                 control={form.control}
-                name="default_capacity"
+                name="passing_grade"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kapasitas</FormLabel>
+                    <FormLabel>KKM</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -472,7 +528,7 @@ function ClassTemplateDialog({
   );
 }
 
-function ClassTemplateDeleteConfirm({
+function SubjectDeleteConfirm({
   open,
   onOpenChange,
   targetId,
@@ -487,8 +543,8 @@ function ClassTemplateDeleteConfirm({
   clearSelection: () => void;
   clearTarget: () => void;
 }) {
-  const single = useDeleteClassTemplate();
-  const bulk = useBulkDeleteClassTemplates();
+  const single = useDeleteSubject();
+  const bulk = useBulkDeleteSubjects();
   const isSingle = Boolean(targetId);
   const ids = targetId ? [targetId] : selectedIds;
   const count = ids.length;
@@ -500,12 +556,12 @@ function ClassTemplateDeleteConfirm({
       } else {
         await bulk.mutateAsync(ids);
       }
-      toast.success(`${count} template dihapus.`);
+      toast.success(`${count} mata pelajaran dihapus.`);
       onOpenChange(false);
       clearSelection();
       clearTarget();
     } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus template." }));
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus mata pelajaran." }));
     }
   }
 
@@ -513,8 +569,8 @@ function ClassTemplateDeleteConfirm({
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title={`Hapus ${count} template kelas?`}
-      description="Template kelas selalu dapat dihapus (bersifat advisory)."
+      title={`Hapus ${count} mata pelajaran?`}
+      description="Mata pelajaran yang dipakai penugasan mengajar tidak bisa dihapus."
       confirmLabel="Hapus"
       loadingLabel="Menghapus..."
       loading={single.isPending || bulk.isPending}
@@ -523,4 +579,8 @@ function ClassTemplateDeleteConfirm({
       onConfirm={onConfirm}
     />
   );
+}
+
+function DEFAULTS(): AcademicSubjectsParams {
+  return { page: 1, page_size: 25, sort: "name" };
 }
