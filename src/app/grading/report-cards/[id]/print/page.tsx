@@ -11,7 +11,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useReportCardDetail } from "@/lib/query/queries/use-grading";
 import { useHomeroomRoster, useTeachers, useHomerooms } from "@/lib/query/queries/use-academic-ops";
-import { useCurriculumVersions, useSubjects } from "@/lib/query/queries/use-academic-config";
 
 // Number to Indonesian words (terbilang) helper for grade score
 function scoreToIndonesianWords(score: number): string {
@@ -45,15 +44,12 @@ function PrintReportCardShell() {
   const detail = useReportCardDetail(params.id);
   const card = detail.data?.report_card;
   const roster = useHomeroomRoster(card?.homeroom_id);
-  const curriculum = useCurriculumVersions(card?.academic_year_id);
-  const curriculumId = curriculum.data?.[0]?.curriculum_version_id;
-  const subjects = useSubjects(curriculumId);
   const teachers = useTeachers();
   const homerooms = useHomerooms();
 
   // Auto trigger print when page finishes loading
   React.useEffect(() => {
-    const isLoaded = !tenant.isLoading && !detail.isLoading && !roster.isLoading && !curriculum.isLoading && !subjects.isLoading && !teachers.isLoading && !homerooms.isLoading;
+    const isLoaded = !tenant.isLoading && !detail.isLoading && !roster.isLoading && !teachers.isLoading && !homerooms.isLoading;
     const isSuccess = !tenant.error && !detail.error && tenant.data && detail.data && card;
     
     if (isLoaded && isSuccess) {
@@ -62,7 +58,7 @@ function PrintReportCardShell() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [tenant.isLoading, detail.isLoading, roster.isLoading, curriculum.isLoading, subjects.isLoading, teachers.isLoading, homerooms.isLoading, tenant.error, detail.error, tenant.data, detail.data, card]);
+  }, [tenant.isLoading, detail.isLoading, roster.isLoading, teachers.isLoading, homerooms.isLoading, tenant.error, detail.error, tenant.data, detail.data, card]);
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.opener) {
@@ -72,7 +68,7 @@ function PrintReportCardShell() {
     }
   };
 
-  if (tenant.isLoading || detail.isLoading || roster.isLoading || curriculum.isLoading || subjects.isLoading || teachers.isLoading || homerooms.isLoading) {
+  if (tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading) {
     return <PageSkeleton />;
   }
 
@@ -90,7 +86,6 @@ function PrintReportCardShell() {
   const student = (roster.data ?? []).find((s) => s.student_id === card.student_id);
   const homeroomName = (homerooms.data ?? []).find((h) => h.homeroom_id === card.homeroom_id)?.name;
   
-  const subjectNameById = new Map((subjects.data ?? []).map((subject) => [subject.subject_id, subject.name]));
   const teacherNameByUserId = new Map((teachers.data ?? []).flatMap((teacher) => teacher.user_id ? [[teacher.user_id, teacher.full_name] as const] : []));
   
   // Find homeroom teacher from approvals
@@ -119,9 +114,9 @@ function PrintReportCardShell() {
     "Praktik Sholat"
   ];
 
-  // Map student grades to subject names
+  // Map student grades to evaluation names
   const studentGradesWithNames = detail.data.grades.map((grade) => ({
-    name: subjectNameById.get(grade.subject_id) ?? "Subjek",
+    name: grade.evaluation_id,
     score: grade.score,
   }));
 

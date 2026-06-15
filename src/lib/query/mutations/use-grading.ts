@@ -3,10 +3,61 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
-import type { GradeEntryForm, ReportCardGenerateForm, ReportCardTransitionForm } from "@/lib/schemas/grading";
-import { classGradesQueryKey, reportCardsQueryKey, type Grade, type ReportCard } from "@/lib/query/queries/use-grading";
+import type { EvaluationForm, EvaluationUpdateForm, GradeEntryForm, ReportCardGenerateForm, ReportCardTransitionForm } from "@/lib/schemas/grading";
+import { classGradesQueryKey, evaluationsQueryKey, reportCardsQueryKey, type Evaluation, type Grade, type ReportCard } from "@/lib/query/queries/use-grading";
 
-export function useRecordGrade(homeroomId?: string) {
+// ── Evaluation mutations ─────────────────────────────────────────────────────
+
+export function useCreateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: EvaluationForm) =>
+      apiFetch<Evaluation>({
+        service: "grading",
+        path: "/api/v1/grading/evaluations",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) }),
+  });
+}
+
+export function useUpdateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ evaluationId, ...body }: EvaluationUpdateForm & { evaluationId: string }) =>
+      apiFetch<Evaluation>({
+        service: "grading",
+        path: `/api/v1/grading/evaluations/${evaluationId}`,
+        method: "PATCH",
+        authenticated: true,
+        body,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) }),
+  });
+}
+
+export function useDeleteEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (evaluationId: string) =>
+      apiFetch<void>({
+        service: "grading",
+        path: `/api/v1/grading/evaluations/${evaluationId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) });
+      qc.invalidateQueries({ queryKey: classGradesQueryKey(homeroomId, subjectId, academicYearId) });
+    },
+  });
+}
+
+// ── Grade mutations ──────────────────────────────────────────────────────────
+
+export function useUpsertGrade(homeroomId?: string, subjectId?: string, academicYearId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: GradeEntryForm) =>
@@ -17,24 +68,11 @@ export function useRecordGrade(homeroomId?: string) {
         authenticated: true,
         body: input,
       }),
-    onSuccess: (_grade, input) => qc.invalidateQueries({ queryKey: classGradesQueryKey(homeroomId, input.subject_id, input.academic_year_id) }),
-  });
-}
-
-export function useUpdateGrade(homeroomId?: string, subjectId?: string, academicYearId?: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ gradeId, score }: { gradeId: string; score: number }) =>
-      apiFetch<Grade>({
-        service: "grading",
-        path: `/api/v1/grading/grades/${gradeId}`,
-        method: "PATCH",
-        authenticated: true,
-        body: { score },
-      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: classGradesQueryKey(homeroomId, subjectId, academicYearId) }),
   });
 }
+
+// ── Report-card mutations ────────────────────────────────────────────────────
 
 export function useGenerateReportCards() {
   const qc = useQueryClient();

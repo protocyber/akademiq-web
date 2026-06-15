@@ -94,11 +94,13 @@ function StatusColumn({ status, cards, homeroomId, academicYearId, studentNameBy
   return <section className="rounded-xl border bg-muted/20 p-3"><h2 className="mb-3 text-sm font-semibold">{labels[status]} <span className="text-muted-foreground">({cards.length})</span></h2><div className="space-y-2">{cards.length === 0 ? <p className="text-xs text-muted-foreground">Belum ada kartu.</p> : cards.map((card) => <ReportCardTile key={card.report_card_id} card={card} homeroomId={homeroomId} academicYearId={academicYearId} studentName={studentNameById.get(card.student_id)} />)}</div></section>;
 }
 
+type ReportCardTileAction = "submit" | "homeroom-approve" | "return" | "principal-approve" | "reject";
+
 function ReportCardTile({ card, homeroomId, academicYearId, studentName }: { card: ReportCard; homeroomId: string; academicYearId: string; studentName?: string }) {
   const transition = useTransitionReportCard(card.report_card_id, homeroomId, academicYearId);
-  const action = actionForStatus(card.status);
-  async function runAction() {
-    if (!action) return;
+  const primaryAction = primaryActionForStatus(card.status);
+  const secondaryAction = secondaryActionForStatus(card.status);
+  async function runAction(action: ReportCardTileAction) {
     try {
       await transition.mutateAsync({ action });
       toast.success("Status rapor diperbarui.");
@@ -111,20 +113,34 @@ function ReportCardTile({ card, homeroomId, academicYearId, studentName }: { car
       <p className="font-medium">{studentName ?? "Siswa tidak ditemukan"}</p>
       <p className="text-xs text-muted-foreground">Rata-rata: {card.summary.average_score?.toFixed(1) ?? "-"}</p>
       {card.summary.incomplete ? <p className="text-xs text-amber-600">Nilai belum lengkap</p> : null}
-      <div className="mt-3 flex flex-wrap gap-2"><Button asChild size="sm" variant="outline"><Link href={`/grading/report-cards/${card.report_card_id}`}>Detail</Link></Button>{action ? <Button size="sm" loading={transition.isPending} onClick={runAction}>{actionLabel(action)}</Button> : null}</div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button asChild size="sm" variant="outline"><Link href={`/grading/report-cards/${card.report_card_id}`}>Detail</Link></Button>
+        {primaryAction ? <Button size="sm" loading={transition.isPending} onClick={() => runAction(primaryAction)}>{actionLabel(primaryAction)}</Button> : null}
+        {secondaryAction ? <Button size="sm" variant="outline" loading={transition.isPending} onClick={() => runAction(secondaryAction)}>{actionLabel(secondaryAction)}</Button> : null}
+      </div>
     </div>
   );
 }
 
-function actionForStatus(status: ReportCardStatus) {
-  if (status === "Draft") return "submit" as const;
-  if (status === "HomeroomReview") return "homeroom-approve" as const;
-  if (status === "PrincipalApproval") return "principal-approve" as const;
+function primaryActionForStatus(status: ReportCardStatus): ReportCardTileAction | null {
+  if (status === "Draft") return "submit";
+  if (status === "HomeroomReview") return "homeroom-approve";
+  if (status === "PrincipalApproval") return "principal-approve";
   return null;
 }
 
-function actionLabel(action: "submit" | "homeroom-approve" | "principal-approve") {
-  return action === "submit" ? "Submit" : action === "homeroom-approve" ? "Approve" : "Publish";
+function secondaryActionForStatus(status: ReportCardStatus): ReportCardTileAction | null {
+  if (status === "HomeroomReview") return "return";
+  if (status === "PrincipalApproval") return "reject";
+  return null;
+}
+
+function actionLabel(action: ReportCardTileAction) {
+  if (action === "submit") return "Submit";
+  if (action === "homeroom-approve") return "Approve";
+  if (action === "return") return "Kembalikan ke Draft";
+  if (action === "principal-approve") return "Publish";
+  return "Tolak ke Wali Kelas";
 }
 
 function PageSkeleton() { return <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10"><Skeleton className="h-9 w-56" /><Skeleton className="h-64 w-full" /></main>; }

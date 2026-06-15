@@ -4,14 +4,28 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
 
-export type Grade = {
-  grade_id: string;
-  student_id: string;
+export type Evaluation = {
+  evaluation_id: string;
+  tenant_id: string;
+  homeroom_id: string;
   subject_id: string;
   academic_year_id: string;
-  homeroom_id: string;
+  code: string;
+  name: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Grade = {
+  grade_id: string;
+  tenant_id: string;
+  student_id: string;
+  evaluation_id: string;
   score: number;
   recorded_by: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type ReportCardStatus = "Draft" | "HomeroomReview" | "PrincipalApproval" | "Published" | "Archived";
@@ -23,10 +37,10 @@ export type ReportCard = {
   homeroom_id: string;
   status: ReportCardStatus;
   summary: {
-    subjects?: Array<{ subject_id: string; score: number; passed: boolean }>;
+    evaluations?: Array<{ evaluation_id: string; score: number; passed: boolean }>;
     average_score?: number | null;
     pass_count?: number;
-    total_subjects?: number;
+    total_evaluations?: number;
     incomplete?: boolean;
   };
   published_at?: string | null;
@@ -47,6 +61,26 @@ export type ReportCardDetail = {
   grades: Grade[];
   approvals: ReportApproval[];
 };
+
+// ── Evaluation queries ───────────────────────────────────────────────────────
+
+export const evaluationsQueryKey = (homeroomId?: string, subjectId?: string, academicYearId?: string) =>
+  ["grading", "evaluations", homeroomId, subjectId, academicYearId] as const;
+
+export function useEvaluations(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+  return useQuery({
+    queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId),
+    queryFn: () =>
+      apiFetch<Evaluation[]>({
+        service: "grading",
+        path: `/api/v1/grading/evaluations?homeroom_id=${homeroomId}&subject_id=${subjectId}&academic_year_id=${academicYearId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(homeroomId && subjectId && academicYearId),
+  });
+}
+
+// ── Grade queries ────────────────────────────────────────────────────────────
 
 export const classGradesQueryKey = (homeroomId?: string, subjectId?: string, academicYearId?: string) =>
   ["grading", "class-grades", homeroomId, subjectId, academicYearId] as const;
@@ -76,6 +110,8 @@ export function useStudentGrades(studentId?: string, academicYearId?: string) {
     enabled: Boolean(studentId && academicYearId),
   });
 }
+
+// ── Report-card queries ──────────────────────────────────────────────────────
 
 export const reportCardsQueryKey = (homeroomId?: string, academicYearId?: string) =>
   ["grading", "report-cards", homeroomId, academicYearId] as const;
