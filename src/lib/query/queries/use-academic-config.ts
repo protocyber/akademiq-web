@@ -170,6 +170,36 @@ export function useSubjects(curriculumVersionId?: string) {
   });
 }
 
+/**
+ * All subjects across every curriculum version of an academic year — used to
+ * resolve subject names in a table whose rows can reference subjects from any
+ * curriculum. (Subjects are nested under curriculum versions, so a tenant-wide
+ * list does not exist.)
+ */
+export function useSubjectsForYear(academicYearId?: string) {
+  return useQuery({
+    queryKey: [...SUBJECTS_QUERY_KEY, "for-year", academicYearId ?? ""],
+    enabled: Boolean(academicYearId),
+    queryFn: async () => {
+      const curricula = await apiFetchEnvelope<CurriculumVersion[]>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${academicYearId}/curriculum-versions?page=1&page_size=100&sort=name`,
+        authenticated: true,
+      });
+      const perCurriculum = await Promise.all(
+        curricula.data.map((c) =>
+          apiFetchEnvelope<Subject[]>({
+            service: "academic-config",
+            path: `/api/v1/academic-config/curriculum-versions/${c.curriculum_version_id}/subjects?page=1&page_size=100&sort=name`,
+            authenticated: true,
+          }),
+        ),
+      );
+      return perCurriculum.flatMap((envelope) => envelope.data);
+    },
+  });
+}
+
 export function useGradingPolicy(academicYearId?: string) {
   return useQuery({
     queryKey: ["academic-config", "grading-policy", academicYearId],

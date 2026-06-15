@@ -1,7 +1,12 @@
 "use client";
 
-import { AcademicOpsPage, HomeroomsPanel } from "@/components/features/academic-ops/academic-ops-page";
+import { AcademicOpsPage } from "@/components/features/academic-ops/academic-ops-page";
+import { HomeroomsScreen } from "@/components/features/academic-ops/homerooms-screen";
 
 export default function HomeroomsPage() {
-  return <AcademicOpsPage title="Kelas" description="Buat homeroom, lihat roster, dan enroll siswa.">{(ctx) => <HomeroomsPanel {...ctx} />}</AcademicOpsPage>;
+  return (
+    <AcademicOpsPage title="Kelas" description="Buat homeroom, lihat roster, dan enroll siswa.">
+      {(ctx) => <HomeroomsScreen {...ctx} />}
+    </AcademicOpsPage>
+  );
 }
