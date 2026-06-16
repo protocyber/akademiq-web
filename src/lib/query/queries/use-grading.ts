@@ -35,14 +35,16 @@ export type ReportCard = {
   student_id: string;
   academic_year_id: string;
   homeroom_id: string;
+  report_type_id: string;
   status: ReportCardStatus;
   summary: {
-    evaluations?: Array<{ evaluation_id: string; score: number; passed: boolean }>;
+    subjects?: Array<{ subject_id: string; final_score: number; passed: boolean }>;
     average_score?: number | null;
     pass_count?: number;
-    total_evaluations?: number;
+    total_subjects?: number;
     incomplete?: boolean;
   };
+  weights_snapshot?: Record<string, Record<string, number>>;
   published_at?: string | null;
 };
 
@@ -56,10 +58,47 @@ export type ReportApproval = {
   approved_at: string;
 };
 
+export type ReportSubjectScore = {
+  report_card_id: string;
+  subject_id: string;
+  final_score: number;
+  computed_at: string;
+};
+
 export type ReportCardDetail = {
   report_card: ReportCard;
   grades: Grade[];
+  subject_scores: ReportSubjectScore[];
   approvals: ReportApproval[];
+};
+
+export type ReportType = {
+  report_type_id: string;
+  tenant_id: string;
+  academic_year_id: string;
+  code: string;
+  name: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReportFormula = {
+  report_type_id: string;
+  evaluation_id: string;
+  weight: number;
+  updated_at: string;
+};
+
+export type SubjectReportScore = {
+  tenant_id: string;
+  academic_year_id: string;
+  homeroom_id: string;
+  subject_id: string;
+  student_id: string;
+  report_type_id: string;
+  score: number;
+  updated_at: string;
 };
 
 // ── Evaluation queries ───────────────────────────────────────────────────────
@@ -113,19 +152,19 @@ export function useStudentGrades(studentId?: string, academicYearId?: string) {
 
 // ── Report-card queries ──────────────────────────────────────────────────────
 
-export const reportCardsQueryKey = (homeroomId?: string, academicYearId?: string) =>
-  ["grading", "report-cards", homeroomId, academicYearId] as const;
+export const reportCardsQueryKey = (reportTypeId?: string, homeroomId?: string) =>
+  ["grading", "report-cards", reportTypeId, homeroomId] as const;
 
-export function useReportCards(homeroomId?: string, academicYearId?: string) {
+export function useReportCards(reportTypeId?: string, homeroomId?: string) {
   return useQuery({
-    queryKey: reportCardsQueryKey(homeroomId, academicYearId),
+    queryKey: reportCardsQueryKey(reportTypeId, homeroomId),
     queryFn: () =>
       apiFetch<ReportCard[]>({
         service: "grading",
-        path: `/api/v1/grading/report-cards?homeroom_id=${homeroomId}&academic_year_id=${academicYearId}`,
+        path: `/api/v1/grading/report-cards?report_type_id=${reportTypeId}&homeroom_id=${homeroomId}`,
         authenticated: true,
       }),
-    enabled: Boolean(homeroomId && academicYearId),
+    enabled: Boolean(reportTypeId && homeroomId),
   });
 }
 
@@ -152,5 +191,108 @@ export function usePublishedReportCard(studentId?: string, academicYearId?: stri
         authenticated: true,
       }),
     enabled: Boolean(studentId && academicYearId),
+  });
+}
+
+// ── Report type queries ──────────────────────────────────────────────────────
+
+export const reportTypesQueryKey = (academicYearId?: string) =>
+  ["grading", "report-types", academicYearId] as const;
+
+export function useReportTypes(academicYearId?: string) {
+  return useQuery({
+    queryKey: reportTypesQueryKey(academicYearId),
+    queryFn: () =>
+      apiFetch<ReportType[]>({
+        service: "grading",
+        path: `/api/v1/grading/report-types?academic_year_id=${academicYearId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(academicYearId),
+  });
+}
+
+// ── Report formula queries ───────────────────────────────────────────────────
+
+export const reportFormulasQueryKey = (reportTypeId?: string) =>
+  ["grading", "report-formulas", reportTypeId] as const;
+
+export function useReportFormulas(reportTypeId?: string) {
+  return useQuery({
+    queryKey: reportFormulasQueryKey(reportTypeId),
+    queryFn: () =>
+      apiFetch<ReportFormula[]>({
+        service: "grading",
+        path: `/api/v1/grading/report-types/${reportTypeId}/formulas`,
+        authenticated: true,
+      }),
+    enabled: Boolean(reportTypeId),
+  });
+}
+
+/**
+ * Formula weight rows for several report types, keyed by `report_type_id`. Used
+ * by the Kelola Evaluasi weight matrix. Shares the `report-formulas` key prefix.
+ */
+export function useReportFormulasForTypes(reportTypeIds: string[]) {
+  return useQuery({
+    queryKey: ["grading", "report-formulas", "multi", reportTypeIds.join(",")] as const,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        reportTypeIds.map(async (reportTypeId) => {
+          const rows = await apiFetch<ReportFormula[]>({
+            service: "grading",
+            path: `/api/v1/grading/report-types/${reportTypeId}/formulas`,
+            authenticated: true,
+          });
+          return [reportTypeId, rows] as const;
+        }),
+      );
+      return new Map<string, ReportFormula[]>(entries);
+    },
+    enabled: reportTypeIds.length > 0,
+  });
+}
+
+// ── Subject report score queries (live grid columns) ─────────────────────────
+
+export const subjectReportScoresQueryKey = (reportTypeId?: string, homeroomId?: string, subjectId?: string) =>
+  ["grading", "subject-report-scores", reportTypeId, homeroomId, subjectId] as const;
+
+export function useSubjectReportScores(reportTypeId?: string, homeroomId?: string, subjectId?: string) {
+  return useQuery({
+    queryKey: subjectReportScoresQueryKey(reportTypeId, homeroomId, subjectId),
+    queryFn: () =>
+      apiFetch<SubjectReportScore[]>({
+        service: "grading",
+        path: `/api/v1/grading/subject-report-scores?report_type_id=${reportTypeId}&homeroom_id=${homeroomId}&subject_id=${subjectId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(reportTypeId && homeroomId && subjectId),
+  });
+}
+
+/**
+ * Live report scores for several report types at once (the year's types), keyed
+ * by `report_type_id`. Used to render the N read-only grade-entry columns. Shares
+ * the `subject-report-scores` key prefix so a grade save refreshes it.
+ */
+export function useSubjectReportScoresForTypes(reportTypeIds: string[], homeroomId?: string, subjectId?: string) {
+  return useQuery({
+    queryKey: ["grading", "subject-report-scores", "multi", reportTypeIds.join(","), homeroomId, subjectId] as const,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        reportTypeIds.map(async (reportTypeId) => {
+          const rows = await apiFetch<SubjectReportScore[]>({
+            service: "grading",
+            path: `/api/v1/grading/subject-report-scores?report_type_id=${reportTypeId}&homeroom_id=${homeroomId}&subject_id=${subjectId}`,
+            authenticated: true,
+          });
+          return [reportTypeId, rows] as const;
+        }),
+      );
+      return new Map<string, SubjectReportScore[]>(entries);
+    },
+    enabled: Boolean(homeroomId && subjectId && reportTypeIds.length > 0),
   });
 }

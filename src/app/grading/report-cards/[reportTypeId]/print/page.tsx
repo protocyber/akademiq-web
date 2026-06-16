@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { useSubjectsForYear } from "@/lib/query/queries/use-academic-config";
 import { useReportCardDetail } from "@/lib/query/queries/use-grading";
 import { useHomeroomRoster, useTeachers, useHomerooms } from "@/lib/query/queries/use-academic-ops";
 
@@ -38,37 +39,38 @@ export default function PrintReportCardPage() {
 }
 
 function PrintReportCardShell() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ reportTypeId: string }>();
   const router = useRouter();
   const tenant = useTenantMe();
-  const detail = useReportCardDetail(params.id);
+  const detail = useReportCardDetail(params.reportTypeId);
   const card = detail.data?.report_card;
   const roster = useHomeroomRoster(card?.homeroom_id);
   const teachers = useTeachers();
   const homerooms = useHomerooms();
+  const subjects = useSubjectsForYear(card?.academic_year_id);
 
   // Auto trigger print when page finishes loading
   React.useEffect(() => {
-    const isLoaded = !tenant.isLoading && !detail.isLoading && !roster.isLoading && !teachers.isLoading && !homerooms.isLoading;
+    const isLoaded = !tenant.isLoading && !detail.isLoading && !roster.isLoading && !teachers.isLoading && !homerooms.isLoading && !subjects.isLoading;
     const isSuccess = !tenant.error && !detail.error && tenant.data && detail.data && card;
-    
+
     if (isLoaded && isSuccess) {
       const timer = setTimeout(() => {
         window.print();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [tenant.isLoading, detail.isLoading, roster.isLoading, teachers.isLoading, homerooms.isLoading, tenant.error, detail.error, tenant.data, detail.data, card]);
+  }, [tenant.isLoading, detail.isLoading, roster.isLoading, teachers.isLoading, homerooms.isLoading, subjects.isLoading, tenant.error, detail.error, tenant.data, detail.data, card]);
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.opener) {
       window.close();
     } else {
-      router.push(`/grading/report-cards/${params.id}`);
+      router.push(`/grading/report-cards`);
     }
   };
 
-  if (tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading) {
+  if (tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading || subjects.isLoading) {
     return <PageSkeleton />;
   }
 
@@ -114,10 +116,14 @@ function PrintReportCardShell() {
     "Praktik Sholat"
   ];
 
-  // Map student grades to evaluation names
-  const studentGradesWithNames = detail.data.grades.map((grade) => ({
-    name: grade.evaluation_id,
-    score: grade.score,
+  // Build subject name lookup from year's curriculum
+  const subjectNameById = new Map((subjects.data ?? []).map((s) => [s.subject_id, s.name]));
+
+  // Map frozen subject scores to { name, score } using resolved subject names.
+  // Falls back to "Mapel #xxxx" if the subject isn't found in the curriculum.
+  const studentGradesWithNames = (detail.data.subject_scores ?? []).map((score) => ({
+    name: subjectNameById.get(score.subject_id) ?? `Mapel #${score.subject_id.slice(-4)}`,
+    score: score.final_score,
   }));
 
   // Helper to check if a subject matches name (case insensitive)

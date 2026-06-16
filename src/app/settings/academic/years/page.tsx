@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +79,13 @@ import {
   useDeleteCurriculumVersion,
   useUpsertGradingPolicy,
 } from "@/lib/query/mutations/use-academic-config";
+import {
+  useCreateReportType,
+  useDeleteReportType,
+  useUpdateReportType,
+} from "@/lib/query/mutations/use-grading";
+import { reportTypeCreateSchema, reportTypeUpdateSchema, type ReportTypeCreateForm, type ReportTypeUpdateForm } from "@/lib/schemas/grading";
+import { useReportTypes, type ReportType } from "@/lib/query/queries/use-grading";
 
 const nextStatuses: Record<string, string[]> = {
   Planning: ["Configuration"],
@@ -472,8 +479,10 @@ function replaceParams(router: ReturnType<typeof useRouter>, params: AcademicYea
 }
 
 // ---------------------------------------------------------------------------
-// Sectioned create/edit modal: § Identitas / § Kebijakan Nilai / § Versi Kurikulum
+// Tabbed create/edit modal: § Identitas (always) + tabs for settings sections
 // ---------------------------------------------------------------------------
+
+type SettingsTab = "kebijakan" | "kurikulum" | "jenis-rapor";
 
 function YearFormModal({
   open,
@@ -488,6 +497,9 @@ function YearFormModal({
   year?: AcademicYear;
   canManage: boolean;
 }) {
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>("kebijakan");
+  const yearId = year?.academic_year_id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
@@ -497,14 +509,63 @@ function YearFormModal({
           </DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "Mulai dari status Planning. Kebijakan nilai & kurikulum tersedia setelah tahun dibuat."
-              : "Perbarui identitas, kebijakan nilai, dan versi kurikulum."}
+              ? "Mulai dari status Planning. Pengaturan nilai, kurikulum & jenis rapor tersedia setelah tahun dibuat."
+              : "Perbarui identitas, kebijakan nilai, kurikulum, dan jenis rapor."}
           </DialogDescription>
         </DialogHeader>
 
+        {/* Identity + status always visible */}
         <IdentitySection mode={mode} year={year} canManage={canManage} onDone={() => onOpenChange(false)} />
-        <GradingPolicySection yearId={year?.academic_year_id} canManage={canManage} />
-        <CurriculumSection yearId={year?.academic_year_id} canManage={canManage} />
+
+        {/* Tab panel — gated on yearId for UX clarity */}
+        <div className="space-y-0 border-t pt-4">
+          {!yearId ? (
+            <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+              Pengaturan nilai, kurikulum, dan jenis rapor tersedia setelah tahun ajaran disimpan.
+            </p>
+          ) : (
+            <>
+              {/* Tab strip */}
+              <div className="flex gap-0 border-b">
+                {(
+                  [
+                    { id: "kebijakan", label: "Kebijakan Nilai" },
+                    { id: "kurikulum", label: "Versi Kurikulum" },
+                    { id: "jenis-rapor", label: "Jenis Rapor" },
+                  ] as const
+                ).map((tab) => (
+                  <Button
+                    key={tab.id}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`-mb-px rounded-none border-b-2 px-4 text-sm font-normal ${
+                      activeTab === tab.id
+                        ? "border-foreground font-semibold text-foreground"
+                        : "border-transparent text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tab.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Tab panels */}
+              <div className="pt-4">
+                {activeTab === "kebijakan" && (
+                  <GradingPolicySection yearId={yearId} canManage={canManage} />
+                )}
+                {activeTab === "kurikulum" && (
+                  <CurriculumSection yearId={yearId} canManage={canManage} />
+                )}
+                {activeTab === "jenis-rapor" && (
+                  <ReportTypesSection yearId={yearId} canManage={canManage} />
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -702,10 +763,6 @@ function GradingPolicySection({ yearId, canManage }: { yearId?: string; canManag
 
   return (
     <div className="space-y-3">
-      <SectionHeading
-        title="§ Kebijakan Nilai"
-        hint={disabled ? "Tersedia setelah tahun ajaran dibuat." : undefined}
-      />
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -757,6 +814,253 @@ function GradingPolicySection({ yearId, canManage }: { yearId?: string; canManag
   );
 }
 
+function ReportTypesSection({ yearId, canManage }: { yearId: string; canManage: boolean }) {
+  const types = useReportTypes(yearId);
+  const create = useCreateReportType(yearId);
+  const update = useUpdateReportType(yearId);
+  const remove = useDeleteReportType(yearId);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+
+  const form = useForm<ReportTypeCreateForm>({
+    resolver: zodResolver(reportTypeCreateSchema),
+    defaultValues: { academic_year_id: yearId, code: "", name: "" },
+  });
+
+  const sorted = React.useMemo(
+    () => [...(types.data ?? [])].sort((a, b) => a.position - b.position),
+    [types.data],
+  );
+
+  async function onAdd(values: ReportTypeCreateForm) {
+    try {
+      await create.mutateAsync(values);
+      form.reset({ academic_year_id: yearId, code: "", name: "" });
+      toast.success("Jenis rapor ditambahkan.");
+    } catch (err) {
+      const applied = applyServerFieldErrors(form, err);
+      if (applied.length === 0) {
+        toast.error(getErrorMessage(err, { fallback: "Tidak bisa menambah jenis rapor." }));
+      }
+    }
+  }
+
+  async function onDelete(reportTypeId: string) {
+    try {
+      await remove.mutateAsync(reportTypeId);
+      toast.success("Jenis rapor dihapus.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus jenis rapor." }));
+    }
+  }
+
+  async function onReorder(item: ReportType, direction: "up" | "down") {
+    const idx = sorted.findIndex((t) => t.report_type_id === item.report_type_id);
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const swap = sorted[swapIdx];
+    try {
+      await Promise.all([
+        update.mutateAsync({ reportTypeId: item.report_type_id, position: swap.position }),
+        update.mutateAsync({ reportTypeId: swap.report_type_id, position: item.position }),
+      ]);
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah urutan." }));
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-muted-foreground">
+        Jenis rapor dikelola di sini dan tersedia di semua kelas tahun ini. Kode dipakai sebagai judul kolom di grid nilai.
+      </p>
+
+      {types.isLoading ? (
+        <Skeleton className="h-20 w-full" />
+      ) : sorted.length === 0 ? (
+        <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+          Belum ada jenis rapor. Tambahkan mis. &quot;Rapor UTS&quot; / &quot;Rapor UAS&quot;.
+        </p>
+      ) : (
+        <ul className="divide-y rounded-lg border">
+          {sorted.map((reportType, idx) => (
+            <ReportTypeRow
+              key={reportType.report_type_id}
+              reportType={reportType}
+              isFirst={idx === 0}
+              isLast={idx === sorted.length - 1}
+              isEditing={editingId === reportType.report_type_id}
+              canManage={canManage}
+              onEdit={() => setEditingId(reportType.report_type_id)}
+              onEditDone={() => setEditingId(null)}
+              onDelete={() => onDelete(reportType.report_type_id)}
+              onMoveUp={() => onReorder(reportType, "up")}
+              onMoveDown={() => onReorder(reportType, "down")}
+              updateMut={update}
+            />
+          ))}
+        </ul>
+      )}
+
+      <div className="border-t pt-3">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Tambah jenis rapor baru</p>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onAdd)} className="grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-start">
+            <FormField
+              control={form.control}
+              name="code"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Kode</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Rapor UTS" disabled={!canManage} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs">Nama</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Rapor Tengah Semester" disabled={!canManage} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="mt-5" loading={create.isPending} disabled={!canManage}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          </form>
+        </Form>
+      </div>
+    </div>
+  );
+}
+
+function ReportTypeRow({
+  reportType,
+  isFirst,
+  isLast,
+  isEditing,
+  canManage,
+  onEdit,
+  onEditDone,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  updateMut,
+}: {
+  reportType: ReportType;
+  isFirst: boolean;
+  isLast: boolean;
+  isEditing: boolean;
+  canManage: boolean;
+  onEdit: () => void;
+  onEditDone: () => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  updateMut: ReturnType<typeof useUpdateReportType>;
+}) {
+  const [editCode, setEditCode] = React.useState(reportType.code);
+  const [editName, setEditName] = React.useState(reportType.name);
+
+  React.useEffect(() => {
+    if (isEditing) {
+      setEditCode(reportType.code);
+      setEditName(reportType.name);
+    }
+  }, [isEditing, reportType.code, reportType.name]);
+
+  async function saveEdit() {
+    try {
+      await updateMut.mutateAsync({
+        reportTypeId: reportType.report_type_id,
+        code: editCode.trim() || undefined,
+        name: editName.trim() || undefined,
+      });
+      toast.success("Jenis rapor diperbarui.");
+      onEditDone();
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan perubahan." }));
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <li className="flex items-center gap-2 p-3">
+        <Input
+          value={editCode}
+          onChange={(e) => setEditCode(e.target.value)}
+          className="h-8 w-28 text-sm"
+          placeholder="Kode"
+        />
+        <Input
+          value={editName}
+          onChange={(e) => setEditName(e.target.value)}
+          className="h-8 flex-1 text-sm"
+          placeholder="Nama"
+        />
+        <Button size="sm" className="h-8 px-2 text-xs" loading={updateMut.isPending} onClick={() => void saveEdit()}>
+          OK
+        </Button>
+        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={onEditDone}>
+          Batal
+        </Button>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center gap-2 p-3 text-sm">
+      {/* Reorder buttons */}
+      <div className="flex flex-col">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={isFirst || !canManage || updateMut.isPending}
+          onClick={onMoveUp}
+          className="h-5 w-5 p-0"
+        >
+          <ChevronUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={isLast || !canManage || updateMut.isPending}
+          onClick={onMoveDown}
+          className="h-5 w-5 p-0"
+        >
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">
+          {reportType.code} <span className="text-muted-foreground">· {reportType.name}</span>
+        </p>
+      </div>
+
+      {/* Edit + Delete */}
+      <div className="flex items-center gap-1">
+        <Button size="sm" variant="ghost" disabled={!canManage} onClick={onEdit} className="h-7 w-7 p-0">
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" disabled={!canManage} onClick={onDelete} className="h-7 w-7 p-0 text-destructive hover:text-destructive">
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </li>
+  );
+}
+
 function CurriculumSection({ yearId, canManage }: { yearId?: string; canManage: boolean }) {
   const versions = useCurriculumVersions(yearId);
   const add = useAddCurriculumVersion(yearId ?? "");
@@ -793,10 +1097,6 @@ function CurriculumSection({ yearId, canManage }: { yearId?: string; canManage: 
 
   return (
     <div className="space-y-3 pb-2">
-      <SectionHeading
-        title="§ Versi Kurikulum"
-        hint={disabled ? "Tersedia setelah tahun ajaran dibuat." : undefined}
-      />
       <div className="space-y-2">
         {versions.data?.length ? (
           versions.data.map((version) => (

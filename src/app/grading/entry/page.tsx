@@ -32,7 +32,9 @@ import {
 } from "@/lib/query/mutations/use-grading";
 import { useAcademicYears, useCurriculumVersions, useSubjects } from "@/lib/query/queries/use-academic-config";
 import { useHomeroomRoster, useHomerooms, useTeachingAssignments } from "@/lib/query/queries/use-academic-ops";
-import { useClassGrades, useEvaluations, type Evaluation, type Grade } from "@/lib/query/queries/use-grading";
+import { useClassGrades, useEvaluations, useReportTypes, useSubjectReportScoresForTypes, type Evaluation, type Grade } from "@/lib/query/queries/use-grading";
+import { useReportFormulasForTypes } from "@/lib/query/queries/use-grading";
+import { useUpsertReportFormula } from "@/lib/query/mutations/use-grading";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { gradeCellSchema } from "@/lib/schemas/grading";
@@ -93,6 +95,9 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
   const roster = useHomeroomRoster(homeroomId);
   const evaluations = useEvaluations(homeroomId, subjectId, yearId);
   const grades = useClassGrades(homeroomId, subjectId, yearId);
+  const reportTypes = useReportTypes(yearId);
+  const reportTypeIds = (reportTypes.data ?? []).map((t) => t.report_type_id);
+  const reportScores = useSubjectReportScoresForTypes(reportTypeIds, homeroomId, subjectId);
 
   const activeYears = (years.data ?? []).filter((year) => year.status === "Active");
   const filteredHomerooms = (homerooms.data ?? []).filter((room) => !yearId || room.academic_year_id === yearId);
@@ -113,6 +118,17 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
     }
     return map;
   }, [grades.data]);
+
+  // Build live report-score index: `reportTypeId:studentId` → score
+  const reportScoreIndex = React.useMemo(() => {
+    const map = new Map<string, number>();
+    for (const [reportTypeId, rows] of reportScores.data ?? new Map()) {
+      for (const row of rows) {
+        map.set(`${reportTypeId}:${row.student_id}`, row.score);
+      }
+    }
+    return map;
+  }, [reportScores.data]);
 
   function changeYear(id: string) { setYearId(id); setHomeroomId(""); setSubjectId(""); }
   function changeHomeroom(id: string) { setHomeroomId(id); setSubjectId(""); }
@@ -182,6 +198,8 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
             students={roster.data ?? []}
             evaluations={evaluations.data ?? []}
             gradeIndex={gradeIndex}
+            reportTypes={reportTypes.data ?? []}
+            reportScoreIndex={reportScoreIndex}
             homeroomId={homeroomId}
             subjectId={subjectId}
             yearId={yearId}
@@ -213,6 +231,8 @@ function EvaluationGrid({
   students,
   evaluations,
   gradeIndex,
+  reportTypes,
+  reportScoreIndex,
   homeroomId,
   subjectId,
   yearId,
@@ -222,6 +242,8 @@ function EvaluationGrid({
   students: Student[];
   evaluations: Evaluation[];
   gradeIndex: Map<string, Grade>;
+  reportTypes: Array<{ report_type_id: string; code: string }>;
+  reportScoreIndex: Map<string, number>;
   homeroomId: string;
   subjectId: string;
   yearId: string;
@@ -259,6 +281,15 @@ function EvaluationGrid({
                 {ev.code}
               </th>
             ))}
+            {reportTypes.map((rt) => (
+              <th
+                key={rt.report_type_id}
+                className="min-w-[96px] border-l bg-muted/40 px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                title={`Nilai Rapor — ${rt.code}`}
+              >
+                {rt.code}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -281,6 +312,14 @@ function EvaluationGrid({
                   />
                 </td>
               ))}
+              {reportTypes.map((rt) => {
+                const score = reportScoreIndex.get(`${rt.report_type_id}:${student.student_id}`);
+                return (
+                  <td key={rt.report_type_id} className="border-l px-2 py-2 text-center text-sm tabular-nums text-muted-foreground">
+                    {score == null ? <span className="text-xs">—</span> : score.toFixed(1)}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>
@@ -352,7 +391,7 @@ function GradeCell({
   return (
     <div className="relative flex flex-col items-center gap-0.5">
       <div className="relative">
-        <input
+        <Input
           type="text"
           inputMode="decimal"
           value={value}
@@ -369,7 +408,7 @@ function GradeCell({
           }}
           disabled={!canWrite || status === "saving"}
           placeholder="—"
-          className={`w-20 rounded-md border px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-50 ${borderClass}`}
+          className={`w-20 px-2 py-1 text-center text-sm ${borderClass}`}
         />
         {status === "saving" && (
           <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -385,13 +424,15 @@ function GradeCell({
       </div>
       {isInvalid && <p className="text-[10px] text-destructive">{validationError}</p>}
       {status === "error" && !isInvalid && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => void trySave()}
-          className="text-[10px] text-amber-600 underline underline-offset-2"
+          className="h-auto p-0 text-[10px] text-amber-600 underline underline-offset-2 hover:bg-transparent hover:text-amber-700"
         >
           ⚠ Coba lagi
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -559,6 +600,10 @@ function KelolEvaluasiModal({
               </Button>
             </DialogFooter>
           )}
+
+          {sorted.length > 0 && (
+            <WeightMatrix yearId={yearId} subjectId={subjectId} evaluations={sorted} />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -656,25 +701,191 @@ function EvaluationRow({
       <td className="py-2 pr-2 text-muted-foreground">{evaluation.name}</td>
       <td className="py-2 text-center">
         <div className="flex items-center justify-center gap-0.5">
-          <button type="button" onClick={onMoveUp} disabled={isFirst} className="rounded p-0.5 hover:bg-muted disabled:opacity-30">
+          <Button type="button" variant="ghost" size="sm" onClick={onMoveUp} disabled={isFirst} className="h-6 w-6 p-0">
             <ChevronUp className="h-3.5 w-3.5" />
-          </button>
-          <button type="button" onClick={onMoveDown} disabled={isLast} className="rounded p-0.5 hover:bg-muted disabled:opacity-30">
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={onMoveDown} disabled={isLast} className="h-6 w-6 p-0">
             <ChevronDown className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
       </td>
       <td className="py-2 pl-1">
         <div className="flex items-center gap-0.5">
-          <button type="button" onClick={onEdit} className="rounded p-1 hover:bg-muted">
+          <Button type="button" variant="ghost" size="sm" onClick={onEdit} className="h-6 w-6 p-0">
             <Pencil className="h-3.5 w-3.5" />
-          </button>
-          <button type="button" onClick={onDelete} className="rounded p-1 text-destructive hover:bg-destructive/10">
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={onDelete} className="h-6 w-6 p-0 text-destructive hover:text-destructive">
             <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
       </td>
     </tr>
+  );
+}
+
+// ── Bobot per Jenis Rapor matrix ──────────────────────────────────────────────
+
+export function WeightMatrix({
+  yearId,
+  subjectId,
+  evaluations,
+}: {
+  yearId: string;
+  subjectId: string;
+  evaluations: Evaluation[];
+}) {
+  const reportTypes = useReportTypes(yearId);
+  const reportTypeIds = (reportTypes.data ?? []).map((t) => t.report_type_id);
+  const formulasByType = useReportFormulasForTypes(reportTypeIds);
+
+  // weights[typeId][evaluationId] = number
+  const [weights, setWeights] = React.useState<Record<string, Record<string, number>>>({});
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => {
+    if (hydrated || formulasByType.isLoading || !formulasByType.data) return;
+    const next: Record<string, Record<string, number>> = {};
+    const evalIds = new Set(evaluations.map((e) => e.evaluation_id));
+    for (const [reportTypeId, rows] of formulasByType.data) {
+      const map: Record<string, number> = {};
+      for (const row of rows) {
+        if (evalIds.has(row.evaluation_id)) map[row.evaluation_id] = row.weight;
+      }
+      next[reportTypeId] = map;
+    }
+    setWeights(next);
+    setHydrated(true);
+  }, [formulasByType.isLoading, formulasByType.data, evaluations, hydrated]);
+
+  // Reset hydration when the subject/year changes.
+  React.useEffect(() => {
+    setHydrated(false);
+  }, [subjectId, yearId]);
+
+  if (reportTypes.isLoading || !reportTypes.data) {
+    return <Skeleton className="h-24 w-full" />;
+  }
+  const types = reportTypes.data;
+  if (types.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+        Belum ada jenis rapor untuk tahun ini. Tambahkan dari Pengaturan → Tahun Ajaran.
+      </p>
+    );
+  }
+
+  function columnTotal(reportTypeId: string): number {
+    return Object.entries(weights[reportTypeId] ?? {}).reduce(
+      (sum, [, value]) => sum + (Number.isFinite(value) ? value : 0),
+      0,
+    );
+  }
+
+  return (
+    <div className="space-y-2 border-t pt-4">
+      <div>
+        <p className="text-sm font-semibold">Bobot per Jenis Rapor</p>
+        <p className="text-xs text-muted-foreground">
+          Atur kontribusi tiap evaluasi ke tiap jenis rapor. Kolom harus berjumlah tepat 100% sebelum disimpan.
+        </p>
+      </div>
+      <div className="overflow-x-auto rounded-lg border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/40">
+              <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Evaluasi</th>
+              {types.map((rt) => (
+                <th key={rt.report_type_id} className="px-3 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">
+                  {rt.code}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {evaluations.map((ev) => (
+              <tr key={ev.evaluation_id} className="border-t">
+                <td className="px-3 py-2 font-medium">{ev.code}</td>
+                {types.map((rt) => (
+                  <td key={rt.report_type_id} className="px-2 py-2 text-center">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={weights[rt.report_type_id]?.[ev.evaluation_id] ?? ""}
+                      onChange={(e) =>
+                        setWeights((prev) => {
+                          const col = { ...(prev[rt.report_type_id] ?? {}) };
+                          const raw = e.target.value;
+                          if (raw === "") {
+                            delete col[ev.evaluation_id];
+                          } else {
+                            const parsed = Number(raw);
+                            if (Number.isFinite(parsed)) col[ev.evaluation_id] = parsed;
+                          }
+                          return { ...prev, [rt.report_type_id]: col };
+                        })
+                      }
+                      className="h-8 w-20 text-center text-sm"
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr className="border-t bg-muted/30">
+              <td className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">Total</td>
+              {types.map((rt) => {
+                const total = columnTotal(rt.report_type_id);
+                const valid = Math.abs(total - 100) < 1e-9;
+                return (
+                  <td key={rt.report_type_id} className="px-3 py-2 text-center">
+                    <span className={valid ? "text-xs font-semibold text-emerald-600" : "text-xs font-semibold text-destructive"}>
+                      {total}%
+                    </span>
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {types.map((rt) => (
+          <WeightColumnSave key={rt.report_type_id} reportTypeId={rt.report_type_id} reportTypeCode={rt.code} subjectId={subjectId} weights={weights[rt.report_type_id] ?? {}} evaluations={evaluations} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function WeightColumnSave({
+  reportTypeId,
+  reportTypeCode,
+  subjectId,
+  weights,
+  evaluations,
+}: {
+  reportTypeId: string;
+  reportTypeCode: string;
+  subjectId: string;
+  weights: Record<string, number>;
+  evaluations: Evaluation[];
+}) {
+  const upsert = useUpsertReportFormula(reportTypeId);
+  const total = Object.values(weights).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
+  const valid = evaluations.length > 0 && Math.abs(total - 100) < 1e-9;
+  async function save() {
+    if (!valid) return;
+    try {
+      await upsert.mutateAsync({ subjectId, weights });
+      toast.success(`Bobot ${reportTypeCode} disimpan.`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Gagal menyimpan bobot." }));
+    }
+  }
+  return (
+    <Button size="sm" variant={valid ? "default" : "outline"} disabled={!valid || upsert.isPending} loading={upsert.isPending} onClick={() => void save()}>
+      Simpan {reportTypeCode}
+    </Button>
   );
 }
 

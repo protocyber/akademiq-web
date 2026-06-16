@@ -3,8 +3,26 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
-import type { EvaluationForm, EvaluationUpdateForm, GradeEntryForm, ReportCardGenerateForm, ReportCardTransitionForm } from "@/lib/schemas/grading";
-import { classGradesQueryKey, evaluationsQueryKey, reportCardsQueryKey, type Evaluation, type Grade, type ReportCard } from "@/lib/query/queries/use-grading";
+import type {
+  EvaluationForm,
+  EvaluationUpdateForm,
+  GradeEntryForm,
+  ReportCardTransitionForm,
+  ReportTypeCreateForm,
+  ReportTypeUpdateForm,
+} from "@/lib/schemas/grading";
+import {
+  classGradesQueryKey,
+  evaluationsQueryKey,
+  reportCardsQueryKey,
+  reportFormulasQueryKey,
+  reportTypesQueryKey,
+  subjectReportScoresQueryKey,
+  type Evaluation,
+  type Grade,
+  type ReportCard,
+  type ReportType,
+} from "@/lib/query/queries/use-grading";
 
 // ── Evaluation mutations ─────────────────────────────────────────────────────
 
@@ -68,16 +86,87 @@ export function useUpsertGrade(homeroomId?: string, subjectId?: string, academic
         authenticated: true,
         body: input,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: classGradesQueryKey(homeroomId, subjectId, academicYearId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: classGradesQueryKey(homeroomId, subjectId, academicYearId) });
+      // Saving a grade recomputes live report scores for the class+subject.
+      qc.invalidateQueries({ queryKey: ["grading", "subject-report-scores"] });
+    },
+  });
+}
+
+// ── Report type mutations ────────────────────────────────────────────────────
+
+export function useCreateReportType(academicYearId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ReportTypeCreateForm) =>
+      apiFetch<ReportType>({
+        service: "grading",
+        path: "/api/v1/grading/report-types",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId) }),
+  });
+}
+
+export function useUpdateReportType(academicYearId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ reportTypeId, ...body }: ReportTypeUpdateForm & { reportTypeId: string }) =>
+      apiFetch<ReportType>({
+        service: "grading",
+        path: `/api/v1/grading/report-types/${reportTypeId}`,
+        method: "PATCH",
+        authenticated: true,
+        body,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId) }),
+  });
+}
+
+export function useDeleteReportType(academicYearId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (reportTypeId: string) =>
+      apiFetch<void>({
+        service: "grading",
+        path: `/api/v1/grading/report-types/${reportTypeId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId) }),
+  });
+}
+
+// ── Report formula mutations ─────────────────────────────────────────────────
+
+export function useUpsertReportFormula(reportTypeId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ subjectId, weights }: { subjectId: string; weights: Record<string, number> }) =>
+      apiFetch<void>({
+        service: "grading",
+        path: `/api/v1/grading/report-types/${reportTypeId}/formulas/${subjectId}`,
+        method: "PUT",
+        authenticated: true,
+        body: { weights },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: reportFormulasQueryKey(reportTypeId) });
+      // Weight changes affect live report scores.
+      qc.invalidateQueries({ queryKey: ["grading", "subject-report-scores"] });
+    },
   });
 }
 
 // ── Report-card mutations ────────────────────────────────────────────────────
 
-export function useGenerateReportCards() {
+export function useGenerateReportCards(reportTypeId?: string, homeroomId?: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: ReportCardGenerateForm) =>
+    mutationFn: (input: { report_type_id: string; homeroom_id: string }) =>
       apiFetch<{ generated: ReportCard[]; skipped: string[] }>({
         service: "grading",
         path: "/api/v1/grading/report-cards/generate",
@@ -85,11 +174,11 @@ export function useGenerateReportCards() {
         authenticated: true,
         body: input,
       }),
-    onSuccess: (_result, input) => qc.invalidateQueries({ queryKey: reportCardsQueryKey(input.homeroom_id, input.academic_year_id) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportCardsQueryKey(reportTypeId, homeroomId) }),
   });
 }
 
-export function useTransitionReportCard(reportCardId: string, homeroomId?: string, academicYearId?: string) {
+export function useTransitionReportCard(reportCardId: string, reportTypeId?: string, homeroomId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ action, input }: { action: "submit" | "homeroom-approve" | "return" | "principal-approve" | "reject"; input?: ReportCardTransitionForm }) =>
@@ -102,7 +191,7 @@ export function useTransitionReportCard(reportCardId: string, homeroomId?: strin
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["grading", "report-card", reportCardId] });
-      qc.invalidateQueries({ queryKey: reportCardsQueryKey(homeroomId, academicYearId) });
+      qc.invalidateQueries({ queryKey: reportCardsQueryKey(reportTypeId, homeroomId) });
     },
   });
 }
