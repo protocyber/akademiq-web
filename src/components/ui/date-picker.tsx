@@ -45,13 +45,13 @@ export function DatePicker({
           aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
           className={cn(
-            "w-full justify-start text-left font-normal",
+            "w-full justify-start text-left font-normal px-3",
             !selected && "text-muted-foreground",
             className,
           )}
         >
           <CalendarIcon className="h-4 w-4" />
-          {selected ? format(selected, "yyyy-MM-dd") : <span>{placeholder}</span>}
+          {selected ? format(selected, "d MMM yyyy") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

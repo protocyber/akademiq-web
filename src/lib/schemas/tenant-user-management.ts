@@ -17,9 +17,17 @@ export const inviteTenantUserSchema = z.object({
 
 export const acceptInvitationSchema = z.object({
   token: z.string().min(1, "Token undangan wajib diisi"),
-  password: z.string().min(8, "Password minimal 8 karakter"),
-  full_name: z.string().min(1, "Nama lengkap wajib diisi"),
 });
+
+export const setPasswordSchema = z
+  .object({
+    password: z.string().min(8, "Password minimal 8 karakter"),
+    confirm: z.string().min(8, "Password minimal 8 karakter"),
+  })
+  .refine((data) => data.password === data.confirm, {
+    message: "Konfirmasi password tidak cocok",
+    path: ["confirm"],
+  });
 
 export const roleChangeSchema = z.object({
   role: z.enum(tenantAssignableRoles),
@@ -55,6 +63,7 @@ export const updateTenantUserSchema = z.object({
 
 export type InviteTenantUserForm = z.infer<typeof inviteTenantUserSchema>;
 export type AcceptInvitationForm = z.infer<typeof acceptInvitationSchema>;
+export type SetPasswordForm = z.infer<typeof setPasswordSchema>;
 export type RoleChangeForm = z.infer<typeof roleChangeSchema>;
 export type CreateTenantUserForm = z.infer<typeof createTenantUserSchema>;
 export type UpdateTenantUserForm = z.infer<typeof updateTenantUserSchema>;

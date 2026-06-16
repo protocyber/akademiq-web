@@ -29,6 +29,7 @@ import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
 import { googleLoginStartUrl, useLogin, useMyTenants, useEnterTenant } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
+import { isApiError } from "@/lib/errors/messages";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/login";
 
@@ -108,6 +109,14 @@ function LoginForm() {
         router.push("/tenant-select");
       }
     } catch (err) {
+      // PASSWORD_NOT_SET: the account exists but has no password. Route the
+      // user to the authenticated set-password screen instead of showing a
+      // generic error.
+      if (isApiError(err, "PASSWORD_NOT_SET")) {
+        toast.info("Akun Anda belum punya password. Silakan set password terlebih dahulu.");
+        router.push("/set-password");
+        return;
+      }
       const applied = applyServerFieldErrors(form, err);
       if (applied.length > 0) return;
       const message = getErrorMessage(err, { fallback: "Tidak bisa masuk. Coba lagi." });

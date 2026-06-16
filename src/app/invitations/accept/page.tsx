@@ -1,29 +1,23 @@
 "use client";
 
 import * as React from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { GraduationCap, KeyRound, User } from "lucide-react";
+import { GraduationCap, ArrowRight } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
 import { getErrorMessage } from "@/lib/errors/messages";
-import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { useAcceptInvitation } from "@/lib/query/mutations/use-tenant-users";
-import { acceptInvitationSchema, type AcceptInvitationForm } from "@/lib/schemas/tenant-user-management";
 
 export default function AcceptInvitationPage() {
   return (
     <React.Suspense fallback={<AcceptSkeleton />}>
       <PublicOnly>
-        <AcceptInvitationFormContent />
+        <AcceptInvitationContent />
       </PublicOnly>
     </React.Suspense>
   );
@@ -39,42 +33,37 @@ function AcceptSkeleton() {
         </CardHeader>
         <CardContent className="space-y-3">
           <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
         </CardContent>
       </Card>
     </main>
   );
 }
 
-function AcceptInvitationFormContent() {
+function AcceptInvitationContent() {
   const router = useRouter();
   const params = useSearchParams();
   const accept = useAcceptInvitation();
   const [topError, setTopError] = React.useState<string | null>(null);
-  const form = useForm<AcceptInvitationForm>({
-    resolver: zodResolver(acceptInvitationSchema),
-    defaultValues: {
-      token: params.get("token") ?? "",
-      password: "",
-      full_name: "",
-    },
-  });
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const token = params.get("token") ?? "";
+
+  const handleAccept = React.useCallback(async () => {
     setTopError(null);
     try {
-      await accept.mutateAsync(values);
-      toast.success("Undangan diterima.");
-      router.push("/dashboard");
+      const result = await accept.mutateAsync({ token });
+      if (!result.password_set && result.set_password_token) {
+        toast.success("Undangan diterima! Set password untuk mengaktifkan login password.");
+        router.push(`/set-password?token=${encodeURIComponent(result.set_password_token)}`);
+      } else {
+        toast.success("Undangan diterima.");
+        router.push("/dashboard");
+      }
     } catch (err) {
-      const applied = applyServerFieldErrors(form, err);
-      if (applied.length > 0) return;
       const message = getErrorMessage(err, { fallback: "Tidak bisa menerima undangan." });
       setTopError(message);
       toast.error(message);
     }
-  });
+  }, [accept, token, router]);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-primary px-4 py-12 text-white">
@@ -87,7 +76,7 @@ function AcceptInvitationFormContent() {
             <div className="space-y-3">
               <h1 className="font-display text-4xl font-extrabold tracking-tight md:text-5xl">Aktifkan akun AcademiQ Anda</h1>
               <p className="max-w-xl text-sm leading-6 text-white/70 md:text-base">
-                Buat password pertama untuk masuk ke dashboard sekolah dengan role yang sudah ditentukan admin tenant.
+                Klik tombol di samping untuk menerima undangan dan masuk ke dashboard sekolah. Anda bisa set password nanti kapan saja.
               </p>
             </div>
           </section>
@@ -95,65 +84,29 @@ function AcceptInvitationFormContent() {
           <Card className="border-white/10 bg-background text-foreground shadow-2xl">
             <CardHeader>
               <CardTitle>Terima Undangan</CardTitle>
-              <CardDescription>Masukkan nama lengkap dan password baru.</CardDescription>
+              <CardDescription>Satu klik untuk mengaktifkan keanggotaan Anda.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={onSubmit} className="space-y-4" noValidate>
-                  {topError ? (
-                    <Alert variant="destructive">
-                      <AlertTitle>Aktivasi gagal</AlertTitle>
-                      <AlertDescription>{topError}</AlertDescription>
-                    </Alert>
-                  ) : null}
-                  <FormField
-                    control={form.control}
-                    name="full_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nama lengkap</FormLabel>
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <FormControl>
-                            <Input className="pl-10" autoComplete="name" placeholder="Nama sesuai data sekolah" {...field} />
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <div className="relative">
-                          <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <FormControl>
-                            <Input className="pl-10" type="password" autoComplete="new-password" placeholder="Minimal 8 karakter" {...field} />
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="token"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Token undangan</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Token dari link aktivasi" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" loading={accept.isPending}>Aktifkan Akun</Button>
-                </form>
-              </Form>
+            <CardContent className="space-y-4">
+              {topError ? (
+                <Alert variant="destructive">
+                  <AlertTitle>Aktivasi gagal</AlertTitle>
+                  <AlertDescription>{topError}</AlertDescription>
+                </Alert>
+              ) : null}
+              <Button
+                className="w-full"
+                loading={accept.isPending}
+                disabled={!token || accept.isSuccess}
+                onClick={handleAccept}
+              >
+                Terima Undangan
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              {!token ? (
+                <p className="text-center text-sm text-muted-foreground">
+                  Token undangan tidak ditemukan di link. Pastikan Anda membuka link lengkap dari email.
+                </p>
+              ) : null}
             </CardContent>
           </Card>
         </div>

@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
 import { ImportDialog } from "@/components/features/academic-ops/import-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
@@ -533,7 +534,7 @@ function StudentDialog({
                 <FormItem>
                   <FormLabel>Tanggal lahir</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} />
+                    <DatePicker value={field.value} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

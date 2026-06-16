@@ -106,6 +106,20 @@ function DashboardContent() {
         </p>
       </div>
 
+      {!u.password_set ? (
+        <Alert className="border-primary/30 bg-primary/5">
+          <AlertTitle className="text-primary">Set password Anda</AlertTitle>
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>
+              Akun Anda belum punya password. Set password sekarang untuk mengaktifkan login dengan email.
+            </span>
+            <Button size="sm" onClick={() => router.push("/set-password")}>
+              Set Password
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="border border-border shadow-sm">
           <CardHeader className="pb-4 border-b">

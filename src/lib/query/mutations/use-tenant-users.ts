@@ -31,6 +31,13 @@ export type AcceptInvitationResult = {
   access_token: string;
   refresh_token: string;
   expires_in: number;
+  password_set: boolean;
+  set_password_token?: string;
+};
+
+export type SetPasswordInput = {
+  password: string;
+  token?: string;
 };
 
 export function useInviteTenantUser() {
@@ -151,6 +158,19 @@ export function useAcceptInvitation() {
       setTokens(data.access_token, data.refresh_token);
       return data;
     },
+  });
+}
+
+export function useSetPassword() {
+  return useMutation<void, unknown, SetPasswordInput>({
+    mutationFn: (input) =>
+      apiFetch<void>({
+        service: "iam",
+        path: "/api/v1/iam/auth/set-password",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
   });
 }
 

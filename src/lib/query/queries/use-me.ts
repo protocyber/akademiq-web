@@ -16,6 +16,7 @@ export type MeView = {
   email_verified: boolean;
   full_name: string;
   status: string;
+  password_set: boolean;
   memberships: Membership[];
 };
 
