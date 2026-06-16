@@ -6,6 +6,15 @@ import { usePathname } from "next/navigation";
 import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { ThemeSwitcher } from "@/components/layout/theme-switcher";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Sheet,
   SheetContent,
@@ -89,14 +98,13 @@ export function SidebarLayout({
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background">
+      {/* 
+        NOTE: The sidebar is intentionally styled with a permanently dark palette 
+        (bg-slate-900, text-slate-100, border-slate-800) as a brand choice, 
+        so it does not follow the light/dark theme switcher.
+      */}
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-100 lg:flex">
-        <SidebarContent
-          pathname={pathname}
-          userName={userName}
-          userEmail={userEmail}
-          isLoggingOut={isLoggingOut}
-          onLogout={onLogout}
-        />
+        <SidebarContent pathname={pathname} />
       </aside>
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
@@ -123,9 +131,45 @@ export function SidebarLayout({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-4">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                {userName.charAt(0).toUpperCase()}
-              </div>
+              <ThemeSwitcher />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 rounded-full p-0 overflow-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      {userName.charAt(0).toUpperCase()}
+                    </div>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none text-foreground">{userName}</p>
+                      {userEmail && (
+                        <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profil Saya</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={onLogout}
+                    disabled={isLoggingOut}
+                    className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Keluar Aplikasi</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
 
@@ -134,39 +178,27 @@ export function SidebarLayout({
           </main>
         </div>
 
+        {/* 
+          NOTE: The mobile menu drawer is also intentionally styled with the brand dark palette 
+          (bg-slate-900, border-slate-800) to match the main sidebar.
+        */}
         <SheetContent side="left" className="w-72 border-slate-800 bg-slate-900 p-0 text-slate-100 sm:max-w-80">
           <SheetTitle className="sr-only">Navigasi utama</SheetTitle>
           <SheetDescription className="sr-only">
             Menu navigasi aplikasi AcademiQ.
           </SheetDescription>
-          <SidebarContent
-            pathname={pathname}
-            userName={userName}
-            userEmail={userEmail}
-            isLoggingOut={isLoggingOut}
-            onLogout={onLogout}
-          />
+          <SidebarContent pathname={pathname} />
         </SheetContent>
       </Sheet>
     </div>
   );
 }
 
-interface SidebarContentProps {
-  pathname: string;
-  userName: string;
-  userEmail: string | null;
-  isLoggingOut: boolean;
-  onLogout: () => void;
-}
-
 function SidebarContent({
   pathname,
-  userName,
-  userEmail,
-  isLoggingOut,
-  onLogout,
-}: SidebarContentProps) {
+}: {
+  pathname: string;
+}) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-slate-800 p-6">
@@ -206,27 +238,6 @@ function SidebarContent({
           );
         })}
       </nav>
-
-      <div className="border-t border-slate-800 bg-slate-950/40 p-4">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-800 text-slate-200">
-            <User className="h-4 w-4" />
-          </div>
-          <div className="min-w-0 truncate">
-            <p className="truncate text-xs font-semibold leading-none text-white">{userName}</p>
-            <p className="mt-1 truncate text-[10px] text-slate-400">{userEmail ?? "No email"}</p>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          loading={isLoggingOut}
-          onClick={onLogout}
-          className="h-9 w-full justify-start gap-3 rounded-lg px-4 py-2 text-xs text-slate-400 hover:bg-slate-800/60 hover:text-white"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Keluar Aplikasi
-        </Button>
-      </div>
     </div>
   );
 }
