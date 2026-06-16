@@ -194,6 +194,32 @@ export function usePublishedReportCard(studentId?: string, academicYearId?: stri
   });
 }
 
+export function useMyReportCards(academicYearId?: string) {
+  return useQuery({
+    queryKey: ["grading", "my-report-cards", academicYearId],
+    queryFn: () =>
+      apiFetch<ReportCard[]>({
+        service: "grading",
+        path: `/api/v1/grading/me/report-cards?academic_year_id=${academicYearId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(academicYearId),
+  });
+}
+
+export function useMyReportCardDetail(studentId?: string, academicYearId?: string) {
+  return useQuery({
+    queryKey: ["grading", "my-report-card-detail", studentId, academicYearId],
+    queryFn: () =>
+      apiFetch<ReportCardDetail>({
+        service: "grading",
+        path: `/api/v1/grading/me/report-cards/${studentId}?academic_year_id=${academicYearId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(studentId && academicYearId),
+  });
+}
+
 // ── Report type queries ──────────────────────────────────────────────────────
 
 export const reportTypesQueryKey = (academicYearId?: string) =>

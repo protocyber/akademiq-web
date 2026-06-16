@@ -28,8 +28,9 @@ import {
   type TeachingAssignmentsParams,
 } from "@/lib/schemas/teaching-assignments-params";
 
-export type Student = { student_id: string; nis: string; full_name: string; gender: string; birth_date: string };
+export type Student = { student_id: string; user_id?: string | null; nis: string; full_name: string; gender: string; birth_date: string };
 export type Teacher = { teacher_id: string; user_id?: string | null; nip: string; full_name: string };
+export type Guardian = { tenant_id: string; user_id: string; student_id: string; created_at: string };
 export type Homeroom = { homeroom_id: string; name: string; grade_level: string; capacity: number; academic_year_id: string };
 export type TeachingAssignment = { assignment_id: string; teacher_id: string; subject_id: string; homeroom_id: string; academic_year_id: string };
 
@@ -148,5 +149,13 @@ export function useTeachingAssignmentsTable(params: TeachingAssignmentsParams = 
       const envelope = await apiFetchEnvelope<TeachingAssignment[]>({ service: "academic-ops", path: `/api/v1/academic-ops/teaching-assignments${query ? `?${query}` : ""}`, authenticated: true });
       return { data: envelope.data, meta: envelope.meta as Paginated<TeachingAssignment>["meta"] };
     },
+  });
+}
+
+export function useStudentGuardians(studentId: string) {
+  return useQuery({
+    queryKey: [...STUDENTS_QUERY_KEY, studentId, "guardians"],
+    queryFn: () => apiFetch<Guardian[]>({ service: "academic-ops", path: `/api/v1/academic-ops/students/${studentId}/guardians`, authenticated: true }),
+    enabled: Boolean(studentId),
   });
 }

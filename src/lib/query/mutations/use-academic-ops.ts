@@ -29,6 +29,30 @@ export function useLinkTeacherAccount() {
   });
 }
 
+export function useLinkStudentAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, userId }: { studentId: string; userId: string }) => apiFetch<Student>({ service: "academic-ops", path: `/api/v1/academic-ops/students/${studentId}/account`, method: "PATCH", authenticated: true, body: { user_id: userId } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY }),
+  });
+}
+
+export function useLinkGuardian() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, userId }: { studentId: string; userId: string }) => apiFetch({ service: "academic-ops", path: `/api/v1/academic-ops/students/${studentId}/guardians`, method: "POST", authenticated: true, body: { user_id: userId } }),
+    onSuccess: (_, { studentId }) => qc.invalidateQueries({ queryKey: [...STUDENTS_QUERY_KEY, studentId, "guardians"] }),
+  });
+}
+
+export function useUnlinkGuardian() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, userId }: { studentId: string; userId: string }) => apiFetch({ service: "academic-ops", path: `/api/v1/academic-ops/students/${studentId}/guardians/${userId}`, method: "DELETE", authenticated: true }),
+    onSuccess: (_, { studentId }) => qc.invalidateQueries({ queryKey: [...STUDENTS_QUERY_KEY, studentId, "guardians"] }),
+  });
+}
+
 export function useUpdateTeacher(teacherId: string) {
   const qc = useQueryClient();
   return useMutation({

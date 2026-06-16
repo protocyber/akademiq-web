@@ -5,13 +5,13 @@ const YEAR_ID = "00000000-0000-0000-0000-000000000101";
 const HOMEROOM_ID = "00000000-0000-0000-0000-000000000401";
 const CARD_ID = "00000000-0000-0000-0000-000000000901";
 
-test("parent/student portal shows published report card read-only", async ({ page }) => {
+test("parent/student portal shows child selector and published report card", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("akademiq.access_token", "test-access");
     window.localStorage.setItem("akademiq.refresh_token", "test-refresh");
   });
 
-  await page.route("**/api/v1/iam/me", (route) =>
+  await page.route(/\/api\/v1\/iam\/me/, (route) =>
     route.fulfill({
       json: {
         data: {
@@ -24,7 +24,7 @@ test("parent/student portal shows published report card read-only", async ({ pag
       },
     })
   );
-  await page.route("**/api/v1/billing/tenants/me", (route) =>
+  await page.route(/\/api\/v1\/billing\/tenants\/me/, (route) =>
     route.fulfill({
       json: {
         data: {
@@ -38,7 +38,33 @@ test("parent/student portal shows published report card read-only", async ({ pag
       },
     })
   );
-  await page.route(`**/api/v1/grading/students/${STUDENT_ID}/report-card?*`, (route) =>
+  await page.route(/\/api\/v1\/academic-config\/academic-years/, (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          { academic_year_id: YEAR_ID, name: "2023/2024", status: "Active" }
+        ],
+        meta: {},
+      }
+    })
+  );
+  await page.route(/\/api\/v1\/grading\/me\/report-cards(\?|$)/, (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            report_card_id: CARD_ID,
+            student_id: STUDENT_ID,
+            academic_year_id: YEAR_ID,
+            homeroom_id: HOMEROOM_ID,
+            status: "Published",
+          }
+        ],
+        meta: {},
+      }
+    })
+  );
+  await page.route(new RegExp(`/api/v1/grading/me/report-cards/${STUDENT_ID}`), (route) =>
     route.fulfill({
       json: {
         data: {
@@ -60,9 +86,10 @@ test("parent/student portal shows published report card read-only", async ({ pag
             },
             published_at: "2026-06-11T12:00:00Z",
           },
-          grades: [
-            { grade_id: "g1", student_id: STUDENT_ID, subject_id: "00000000-0000-0000-0000-000000000301", academic_year_id: YEAR_ID, homeroom_id: HOMEROOM_ID, score: 88, recorded_by: "t1" },
-            { grade_id: "g2", student_id: STUDENT_ID, subject_id: "00000000-0000-0000-0000-000000000302", academic_year_id: YEAR_ID, homeroom_id: HOMEROOM_ID, score: 72, recorded_by: "t1" },
+          grades: [],
+          subject_scores: [
+            { report_card_id: CARD_ID, subject_id: "00000000-0000-0000-0000-000000000301", final_score: 88, computed_at: "2026-06-11T12:00:00Z" },
+            { report_card_id: CARD_ID, subject_id: "00000000-0000-0000-0000-000000000302", final_score: 72, computed_at: "2026-06-11T12:00:00Z" },
           ],
           approvals: [],
         },
@@ -74,6 +101,14 @@ test("parent/student portal shows published report card read-only", async ({ pag
   await page.goto(`/portal/report-card?student_id=${STUDENT_ID}&academic_year_id=${YEAR_ID}`);
 
   await expect(page.getByText("Rapor Terbit")).toBeVisible();
+  
+  // Free text input is not rendered anymore
+  await expect(page.locator("input[placeholder='student_id']")).toHaveCount(0);
+  
+  // Selector "Pilih Anak" should render, and show Siswa #0701
+  await expect(page.locator("#student-select")).toBeVisible();
+  await expect(page.locator("#student-select")).toContainText("Siswa #0701");
+
   await expect(page.getByText("Published")).toBeVisible();
 
   // Shows pass/fail for each subject
@@ -86,13 +121,13 @@ test("parent/student portal shows published report card read-only", async ({ pag
   await expect(page.getByRole("button", { name: /Submit|Approve|Publish/ })).toHaveCount(0);
 });
 
-test("portal shows not-available alert when card not published", async ({ page }) => {
+test("portal shows empty state when parent has no linked students", async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("akademiq.access_token", "test-access");
     window.localStorage.setItem("akademiq.refresh_token", "test-refresh");
   });
 
-  await page.route("**/api/v1/iam/me", (route) =>
+  await page.route(/\/api\/v1\/iam\/me/, (route) =>
     route.fulfill({
       json: {
         data: { user_id: "00000000-0000-0000-0000-000000000021", email: "student@example.test", full_name: "Student User", memberships: [] },
@@ -100,7 +135,7 @@ test("portal shows not-available alert when card not published", async ({ page }
       },
     })
   );
-  await page.route("**/api/v1/billing/tenants/me", (route) =>
+  await page.route(/\/api\/v1\/billing\/tenants\/me/, (route) =>
     route.fulfill({
       json: {
         data: {
@@ -114,11 +149,83 @@ test("portal shows not-available alert when card not published", async ({ page }
       },
     })
   );
-  await page.route(`**/api/v1/grading/students/${STUDENT_ID}/report-card?*`, (route) =>
-    route.fulfill({ status: 404, json: { error: { code: "NOT_FOUND", message: "not found" } } })
+  await page.route(/\/api\/v1\/academic-config\/academic-years/, (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          { academic_year_id: YEAR_ID, name: "2023/2024", status: "Active" }
+        ],
+        meta: {},
+      }
+    })
+  );
+  // Empty cards list
+  await page.route(/\/api\/v1\/grading\/me\/report-cards(\?|$)/, (route) =>
+    route.fulfill({ json: { data: [], meta: {} } })
   );
 
-  await page.goto(`/portal/report-card?student_id=${STUDENT_ID}&academic_year_id=${YEAR_ID}`);
+  await page.goto(`/portal/report-card?academic_year_id=${YEAR_ID}`);
 
-  await expect(page.getByText(/Rapor belum tersedia|belum dipublikasikan/)).toBeVisible();
+  await expect(page.getByText("Belum ada siswa terhubung")).toBeVisible();
+});
+
+test("portal shows access denied alert on non-owned deep link", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("akademiq.access_token", "test-access");
+    window.localStorage.setItem("akademiq.refresh_token", "test-refresh");
+  });
+
+  await page.route(/\/api\/v1\/iam\/me/, (route) =>
+    route.fulfill({
+      json: {
+        data: { user_id: "00000000-0000-0000-0000-000000000020", email: "parent@example.test", full_name: "Parent User", memberships: [] },
+        meta: {},
+      },
+    })
+  );
+  await page.route(/\/api\/v1\/billing\/tenants\/me/, (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          tenant_id: "00000000-0000-0000-0000-000000000001",
+          school_name: "Playwright School",
+          status: "active",
+        },
+        meta: {},
+      },
+    })
+  );
+  await page.route(/\/api\/v1\/academic-config\/academic-years/, (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          { academic_year_id: YEAR_ID, name: "2023/2024", status: "Active" }
+        ],
+        meta: {},
+      }
+    })
+  );
+  // Report card list only returns CARD_ID (STUDENT_ID)
+  await page.route(/\/api\/v1\/grading\/me\/report-cards(\?|$)/, (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            report_card_id: CARD_ID,
+            student_id: STUDENT_ID,
+            academic_year_id: YEAR_ID,
+            homeroom_id: HOMEROOM_ID,
+            status: "Published",
+          }
+        ],
+        meta: {},
+      }
+    })
+  );
+
+  // Accessing an unowned student ID
+  await page.goto(`/portal/report-card?student_id=unowned-student-123&academic_year_id=${YEAR_ID}`);
+
+  await expect(page.getByText("Akses Ditolak")).toBeVisible();
+  await expect(page.getByText("Anda tidak memiliki akses ke rapor siswa ini.")).toBeVisible();
 });
