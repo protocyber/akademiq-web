@@ -73,6 +73,7 @@ function LoginForm() {
   const myTenants = useMyTenants();
   const enterTenant = useEnterTenant();
   const [topError, setTopError] = React.useState<string | null>(null);
+  const [navigating, setNavigating] = React.useState(false);
 
   React.useEffect(() => {
     if (!oauthError) return;
@@ -100,20 +101,25 @@ function LoginForm() {
       if (tenants.length === 1) {
         // Single-tenant fast path: auto-enter and proceed to app.
         await enterTenant.mutateAsync({ tenantId: tenants[0].tenant_id });
+        setNavigating(true);
         router.push(next);
       } else if (tenants.length === 0) {
         // 0-tenant: go to empty state.
+        setNavigating(true);
         router.push("/tenant-select");
       } else {
         // N tenants: go to picker.
+        setNavigating(true);
         router.push("/tenant-select");
       }
     } catch (err) {
+      setNavigating(false);
       // PASSWORD_NOT_SET: the account exists but has no password. Route the
       // user to the authenticated set-password screen instead of showing a
       // generic error.
       if (isApiError(err, "PASSWORD_NOT_SET")) {
         toast.info("Akun Anda belum punya password. Silakan set password terlebih dahulu.");
+        setNavigating(true);
         router.push("/set-password");
         return;
       }
@@ -305,8 +311,8 @@ function LoginForm() {
                   <Button
                     type="submit"
                     className="w-full flex items-center justify-center gap-1.5"
-                    disabled={login.isPending || myTenants.isPending || enterTenant.isPending}
-                    loading={login.isPending || myTenants.isPending || enterTenant.isPending}
+                    disabled={login.isPending || myTenants.isPending || enterTenant.isPending || navigating}
+                    loading={login.isPending || myTenants.isPending || enterTenant.isPending || navigating}
                   >
                     Masuk
                     <ArrowRight className="h-4 w-4" />

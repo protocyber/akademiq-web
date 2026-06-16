@@ -7,6 +7,8 @@ import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, 
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
+import { useMe } from "@/lib/query/queries/use-me";
+import { EmailVerifiedBadge } from "@/components/ui/email-verified-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,6 +93,8 @@ export function SidebarLayout({
 }: SidebarLayoutProps) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const me = useMe();
+  const emailVerified = me.data?.email_verified;
 
   React.useEffect(() => {
     setMobileMenuOpen(false);
@@ -145,10 +149,15 @@ export function SidebarLayout({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56" forceMount>
                   <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex flex-col space-y-1.5">
                       <p className="text-sm font-medium leading-none text-foreground">{userName}</p>
                       {userEmail && (
                         <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                      )}
+                      {me.data && (
+                        <div className="pt-0.5">
+                          <EmailVerifiedBadge verified={emailVerified ?? false} className="w-fit scale-90 origin-left" />
+                        </div>
                       )}
                     </div>
                   </DropdownMenuLabel>

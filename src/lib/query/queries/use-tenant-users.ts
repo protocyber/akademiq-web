@@ -23,6 +23,7 @@ export type TenantUser = {
   tenant_id: string;
   username: string;
   email: string | null;
+  email_verified: boolean;
   full_name: string;
   status: string;
   roles: string[];

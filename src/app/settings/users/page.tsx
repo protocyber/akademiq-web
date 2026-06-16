@@ -18,6 +18,7 @@ import {
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { EmailVerifiedBadge } from "@/components/ui/email-verified-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -386,7 +387,10 @@ function UsersTableSection(props: UsersTableSectionProps) {
       cell: ({ row }) => (
         <div className="min-w-0">
           <p className="truncate font-semibold text-foreground">{row.original.full_name}</p>
-          <p className="truncate text-sm text-muted-foreground">{row.original.email ?? row.original.username}</p>
+          <p className="truncate text-sm text-muted-foreground flex items-center gap-2">
+            <span>{row.original.email ?? row.original.username}</span>
+            {row.original.email && <EmailVerifiedBadge verified={row.original.email_verified} />}
+          </p>
         </div>
       ),
     },
@@ -838,7 +842,10 @@ function EditUserDialog({
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit pengguna</DialogTitle>
-          <DialogDescription>{user.email ?? user.username}</DialogDescription>
+          <DialogDescription className="flex items-center gap-2 mt-1">
+            <span>{user.email ?? user.username}</span>
+            {user.email && <EmailVerifiedBadge verified={user.email_verified} />}
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
