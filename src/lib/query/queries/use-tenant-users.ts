@@ -69,3 +69,26 @@ export function useTenantUsers(params: TenantUsersParams = DEFAULT_TENANT_USERS_
     },
   });
 }
+
+export type InvitationDetails = {
+  invitation_id: string;
+  tenant_id: string;
+  tenant_name: string | null;
+  email: string;
+  roles: string[];
+  status: string;
+  expires_at: string;
+};
+
+export function useInvitationDetails(token: string) {
+  return useQuery({
+    queryKey: ["iam", "invitation-details", token],
+    queryFn: () =>
+      apiFetch<InvitationDetails>({
+        service: "iam",
+        path: `/api/v1/iam/invitations/details?token=${encodeURIComponent(token)}`,
+      }),
+    enabled: !!token,
+  });
+}
+

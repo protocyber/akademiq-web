@@ -12,6 +12,15 @@ import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { useAcceptInvitation } from "@/lib/query/mutations/use-tenant-users";
+import { useInvitationDetails } from "@/lib/query/queries/use-tenant-users";
+
+const roleLabels: Record<string, string> = {
+  teacher: "Guru Mapel",
+  homeroom_teacher: "Wali Kelas",
+  principal: "Kepala Sekolah",
+  parent: "Orang Tua",
+  student: "Siswa",
+};
 
 export default function AcceptInvitationPage() {
   return (
@@ -47,6 +56,8 @@ function AcceptInvitationContent() {
 
   const token = params.get("token") ?? "";
 
+  const { data: invitation, isLoading, error: queryError } = useInvitationDetails(token);
+
   const handleAccept = React.useCallback(async () => {
     setTopError(null);
     try {
@@ -65,6 +76,18 @@ function AcceptInvitationContent() {
     }
   }, [accept, token, router]);
 
+  if (isLoading) {
+    return <AcceptSkeleton />;
+  }
+
+  const queryErrorMessage = queryError
+    ? getErrorMessage(queryError, { fallback: "Token undangan tidak valid atau kedaluwarsa." })
+    : null;
+
+  const displayError = topError || queryErrorMessage;
+
+  const formattedRoles = invitation?.roles?.map((role) => roleLabels[role] ?? role).join(", ") || "";
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-primary px-4 py-12 text-white">
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-5xl items-center justify-center">
@@ -74,29 +97,46 @@ function AcceptInvitationContent() {
               <GraduationCap className="h-6 w-6" />
             </div>
             <div className="space-y-3">
-              <h1 className="font-display text-4xl font-extrabold tracking-tight md:text-5xl">Aktifkan akun AcademiQ Anda</h1>
-              <p className="max-w-xl text-sm leading-6 text-white/70 md:text-base">
-                Klik tombol di samping untuk menerima undangan dan masuk ke dashboard sekolah. Anda bisa set password nanti kapan saja.
-              </p>
+              <h1 className="font-display text-4xl font-extrabold tracking-tight md:text-5xl mb-6">Aktifkan akun AcademiQ Anda</h1>
+              {invitation ? (
+                <div className="space-y-3">
+                  {invitation.tenant_name ? (
+                    <p className="max-w-xl text-base leading-7 text-white/90">
+                      Anda diundang untuk bergabung ke <strong className="text-white underline decoration-white/30 underline-offset-4">{invitation.tenant_name}</strong> sebagai <strong className="text-white">{formattedRoles}</strong>.
+                    </p>
+                  ) : (
+                    <p className="max-w-xl text-base leading-7 text-white/90">
+                      Anda diundang ke AcademiQ sebagai <strong className="text-white">{formattedRoles}</strong>.
+                    </p>
+                  )}
+                  <p className="max-w-xl text-sm leading-6 text-white/70">
+                    {/* Klik tombol berikut ini untuk menerima undangan dan masuk ke dashboard sekolah. Anda bisa set password nanti kapan saja. */}
+                  </p>
+                </div>
+              ) : (
+                <p className="max-w-xl text-sm leading-6 text-white/70 md:text-base">
+                  {/* Klik tombol berikut ini untuk menerima undangan dan masuk ke dashboard sekolah. Anda bisa set password nanti kapan saja. */}
+                </p>
+              )}
             </div>
           </section>
 
-          <Card className="border-white/10 bg-background text-foreground shadow-2xl">
+          <Card className="border-white/10 bg-background text-foreground shadow-2xl lg:mt-14">
             <CardHeader>
               <CardTitle>Terima Undangan</CardTitle>
               <CardDescription>Satu klik untuk mengaktifkan keanggotaan Anda.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {topError ? (
+              {displayError ? (
                 <Alert variant="destructive">
                   <AlertTitle>Aktivasi gagal</AlertTitle>
-                  <AlertDescription>{topError}</AlertDescription>
+                  <AlertDescription>{displayError}</AlertDescription>
                 </Alert>
               ) : null}
               <Button
                 className="w-full"
                 loading={accept.isPending}
-                disabled={!token || accept.isSuccess}
+                disabled={!token || !!displayError || accept.isSuccess}
                 onClick={handleAccept}
               >
                 Terima Undangan
@@ -114,3 +154,4 @@ function AcceptInvitationContent() {
     </main>
   );
 }
+
