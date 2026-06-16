@@ -83,7 +83,7 @@ function OpsShell({
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-6xl"
+      className="mx-auto max-w-7xl"
     >
       <div className="space-y-4">
         <div>

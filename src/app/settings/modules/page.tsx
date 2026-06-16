@@ -103,7 +103,7 @@ function ModulesContent() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="max-w-3xl mx-auto"
+      className="mx-auto max-w-7xl"
     >
       <div>
         <h1 className="text-3xl font-extrabold font-display tracking-tight text-foreground">Modul Aktif</h1>

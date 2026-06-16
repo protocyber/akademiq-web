@@ -108,7 +108,7 @@ function AcademicSettingsContent({
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="max-w-6xl mx-auto"
+      className="mx-auto max-w-7xl"
     >
       <div className="space-y-4">
         <div>

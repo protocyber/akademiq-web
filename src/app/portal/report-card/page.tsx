@@ -28,9 +28,9 @@ function PublishedReportCardShell() {
   const [academicYearId, setAcademicYearId] = React.useState(params.get("academic_year_id") ?? "");
   const report = usePublishedReportCard(studentId, academicYearId);
   if (tenant.isLoading || me.isLoading) return <PageSkeleton />;
-  if (tenant.error || me.error || !tenant.data || !me.data) return <main className="container mx-auto max-w-4xl px-4 py-10"><Alert variant="destructive"><AlertTitle>Portal tidak bisa dimuat</AlertTitle><AlertDescription>Coba muat ulang halaman.</AlertDescription></Alert></main>;
+  if (tenant.error || me.error || !tenant.data || !me.data) return <main className="container mx-auto max-w-7xl px-4 py-10"><Alert variant="destructive"><AlertTitle>Portal tidak bisa dimuat</AlertTitle><AlertDescription>Coba muat ulang halaman.</AlertDescription></Alert></main>;
   return (
-    <SidebarLayout schoolName={tenant.data.school_name} userName={me.data.full_name} userEmail={me.data.email} isLoggingOut={logout.isPending} onLogout={async () => { await logout.mutateAsync(); router.push("/login"); }} className="mx-auto max-w-4xl">
+    <SidebarLayout schoolName={tenant.data.school_name} userName={me.data.full_name} userEmail={me.data.email} isLoggingOut={logout.isPending} onLogout={async () => { await logout.mutateAsync(); router.push("/login"); }} className="mx-auto max-w-7xl">
       <div className="space-y-2"><h1 className="font-display text-3xl font-extrabold tracking-tight">Rapor Terbit</h1><p className="text-sm text-muted-foreground">Tampilan read-only untuk siswa dan orang tua. Rapor yang belum terbit tidak ditampilkan.</p></div>
       <Card><CardHeader><CardTitle>Cari Rapor</CardTitle><CardDescription>Masukkan ID siswa dan tahun akademik.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><Input value={studentId} onChange={(event) => setStudentId(event.target.value)} placeholder="student_id" /><Input value={academicYearId} onChange={(event) => setAcademicYearId(event.target.value)} placeholder="academic_year_id" /></CardContent></Card>
       {studentId && academicYearId && report.isLoading ? <Skeleton className="h-64 w-full" /> : null}
@@ -40,4 +40,4 @@ function PublishedReportCardShell() {
   );
 }
 
-function PageSkeleton() { return <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10"><Skeleton className="h-9 w-56" /><Skeleton className="h-64 w-full" /></main>; }
+function PageSkeleton() { return <main className="container mx-auto max-w-7xl space-y-6 px-4 py-10"><Skeleton className="h-9 w-56" /><Skeleton className="h-64 w-full" /></main>; }

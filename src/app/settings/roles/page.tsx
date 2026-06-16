@@ -129,7 +129,7 @@ function RolesContent() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-5xl"
+      className="mx-auto max-w-7xl"
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>

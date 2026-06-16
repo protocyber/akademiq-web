@@ -171,39 +171,76 @@ test("tenant admin walks academic config pages end to end", async ({ page }) => 
   await page.goto("/settings/academic/years");
   await page.getByRole("button", { name: /buat tahun ajaran/i }).click();
   await page.getByLabel("Nama").fill("2026/2027");
+  await expect(page.getByText("Pengaturan nilai, kurikulum, dan jenis rapor tersedia setelah tahun ajaran disimpan.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Kebijakan Nilai" })).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Versi Kurikulum" })).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Jenis Rapor" })).not.toBeVisible();
   await page.getByLabel(/tanggal mulai/i).click();
   await pickFirstCalendarDate(page);
   await page.getByLabel(/tanggal selesai/i).click();
   await pickFirstCalendarDate(page);
   await page.getByRole("button", { name: /^simpan$/i }).click();
   await expect(page.getByText("2026/2027")).toBeVisible();
-  await page.getByRole("combobox").click();
-  await page.getByRole("option", { name: "Configuration" }).click();
-  await page.getByRole("button", { name: /ubah status/i }).click();
-  await expect(page.getByText("Configuration")).toBeVisible();
+  await page.getByRole("button", { name: /aksi/i }).click();
+  await page.getByRole("menuitem", { name: /edit/i }).click();
+  await page.getByRole("button", { name: /lanjutkan ke configuration/i }).click();
+  await expect(page.getByText("Configuration", { exact: true }).first()).toBeVisible();
 
-  await page.goto("/settings/academic/curriculum");
-  await page.getByLabel(/nama kurikulum/i).fill("Kurikulum Merdeka");
-  await page.getByLabel(/deskripsi/i).fill("Kurikulum utama");
-  await page.getByRole("button", { name: /tambah kurikulum/i }).click();
-  await expect(page.getByRole("button", { name: /Kurikulum Merdeka/ })).toBeVisible();
-  await page.getByLabel(/nama pelajaran/i).fill("Matematika");
-  await page.getByLabel(/kode/i).fill("MTK");
-  await page.getByLabel(/passing grade/i).fill("75");
-  await page.getByRole("button", { name: /tambah pelajaran/i }).click();
-  await expect(page.getByText("KKM 75")).toBeVisible();
+  // We are currently in the edit year modal.
+  // Click "Versi Kurikulum" tab
+  await page.getByRole("button", { name: /versi kurikulum/i }).click();
 
-  await page.goto("/settings/academic/grading-policy");
-  await page.getByLabel(/minimum passing score/i).fill("76");
-  await page.getByLabel(/skala nilai/i).click();
+  // Add a curriculum version
+  await page.getByPlaceholder("Nama versi kurikulum").fill("Kurikulum Merdeka");
+  await page.getByRole("button", { name: /^tambah$/i }).click();
+  await expect(page.getByText("Kurikulum Merdeka")).toBeVisible();
+
+  // Close the edit year modal
+  await page.getByRole("button", { name: /tutup/i }).click();
+
+  // Go to subjects settings page
+  await page.goto("/settings/academic/subjects");
+
+  // Select Year and Curriculum version to list subjects
+  await page.getByRole("combobox").filter({ hasText: "Pilih tahun ajaran" }).click();
+  await page.getByRole("option", { name: /2026\/2027/ }).click();
+
+  await page.getByRole("combobox").filter({ hasText: "Pilih versi kurikulum" }).click();
+  await page.getByRole("option", { name: "Kurikulum Merdeka" }).click();
+
+  // Add a subject
+  await page.getByRole("button", { name: /tambah mapel/i }).click();
+  await page.getByLabel("Nama").fill("Matematika");
+  await page.getByLabel("Kode").fill("MTK");
+  await page.getByLabel("KKM").fill("75");
+  await page.getByRole("button", { name: /^simpan$/i }).click();
+  await expect(page.getByRole("cell", { name: "75" })).toBeVisible();
+
+  // Go back to years settings page to manage grading policy
+  await page.goto("/settings/academic/years");
+  await page.getByRole("button", { name: /aksi/i }).click();
+  await page.getByRole("menuitem", { name: /edit/i }).click();
+
+  // Click "Kebijakan Nilai" tab
+  await page.getByRole("button", { name: /kebijakan nilai/i }).click();
+
+  // Update policies
+  await page.getByLabel(/min. kelulusan/i).fill("76");
+  await page.getByLabel(/skala/i).click();
   await page.getByRole("option", { name: "0-100" }).click();
   await page.getByRole("button", { name: /simpan kebijakan/i }).click();
   await expect(page.getByText("Kebijakan nilai disimpan.")).toBeVisible();
 
+  // Close modal
+  await page.getByRole("button", { name: /tutup/i }).click();
+
   await page.goto("/settings/academic/class-templates");
-  await page.getByLabel(/tingkat kelas/i).fill("Kelas 7");
-  await page.getByLabel(/kapasitas default/i).fill("32");
+  await page.getByRole("combobox").click();
+  await page.getByRole("option", { name: /2026\/2027/ }).click();
   await page.getByRole("button", { name: /tambah template/i }).click();
+  await page.getByLabel("Tingkat").fill("Kelas 7");
+  await page.getByLabel("Kapasitas").fill("32");
+  await page.getByRole("button", { name: /^simpan$/i }).click();
   await expect(page.getByText("Kelas 7")).toBeVisible();
-  await expect(page.getByText("Kapasitas 32 siswa")).toBeVisible();
+  await expect(page.getByRole("cell", { name: "32" })).toBeVisible();
 });

@@ -54,7 +54,7 @@ export function DatePicker({
           {selected ? format(selected, "d MMM yyyy") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent className="w-auto p-0" align="start" avoidCollisions collisionPadding={8}>
         <Calendar
           fixedWeeks
           mode="single"

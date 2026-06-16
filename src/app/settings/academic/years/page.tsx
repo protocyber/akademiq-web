@@ -4,8 +4,9 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil, Check } from "lucide-react";
 import { useForm } from "react-hook-form";
+import { cn } from "@/lib/utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -580,6 +581,83 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
+const STATUS_ORDER = ["Planning", "Configuration", "Active", "Locked", "Finalizing", "Closed", "Archived"];
+
+const STATUS_LABELS: Record<string, string> = {
+  Planning: "Planning",
+  Configuration: "Config",
+  Active: "Active",
+  Locked: "Locked",
+  Finalizing: "Finalizing",
+  Closed: "Closed",
+  Archived: "Archived",
+};
+
+function StatusTimeline({ currentStatus }: { currentStatus: string }) {
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+
+  return (
+    <div className="w-full py-4 overflow-x-auto">
+      <div className="flex items-center justify-between min-w-[550px] px-2">
+        {STATUS_ORDER.map((status, index) => {
+          const isCompleted = index < currentIndex;
+          const isActive = index === currentIndex;
+          const isUpcoming = index > currentIndex;
+
+          return (
+            <React.Fragment key={status}>
+              {/* Node */}
+              <div className="flex flex-col items-center relative group">
+                <div
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold transition-all duration-300 z-10",
+                    isCompleted && "bg-primary border-primary text-primary-foreground shadow-sm",
+                    isActive && "bg-background border-primary text-primary ring-4 ring-primary/10 scale-110 shadow-md",
+                    isUpcoming && "bg-background border-muted text-muted-foreground"
+                  )}
+                >
+                  {isCompleted ? (
+                    <Check className="h-4 w-4 stroke-[3]" />
+                  ) : (
+                    <span>{index + 1}</span>
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "mt-2 text-xs font-semibold whitespace-nowrap transition-colors duration-300",
+                    isCompleted && "text-muted-foreground/80",
+                    isActive && "text-primary font-bold scale-105",
+                    isUpcoming && "text-muted-foreground/50"
+                  )}
+                >
+                  {STATUS_LABELS[status]}
+                </span>
+                
+                {/* Descriptive context for screen-readers */}
+                <span className="sr-only">
+                  Status {status}: {isCompleted ? "Selesai" : isActive ? "Aktif saat ini" : "Akan datang"}
+                </span>
+              </div>
+
+              {/* Connecting line */}
+              {index < STATUS_ORDER.length - 1 && (
+                <div className="flex-1 h-0.5 min-w-[16px] bg-muted mx-2 -mt-6 z-0">
+                  <div
+                    className={cn(
+                      "h-full bg-primary transition-all duration-500",
+                      index < currentIndex ? "w-full" : "w-0"
+                    )}
+                  />
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function IdentitySection({
   mode,
   year,
@@ -690,35 +768,26 @@ function IdentitySection({
       </Form>
 
       {mode === "edit" && year ? (
-        <div className="rounded-lg border p-4">
-          <p className="text-sm font-medium text-foreground">Status saat ini</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Badge variant={year.status === "Active" ? "default" : "secondary"}>{year.status}</Badge>
-            <Select
-              value={nextStatus}
-              onValueChange={setNextStatus}
-              disabled={!canManage || options.length === 0 || transition.isPending}
-            >
-              <SelectTrigger className="w-44">
-                <SelectValue placeholder="Tidak ada transisi" />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              loading={transition.isPending}
-              disabled={!canManage || !nextStatus || options.length === 0}
-              onClick={onTransition}
-            >
-              Ubah Status
-            </Button>
+        <div className="rounded-lg border p-4 space-y-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Status saat ini: <span className="text-primary font-bold">{year.status}</span></p>
+            <p className="text-xs text-muted-foreground">Tahun ajaran mengikuti alur siklus hidup linear berikut.</p>
           </div>
+          
+          <StatusTimeline currentStatus={year.status} />
+
+          {options.length > 0 && nextStatus ? (
+            <div className="flex justify-end border-t pt-4">
+              <Button
+                variant="outline"
+                loading={transition.isPending}
+                disabled={!canManage}
+                onClick={onTransition}
+              >
+                Lanjutkan ke {nextStatus}
+              </Button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
