@@ -37,6 +37,7 @@ import { useReportFormulasForTypes } from "@/lib/query/queries/use-grading";
 import { useUpsertReportFormula } from "@/lib/query/mutations/use-grading";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { gradeCellSchema } from "@/lib/schemas/grading";
 
 export default function GradeEntryPage() {
@@ -81,25 +82,27 @@ function GradeEntryShell() {
 }
 
 function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
-  const years = useAcademicYears();
+  const { yearId, curriculumId } = useAcademicScope();
   const homerooms = useHomerooms();
-  const [yearId, setYearId] = React.useState("");
   const [homeroomId, setHomeroomId] = React.useState("");
   const [subjectId, setSubjectId] = React.useState("");
   const [kelolOpen, setKelolOpen] = React.useState(false);
 
-  const curriculum = useCurriculumVersions(yearId);
-  const curriculumId = curriculum.data?.[0]?.curriculum_version_id;
-  const subjects = useSubjects(curriculumId);
+  // Reset local selection when year changes
+  React.useEffect(() => {
+    setHomeroomId("");
+    setSubjectId("");
+  }, [yearId]);
+
+  const subjects = useSubjects(curriculumId ?? undefined);
   const assignments = useTeachingAssignments(homeroomId);
   const roster = useHomeroomRoster(homeroomId);
-  const evaluations = useEvaluations(homeroomId, subjectId, yearId);
-  const grades = useClassGrades(homeroomId, subjectId, yearId);
-  const reportTypes = useReportTypes(yearId);
+  const evaluations = useEvaluations(homeroomId, subjectId, yearId ?? undefined);
+  const grades = useClassGrades(homeroomId, subjectId, yearId ?? undefined);
+  const reportTypes = useReportTypes(yearId ?? undefined);
   const reportTypeIds = (reportTypes.data ?? []).map((t) => t.report_type_id);
   const reportScores = useSubjectReportScoresForTypes(reportTypeIds, homeroomId, subjectId);
 
-  const activeYears = (years.data ?? []).filter((year) => year.status === "Active");
   const filteredHomerooms = (homerooms.data ?? []).filter((room) => !yearId || room.academic_year_id === yearId);
   const assignedSubjectIds = new Set(
     (assignments.data ?? [])
@@ -130,8 +133,19 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
     return map;
   }, [reportScores.data]);
 
-  function changeYear(id: string) { setYearId(id); setHomeroomId(""); setSubjectId(""); }
   function changeHomeroom(id: string) { setHomeroomId(id); setSubjectId(""); }
+
+  if (!yearId) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Silakan pilih tahun ajaran di header untuk memulai entri nilai.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -150,17 +164,7 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-3">
-          <QuerySelect
-            items={activeYears}
-            isLoading={years.isLoading}
-            value={yearId}
-            onValueChange={changeYear}
-            getValue={(y) => y.academic_year_id}
-            getLabel={(y) => y.name}
-            placeholder="Pilih tahun aktif"
-            emptyText="Belum ada tahun aktif"
-          />
+        <div className="grid gap-3 md:grid-cols-2">
           <QuerySelect
             items={filteredHomerooms}
             isLoading={homerooms.isLoading}
@@ -185,7 +189,7 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
 
         {!scopeReady && (
           <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-            Pilih tahun, kelas, dan mapel untuk membuka grid nilai.
+            Pilih kelas dan mapel untuk membuka grid nilai.
           </p>
         )}
 

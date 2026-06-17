@@ -34,7 +34,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import {
   AcademicSettingsPage,
-  YearPicker,
 } from "@/components/features/academic-config/academic-settings";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
@@ -46,7 +45,6 @@ import {
 } from "@/lib/query/mutations/use-academic-config";
 import {
   type ClassTemplate,
-  useAcademicYears,
   useClassTemplatesTable,
 } from "@/lib/query/queries/use-academic-config";
 import {
@@ -59,6 +57,7 @@ import {
   type AcademicClassTemplatesParams,
   type AcademicClassTemplatesSort,
 } from "@/lib/schemas/academic-class-templates-params";
+import { useAcademicScope } from "@/hooks/use-academic-scope";
 
 const SORT_FIELDS: Record<string, { asc: AcademicClassTemplatesSort; desc: AcademicClassTemplatesSort }> = {
   grade_level: { asc: "grade_level", desc: "-grade_level" },
@@ -82,29 +81,18 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseAcademicClassTemplatesParams(searchParams), [searchParams]);
-  const years = useAcademicYears();
+  const { yearId, isResolving } = useAcademicScope();
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
 
-  const tableParams: AcademicClassTemplatesParams = {
-    academic_year_id: params.academic_year_id,
+  const tableParams: AcademicClassTemplatesParams = React.useMemo(() => ({
+    academic_year_id: yearId || undefined,
     search: params.search,
     page: params.page,
     page_size: params.page_size,
     sort: params.sort,
-  };
-  const templates = useClassTemplatesTable(tableParams);
+  }), [yearId, params]);
 
-  function onYearChange(yearId: string) {
-    router.replace(
-      `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams({
-        page: 1,
-        page_size: 25,
-        sort: "grade_level",
-        academic_year_id: yearId,
-      })}`,
-      { scroll: false },
-    );
-  }
+  const templates = useClassTemplatesTable(tableParams);
 
   React.useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -124,39 +112,46 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
 
   const meta = templates.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
 
+  if (isResolving) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!yearId) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Pilih tahun ajaran di header untuk menampilkan template kelas.
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <YearPicker
-        years={years.data ?? []}
-        isLoading={years.isLoading}
-        value={params.academic_year_id ?? ""}
-        onChange={onYearChange}
+      <ClassTemplatesTableSection
+        templates={templates.data?.data ?? []}
+        meta={meta}
+        params={tableParams}
+        canManage={canManage}
+        searchDraft={searchDraft}
+        onSearchDraftChange={setSearchDraft}
+        onParamsChange={(next) =>
+          router.replace(
+            `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams(next)}`,
+            { scroll: false },
+          )
+        }
+        isLoading={templates.isLoading}
+        academicYearId={yearId}
       />
-
-      {params.academic_year_id ? (
-        <ClassTemplatesTableSection
-          templates={templates.data?.data ?? []}
-          meta={meta}
-          params={tableParams}
-          canManage={canManage}
-          searchDraft={searchDraft}
-          onSearchDraftChange={setSearchDraft}
-          onParamsChange={(next) =>
-            router.replace(
-              `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams(next)}`,
-              { scroll: false },
-            )
-          }
-          isLoading={templates.isLoading}
-          academicYearId={params.academic_year_id}
-        />
-      ) : (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Pilih tahun ajaran untuk menampilkan template kelas.
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

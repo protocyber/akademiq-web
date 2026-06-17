@@ -60,7 +60,7 @@ import {
   type Enrollment,
   type Homeroom,
 } from "@/lib/query/queries/use-academic-ops";
-import { useAcademicYears } from "@/lib/query/queries/use-academic-config";
+import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { homeroomSchema, type HomeroomForm } from "@/lib/schemas/academic-ops";
 import {
   parseHomeroomsParams,
@@ -80,8 +80,6 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
   const params = React.useMemo(() => parseHomeroomsParams(searchParams), [searchParams]);
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const homerooms = useHomeroomsTable(params);
-  const years = useAcademicYears();
-  const activeYears = React.useMemo(() => (years.data ?? []).filter((y) => y.status === "Active"), [years.data]);
 
   React.useEffect(() => {
     setSearchDraft(params.search ?? "");
@@ -96,11 +94,6 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
-  const yearName = React.useCallback(
-    (id: string) => (years.data ?? []).find((y) => y.academic_year_id === id)?.name ?? "—",
-    [years.data],
-  );
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -113,7 +106,6 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
         <HomeroomDialog
           canManage={canManage}
           upgradeMessage={upgradeMessage}
-          years={activeYears}
           trigger={<Button size="sm">+ Tambah</Button>}
         />
       </div>
@@ -129,8 +121,6 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
           params={params}
           canManage={canManage}
           upgradeMessage={upgradeMessage}
-          years={activeYears}
-          yearName={yearName}
           onParamsChange={(next) => replaceParams(router, next)}
         />
       )}
@@ -151,8 +141,6 @@ function HomeroomsTable({
   params,
   canManage,
   upgradeMessage,
-  years,
-  yearName,
   onParamsChange,
 }: {
   homerooms: Homeroom[];
@@ -160,8 +148,6 @@ function HomeroomsTable({
   params: HomeroomsParams;
   canManage: boolean;
   upgradeMessage: string;
-  years: { academic_year_id: string; name: string }[];
-  yearName: (id: string) => string;
   onParamsChange: (params: HomeroomsParams) => void;
 }) {
   const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
@@ -245,11 +231,6 @@ function HomeroomsTable({
         </Button>
       ),
       cell: ({ row }) => <span className="tabular-nums">{row.original.grade_level}</span>,
-    },
-    {
-      id: "year",
-      header: () => <span>Tahun</span>,
-      cell: ({ row }) => <span className="text-muted-foreground">{yearName(row.original.academic_year_id)}</span>,
     },
     {
       id: "capacity",
@@ -360,8 +341,6 @@ function HomeroomsTable({
           homeroom={editing}
           canManage={canManage}
           upgradeMessage={upgradeMessage}
-          years={years}
-          yearName={yearName}
           open={Boolean(editing)}
           onOpenChange={(open) => {
             if (!open) setEditing(null);
@@ -575,8 +554,6 @@ function HomeroomDialog({
   homeroom,
   canManage,
   upgradeMessage,
-  years,
-  yearName,
   open,
   onOpenChange,
   trigger,
@@ -584,12 +561,11 @@ function HomeroomDialog({
   homeroom?: Homeroom;
   canManage: boolean;
   upgradeMessage: string;
-  years: { academic_year_id: string; name: string }[];
-  yearName?: (id: string) => string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactNode;
 }) {
+  const { yearId } = useAcademicScope();
   const [internalOpen, setInternalOpen] = React.useState(false);
   const isOpen = open !== undefined ? open : internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
@@ -600,9 +576,9 @@ function HomeroomDialog({
       name: homeroom?.name ?? "",
       grade_level: homeroom?.grade_level ?? "",
       capacity: homeroom?.capacity ?? 32,
-      academic_year_id: homeroom?.academic_year_id ?? "",
+      academic_year_id: homeroom?.academic_year_id ?? yearId ?? "",
     }),
-    [homeroom],
+    [homeroom, yearId],
   );
   const form = useForm<HomeroomForm>({ resolver: zodResolver(homeroomSchema), defaultValues });
 
@@ -613,6 +589,10 @@ function HomeroomDialog({
   const loading = create.isPending || update.isPending;
 
   async function onSubmit(values: HomeroomForm) {
+    if (!homeroom && !yearId) {
+      toast.error("Tahun ajaran belum dipilih di header.");
+      return;
+    }
     try {
       if (homeroom) {
         await update.mutateAsync({
@@ -622,9 +602,12 @@ function HomeroomDialog({
         });
         toast.success("Kelas diperbarui.");
       } else {
-        await create.mutateAsync(values);
+        await create.mutateAsync({
+          ...values,
+          academic_year_id: yearId!,
+        });
         toast.success("Kelas dibuat.");
-        form.reset({ name: "", grade_level: "", capacity: 32, academic_year_id: "" });
+        form.reset({ name: "", grade_level: "", capacity: 32, academic_year_id: yearId ?? "" });
       }
       setOpen(false);
     } catch (err) {
@@ -682,32 +665,6 @@ function HomeroomDialog({
                   <FormControl>
                     <Input type="number" {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="academic_year_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tahun aktif</FormLabel>
-                  {homeroom ? (
-                    <div className="rounded-md border px-3 py-2 text-sm text-muted-foreground">
-                      {yearName ? yearName(field.value) : field.value}
-                    </div>
-                  ) : (
-                    <QuerySelect
-                      items={years}
-                      isLoading={false}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      getValue={(y) => y.academic_year_id}
-                      getLabel={(y) => y.name}
-                      placeholder="Pilih tahun aktif"
-                      emptyText="Tidak ada tahun aktif"
-                    />
-                  )}
                   <FormMessage />
                 </FormItem>
               )}

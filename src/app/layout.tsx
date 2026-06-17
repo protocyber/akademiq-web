@@ -4,6 +4,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 
 import { QueryProvider } from "@/lib/query/provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { AcademicScopeProvider } from "@/components/providers/academic-scope-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
@@ -33,10 +34,12 @@ export default function RootLayout({
       <body className={`${inter.variable} ${plusJakartaSans.variable} min-h-screen bg-background font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <QueryProvider>
-            <TooltipProvider delayDuration={150}>
-              {children}
-              <Toaster />
-            </TooltipProvider>
+            <AcademicScopeProvider>
+              <TooltipProvider delayDuration={150}>
+                {children}
+                <Toaster />
+              </TooltipProvider>
+            </AcademicScopeProvider>
           </QueryProvider>
         </ThemeProvider>
       </body>

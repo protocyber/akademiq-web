@@ -12,6 +12,9 @@ import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useTenantPermissions } from "@/lib/query/queries/use-tenant-roles";
 import { EmailVerifiedBadge } from "@/components/ui/email-verified-badge";
+import { useAcademicScope } from "@/hooks/use-academic-scope";
+import { useAcademicYears, useCurriculumVersions } from "@/lib/query/queries/use-academic-config";
+import { QuerySelect } from "@/components/ui/query-select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -165,6 +168,70 @@ function useMenuVisibility() {
   return { enabledModules, heldPermissions, isLoading };
 }
 
+function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) {
+  const { yearId, curriculumId, setYearId, setCurriculumId, isResolving } = useAcademicScope();
+  const yearsQuery = useAcademicYears();
+  const years = yearsQuery.data ?? [];
+  const activeYear = years.find((y) => y.status === "Active");
+  const hasActiveYear = Boolean(activeYear);
+
+  const curriculumsQuery = useCurriculumVersions(yearId ?? undefined);
+  const curriculums = curriculumsQuery.data ?? [];
+
+  if (isResolving) {
+    return (
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+      </div>
+    );
+  }
+
+  const triggerClass = isSidebar
+    ? "bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-slate-700 focus:ring-offset-slate-900 hover:bg-slate-800/80 hover:text-white"
+    : "";
+
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+      <div className="flex flex-col gap-1">
+        <div className="w-[180px]">
+          <QuerySelect
+            items={years}
+            isLoading={yearsQuery.isLoading}
+            value={yearId ?? undefined}
+            onValueChange={(val) => setYearId(val)}
+            getValue={(y) => y.academic_year_id}
+            getLabel={(y) => y.name}
+            placeholder="Pilih Tahun Ajaran"
+            emptyText="Belum ada tahun"
+            className={triggerClass}
+          />
+        </div>
+        {!hasActiveYear && !yearId && (
+          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium animate-pulse">
+            Silakan pilih tahun ajaran
+          </span>
+        )}
+      </div>
+
+      <div className="w-[180px]">
+        <QuerySelect
+          items={curriculums}
+          isLoading={curriculumsQuery.isLoading}
+          value={curriculumId ?? undefined}
+          onValueChange={(val) => setCurriculumId(val)}
+          getValue={(c) => c.curriculum_version_id}
+          getLabel={(c) => c.name}
+          placeholder="Pilih Kurikulum"
+          emptyText="Belum ada kurikulum"
+          disabled={!yearId}
+          className={triggerClass}
+        />
+      </div>
+    </div>
+  );
+}
+
 interface SidebarLayoutProps {
   children: React.ReactNode;
   schoolName: string;
@@ -222,6 +289,12 @@ export function SidebarLayout({
                 </span>
               </div>
             </div>
+
+            {/* Desktop Academic Scope Selector */}
+            <div className="hidden lg:flex lg:items-center lg:gap-3">
+              <AcademicScopeSelectors />
+            </div>
+
             <div className="flex shrink-0 items-center gap-4">
               <ThemeSwitcher />
               <DropdownMenu>
@@ -357,6 +430,14 @@ function SidebarContent({
           <h1 className="font-display text-lg font-bold leading-none text-white">AcademiQ</h1>
           <p className="mt-0.5 text-xs text-slate-400">Sekolah Console</p>
         </div>
+      </div>
+
+      {/* Mobile Academic Scope Selector */}
+      <div className="border-b border-slate-800 p-4 lg:hidden">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+          Scope Akademik
+        </p>
+        <AcademicScopeSelectors isSidebar />
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">

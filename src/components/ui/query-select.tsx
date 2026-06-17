@@ -20,6 +20,7 @@ export interface QuerySelectProps<TItem> {
   loadingText?: string;
   emptyText: string;
   disabled?: boolean;
+  className?: string;
 }
 
 export function QuerySelect<TItem>({
@@ -33,6 +34,7 @@ export function QuerySelect<TItem>({
   loadingText = "Memuat...",
   emptyText,
   disabled,
+  className,
 }: QuerySelectProps<TItem>) {
   const hasItems = items.length > 0;
   const isDisabled = disabled || isLoading || !hasItems;
@@ -40,7 +42,7 @@ export function QuerySelect<TItem>({
 
   return (
     <Select value={value} onValueChange={onValueChange} disabled={isDisabled}>
-      <SelectTrigger>
+      <SelectTrigger className={className}>
         {isLoading ? (
           <span className="flex items-center gap-2 text-muted-foreground/40">
             <Spinner size="sm" />

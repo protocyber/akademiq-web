@@ -34,7 +34,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import {
   AcademicSettingsPage,
-  YearPicker,
 } from "@/components/features/academic-config/academic-settings";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
@@ -46,8 +45,6 @@ import {
 } from "@/lib/query/mutations/use-academic-config";
 import {
   type Subject,
-  useAcademicYears,
-  useCurriculumVersions,
   useSubjectsTable,
 } from "@/lib/query/queries/use-academic-config";
 import {
@@ -60,7 +57,7 @@ import {
   type AcademicSubjectsParams,
   type AcademicSubjectsSort,
 } from "@/lib/schemas/academic-subjects-params";
-import { QuerySelect } from "@/components/ui/query-select";
+import { useAcademicScope } from "@/hooks/use-academic-scope";
 
 const SORT_FIELDS: Record<string, { asc: AcademicSubjectsSort; desc: AcademicSubjectsSort }> = {
   name: { asc: "name", desc: "-name" },
@@ -86,39 +83,18 @@ function SubjectsContent({ canManage }: { canManage: boolean; upgradeMessage: st
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseAcademicSubjectsParams(searchParams), [searchParams]);
 
-  const years = useAcademicYears();
-  const versions = useCurriculumVersions(params.academic_year_id);
+  const { yearId, curriculumId, isResolving } = useAcademicScope();
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
 
-  function onYearChange(yearId: string) {
-    router.replace(
-      `/settings/academic/subjects?${serializeAcademicSubjectsParams({
-        ...DEFAULTS(),
-        academic_year_id: yearId,
-      })}`,
-      { scroll: false },
-    );
-  }
-
-  function onVersionChange(versionId: string) {
-    router.replace(
-      `/settings/academic/subjects?${serializeAcademicSubjectsParams({
-        ...params,
-        curriculum_version_id: versionId,
-        page: 1,
-      })}`,
-      { scroll: false },
-    );
-  }
-
-  const tableParams: AcademicSubjectsParams = {
-    academic_year_id: params.academic_year_id,
-    curriculum_version_id: params.curriculum_version_id,
+  const tableParams: AcademicSubjectsParams = React.useMemo(() => ({
+    academic_year_id: yearId || undefined,
+    curriculum_version_id: curriculumId || undefined,
     search: params.search,
     page: params.page,
     page_size: params.page_size,
     sort: params.sort,
-  };
+  }), [yearId, curriculumId, params]);
+
   const subjects = useSubjectsTable(tableParams);
 
   React.useEffect(() => {
@@ -139,54 +115,46 @@ function SubjectsContent({ canManage }: { canManage: boolean; upgradeMessage: st
 
   const meta = subjects.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
 
+  if (isResolving) {
+    return (
+      <Card>
+        <CardContent className="space-y-3 pt-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!curriculumId) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Pilih tahun ajaran dan versi kurikulum di header untuk menampilkan mata pelajaran.
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <YearPicker
-            years={years.data ?? []}
-            isLoading={years.isLoading}
-            value={params.academic_year_id ?? ""}
-            onChange={onYearChange}
-          />
-          <QuerySelect
-            items={versions.data ?? []}
-            isLoading={Boolean(versions.isLoading)}
-            value={params.curriculum_version_id ?? ""}
-            onValueChange={onVersionChange}
-            getValue={(v) => v.curriculum_version_id}
-            getLabel={(v) => v.name}
-            placeholder="Pilih versi kurikulum"
-            emptyText="Belum ada versi kurikulum"
-            disabled={!params.academic_year_id}
-          />
-        </div>
-      </div>
-
-      {params.curriculum_version_id ? (
-        <SubjectsTableSection
-          subjects={subjects.data?.data ?? []}
-          meta={meta}
-          params={tableParams}
-          canManage={canManage}
-          searchDraft={searchDraft}
-          onSearchDraftChange={setSearchDraft}
-          onParamsChange={(next) =>
-            router.replace(
-              `/settings/academic/subjects?${serializeAcademicSubjectsParams(next)}`,
-              { scroll: false },
-            )
-          }
-          isLoading={subjects.isLoading}
-          curriculumVersionId={params.curriculum_version_id}
-        />
-      ) : (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Pilih tahun ajaran dan versi kurikulum untuk menampilkan mata pelajaran.
-          </CardContent>
-        </Card>
-      )}
+      <SubjectsTableSection
+        subjects={subjects.data?.data ?? []}
+        meta={meta}
+        params={tableParams}
+        canManage={canManage}
+        searchDraft={searchDraft}
+        onSearchDraftChange={setSearchDraft}
+        onParamsChange={(next) =>
+          router.replace(
+            `/settings/academic/subjects?${serializeAcademicSubjectsParams(next)}`,
+            { scroll: false },
+          )
+        }
+        isLoading={subjects.isLoading}
+        curriculumVersionId={curriculumId}
+      />
     </div>
   );
 }

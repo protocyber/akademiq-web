@@ -12,10 +12,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { QuerySelect } from "@/components/ui/query-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLogout } from "@/lib/query/mutations/use-logout";
-import { useAcademicYears } from "@/lib/query/queries/use-academic-config";
 import { useReportTypes } from "@/lib/query/queries/use-grading";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { useAcademicScope } from "@/hooks/use-academic-scope";
 
 export default function ReportCardsPage() {
   return (
@@ -65,37 +65,34 @@ function ReportCardsShell() {
 }
 
 function ReportTypeList() {
-  const years = useAcademicYears();
-  const [yearId, setYearId] = React.useState("");
-  const reportTypes = useReportTypes(yearId);
+  const { yearId } = useAcademicScope();
+  const reportTypes = useReportTypes(yearId ?? undefined);
   const router = useRouter();
-
-  const activeYears = (years.data ?? []).filter((year) => year.status === "Active");
 
   function openReportType(reportTypeId: string) {
     router.push(`/grading/report-cards/${reportTypeId}/classroom`);
+  }
+
+  if (!yearId) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Silakan pilih tahun ajaran di header untuk melihat jenis rapor.
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Jenis Rapor</CardTitle>
-        <CardDescription>Pilih tahun untuk melihat jenis rapor yang tersedia.</CardDescription>
+        <CardDescription>Daftar jenis rapor yang tersedia untuk tahun ajaran terpilih.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
-        <QuerySelect
-          items={activeYears}
-          isLoading={years.isLoading}
-          value={yearId}
-          onValueChange={setYearId}
-          getValue={(year) => year.academic_year_id}
-          getLabel={(year) => year.name}
-          placeholder="Pilih tahun aktif"
-          emptyText="Belum ada tahun aktif"
-        />
-        {!yearId ? (
-          <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">Pilih tahun untuk melihat jenis rapor.</p>
-        ) : reportTypes.isLoading ? (
+        {reportTypes.isLoading ? (
           <Skeleton className="h-40 w-full" />
         ) : (reportTypes.data ?? []).length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">

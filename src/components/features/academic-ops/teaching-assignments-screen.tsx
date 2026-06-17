@@ -46,12 +46,11 @@ import {
   type TeachingAssignment,
 } from "@/lib/query/queries/use-academic-ops";
 import {
-  useAcademicYears,
-  useCurriculumVersions,
   useSubjects,
   useSubjectsForYear,
 } from "@/lib/query/queries/use-academic-config";
 import { teachingAssignmentSchema, type TeachingAssignmentForm } from "@/lib/schemas/academic-ops";
+import { useAcademicScope } from "@/hooks/use-academic-scope";
 import {
   parseTeachingAssignmentsParams,
   serializeTeachingAssignmentsParams,
@@ -59,13 +58,18 @@ import {
 } from "@/lib/schemas/teaching-assignments-params";
 
 export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsContext) {
+  const { yearId } = useAcademicScope();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const params = React.useMemo(() => parseTeachingAssignmentsParams(searchParams), [searchParams]);
+  const params = React.useMemo(() => {
+    const p = parseTeachingAssignmentsParams(searchParams);
+    return {
+      ...p,
+      academic_year_id: yearId || undefined,
+    };
+  }, [searchParams, yearId]);
   const assignments = useTeachingAssignmentsTable(params);
 
-  const years = useAcademicYears();
-  const activeYears = React.useMemo(() => (years.data ?? []).filter((y) => y.status === "Active"), [years.data]);
   const [createOpen, setCreateOpen] = React.useState(false);
 
   function onParamsChange(next: TeachingAssignmentsParams) {
@@ -75,11 +79,22 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
     });
   }
 
+  if (!yearId) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <p className="text-sm text-muted-foreground">
+            Silakan pilih tahun ajaran di header untuk melihat penugasan mengajar.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <AssignmentFilters
         params={params}
-        years={activeYears}
         onParamsChange={onParamsChange}
         extras={
           <Button size="sm" className="gap-1" onClick={() => setCreateOpen(true)}>
@@ -114,12 +129,10 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
 
 function AssignmentFilters({
   params,
-  years,
   onParamsChange,
   extras,
 }: {
   params: TeachingAssignmentsParams;
-  years: { academic_year_id: string; name: string }[];
   onParamsChange: (params: TeachingAssignmentsParams) => void;
   extras: React.ReactNode;
 }) {
@@ -135,30 +148,6 @@ function AssignmentFilters({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex flex-wrap gap-2">
-        <Select
-          value={params.academic_year_id ?? "all"}
-          onValueChange={(value) =>
-            onParamsChange({
-              ...params,
-              academic_year_id: value === "all" ? undefined : value,
-              homeroom_id: undefined,
-              page: 1,
-            })
-          }
-        >
-          <SelectTrigger className="w-[10rem]">
-            <SelectValue placeholder="Tahun" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua tahun</SelectItem>
-            {years.map((year) => (
-              <SelectItem key={year.academic_year_id} value={year.academic_year_id}>
-                {year.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
         <Select
           value={params.homeroom_id ?? "all"}
           onValueChange={(value) =>
@@ -204,7 +193,6 @@ function AssignmentTable({
 }) {
   const teachers = useTeachers();
   const homerooms = useHomerooms();
-  const years = useAcademicYears();
   // Subjects are nested under curriculum versions; resolve names across all of
   // the selected year's curricula so the Mapel column shows names, not ids.
   const subjectYearId = params.academic_year_id ?? assignments[0]?.academic_year_id;
@@ -221,7 +209,6 @@ function AssignmentTable({
 
   const teacherName = useNameMap(teachers.data ?? [], (t) => t.teacher_id, (t) => t.full_name);
   const homeroomName = useNameMap(homerooms.data ?? [], (h) => h.homeroom_id, (h) => h.name);
-  const yearName = useNameMap(years.data ?? [], (y) => y.academic_year_id, (y) => y.name);
   const subjectName = useNameMap(subjects.data ?? [], (s) => s.subject_id, (s) => s.name);
 
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
@@ -279,11 +266,6 @@ function AssignmentTable({
       id: "homeroom",
       header: () => <span>Kelas</span>,
       cell: ({ row }) => <span>{homeroomName(row.original.homeroom_id)}</span>,
-    },
-    {
-      id: "year",
-      header: () => <span>Tahun</span>,
-      cell: ({ row }) => <span className="text-muted-foreground">{yearName(row.original.academic_year_id)}</span>,
     },
     {
       id: "actions",
@@ -462,47 +444,32 @@ function AssignmentDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const years = useAcademicYears();
+  const { yearId, curriculumId } = useAcademicScope();
   const homerooms = useHomerooms();
   const teachers = useTeachers();
-  const activeYears = React.useMemo(() => (years.data ?? []).filter((y) => y.status === "Active"), [years.data]);
-
-  const [yearId, setYearId] = React.useState("");
-  const [curriculumId, setCurriculumId] = React.useState("");
-  const curriculum = useCurriculumVersions(yearId);
-  const subjects = useSubjects(curriculumId);
+  const subjects = useSubjects(curriculumId ?? undefined);
 
   const form = useForm<TeachingAssignmentForm>({
     resolver: zodResolver(teachingAssignmentSchema),
-    defaultValues: { teacher_id: "", subject_id: "", homeroom_id: "", academic_year_id: "" },
+    defaultValues: { teacher_id: "", subject_id: "", homeroom_id: "", academic_year_id: yearId || "" },
   });
 
   React.useEffect(() => {
     if (!open) {
-      setYearId("");
-      setCurriculumId("");
-      form.reset({ teacher_id: "", subject_id: "", homeroom_id: "", academic_year_id: "" });
+      form.reset({ teacher_id: "", subject_id: "", homeroom_id: "", academic_year_id: yearId || "" });
     }
-  }, [open, form]);
-
-  function onYearChange(id: string) {
-    setYearId(id);
-    setCurriculumId("");
-    form.setValue("academic_year_id", id);
-    form.setValue("homeroom_id", "");
-    form.setValue("subject_id", "");
-  }
-  function onCurriculumChange(id: string) {
-    setCurriculumId(id);
-    form.setValue("subject_id", "");
-  }
+  }, [open, form, yearId]);
 
   const assign = useAssignTeaching();
   const filteredHomerooms = (homerooms.data ?? []).filter((h) => !yearId || h.academic_year_id === yearId);
 
   async function onSubmit(values: TeachingAssignmentForm) {
+    if (!yearId) return;
     try {
-      await assign.mutateAsync(values);
+      await assign.mutateAsync({
+        ...values,
+        academic_year_id: yearId,
+      });
       toast.success("Penugasan dibuat.");
       onOpenChange(false);
     } catch (err) {
@@ -515,42 +482,10 @@ function AssignmentDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Tambah penugasan</DialogTitle>
-          <DialogDescription>Pilih tahun, kurikulum, kelas, guru, lalu mata pelajaran.</DialogDescription>
+          <DialogDescription>Pilih kelas, guru, lalu mata pelajaran.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" noValidate>
-            <FormField
-              control={form.control}
-              name="academic_year_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tahun</FormLabel>
-                  <QuerySelect
-                    items={activeYears}
-                    isLoading={years.isLoading}
-                    value={field.value}
-                    onValueChange={onYearChange}
-                    getValue={(y) => y.academic_year_id}
-                    getLabel={(y) => y.name}
-                    placeholder="Pilih tahun"
-                    emptyText="Tidak ada tahun aktif"
-                  />
-                </FormItem>
-              )}
-            />
-            <div className="space-y-1.5">
-              <FormLabel>Kurikulum</FormLabel>
-              <QuerySelect
-                items={curriculum.data ?? []}
-                isLoading={curriculum.isLoading}
-                value={curriculumId}
-                onValueChange={onCurriculumChange}
-                getValue={(c) => c.curriculum_version_id}
-                getLabel={(c) => c.name}
-                placeholder="Pilih kurikulum"
-                emptyText="Belum ada kurikulum"
-              />
-            </div>
             <FormField
               control={form.control}
               name="homeroom_id"
