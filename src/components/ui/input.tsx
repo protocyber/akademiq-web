@@ -7,7 +7,6 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
     return (
-      // eslint-disable-next-line react/forbid-elements
       <input
         type={type}
         ref={ref}

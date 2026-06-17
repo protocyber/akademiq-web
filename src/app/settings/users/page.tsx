@@ -387,10 +387,10 @@ function UsersTableSection(props: UsersTableSectionProps) {
       cell: ({ row }) => (
         <div className="min-w-0">
           <p className="truncate font-semibold text-foreground">{row.original.full_name}</p>
-          <p className="truncate text-sm text-muted-foreground flex items-center gap-2">
+          <div className="truncate text-sm text-muted-foreground flex items-center gap-2">
             <span>{row.original.email ?? row.original.username}</span>
             {row.original.email && <EmailVerifiedBadge verified={row.original.email_verified} />}
-          </p>
+          </div>
         </div>
       ),
     },
@@ -844,8 +844,12 @@ function EditUserDialog({
           <DialogTitle>Edit pengguna</DialogTitle>
           <DialogDescription className="flex items-center gap-2 mt-1">
             <span>{user.email ?? user.username}</span>
-            {user.email && <EmailVerifiedBadge verified={user.email_verified} />}
           </DialogDescription>
+          {user.email && (
+            <div className="mt-1">
+              <EmailVerifiedBadge verified={user.email_verified} />
+            </div>
+          )}
         </DialogHeader>
 
         <Form {...form}>
