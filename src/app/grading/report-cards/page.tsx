@@ -65,8 +65,8 @@ function ReportCardsShell() {
 }
 
 function ReportTypeList() {
-  const { yearId } = useAcademicScope();
-  const reportTypes = useReportTypes(yearId ?? undefined);
+  const { yearId, termId } = useAcademicScope();
+  const reportTypes = useReportTypes(yearId ?? undefined, termId ?? undefined);
   const router = useRouter();
 
   function openReportType(reportTypeId: string) {

@@ -25,6 +25,16 @@ export type AcademicYear = {
   status: string;
 };
 
+export type AcademicTerm = {
+  term_id: string;
+  academic_year_id: string;
+  tenant_id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+};
+
 export type CurriculumVersion = {
   curriculum_version_id: string;
   tenant_id: string;
@@ -70,6 +80,7 @@ export type Paginated<T> = {
 };
 
 export const ACADEMIC_YEARS_QUERY_KEY = ["academic-config", "academic-years"] as const;
+export const ACADEMIC_TERMS_QUERY_KEY = ["academic-config", "academic-terms"] as const;
 export const CURRICULUM_VERSIONS_QUERY_KEY = [
   "academic-config",
   "curriculum-versions",
@@ -118,6 +129,21 @@ export function useAcademicYearsTable(params: AcademicYearsParams) {
 export function useAcademicYears() {
   const query = useAcademicYearsTable({ page: 1, page_size: 100, sort: "name" });
   return { ...query, data: query.data?.data };
+}
+
+export function useTerms(yearId?: string) {
+  return useQuery({
+    queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId ?? ""],
+    queryFn: async () => {
+      const envelope = await apiFetchEnvelope<AcademicTerm[]>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${yearId}/terms?page=1&page_size=100&sort=start_date`,
+        authenticated: true,
+      });
+      return envelope.data;
+    },
+    enabled: Boolean(yearId),
+  });
 }
 
 export function useCurriculumVersions(academicYearId?: string) {

@@ -6,6 +6,7 @@ export const evaluationSchema = z.object({
   homeroom_id: uuid,
   subject_id: uuid,
   academic_year_id: uuid,
+  term_id: uuid.optional(),
   code: z.string().min(1, "Kode wajib diisi").max(32, "Kode maksimal 32 karakter"),
   name: z.string().min(1, "Nama wajib diisi").max(255, "Nama maksimal 255 karakter"),
   position: z.number().int(),
@@ -35,6 +36,7 @@ export const reportCardGenerateSchema = z.object({
 
 export const reportTypeCreateSchema = z.object({
   academic_year_id: uuid,
+  term_id: uuid.optional(),
   code: z.string().min(1, "Kode wajib diisi").max(64, "Kode maksimal 64 karakter"),
   name: z.string().min(1, "Nama wajib diisi").max(255, "Nama maksimal 255 karakter"),
 });

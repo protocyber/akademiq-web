@@ -82,7 +82,7 @@ function GradeEntryShell() {
 }
 
 function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
-  const { yearId, curriculumId } = useAcademicScope();
+  const { yearId, curriculumId, termId } = useAcademicScope();
   const homerooms = useHomerooms();
   const [homeroomId, setHomeroomId] = React.useState("");
   const [subjectId, setSubjectId] = React.useState("");
@@ -97,9 +97,9 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
   const subjects = useSubjects(curriculumId ?? undefined);
   const assignments = useTeachingAssignments(homeroomId);
   const roster = useHomeroomRoster(homeroomId);
-  const evaluations = useEvaluations(homeroomId, subjectId, yearId ?? undefined);
+  const evaluations = useEvaluations(homeroomId, subjectId, yearId ?? undefined, termId ?? undefined);
   const grades = useClassGrades(homeroomId, subjectId, yearId ?? undefined);
-  const reportTypes = useReportTypes(yearId ?? undefined);
+  const reportTypes = useReportTypes(yearId ?? undefined, termId ?? undefined);
   const reportTypeIds = (reportTypes.data ?? []).map((t) => t.report_type_id);
   const reportScores = useSubjectReportScoresForTypes(reportTypeIds, homeroomId, subjectId);
 
@@ -220,6 +220,7 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
           homeroomId={homeroomId}
           subjectId={subjectId}
           yearId={yearId}
+          termId={termId ?? undefined}
           evaluations={evaluations.data ?? []}
         />
       )}
@@ -450,6 +451,7 @@ function KelolEvaluasiModal({
   homeroomId,
   subjectId,
   yearId,
+  termId,
   evaluations,
 }: {
   open: boolean;
@@ -457,6 +459,7 @@ function KelolEvaluasiModal({
   homeroomId: string;
   subjectId: string;
   yearId: string;
+  termId?: string;
   evaluations: Evaluation[];
 }) {
   const [editingId, setEditingId] = React.useState<string | null>(null);
@@ -479,6 +482,7 @@ function KelolEvaluasiModal({
         homeroom_id: homeroomId,
         subject_id: subjectId,
         academic_year_id: yearId,
+        ...(termId ? { term_id: termId } : {}),
         code: newCode.trim(),
         name: newName.trim(),
         position: nextPosition,
@@ -606,7 +610,7 @@ function KelolEvaluasiModal({
           )}
 
           {sorted.length > 0 && (
-            <WeightMatrix yearId={yearId} subjectId={subjectId} evaluations={sorted} />
+            <WeightMatrix yearId={yearId} termId={termId ?? undefined} subjectId={subjectId} evaluations={sorted} />
           )}
         </DialogContent>
       </Dialog>
@@ -731,14 +735,16 @@ function EvaluationRow({
 
 export function WeightMatrix({
   yearId,
+  termId,
   subjectId,
   evaluations,
 }: {
   yearId: string;
+  termId?: string;
   subjectId: string;
   evaluations: Evaluation[];
 }) {
-  const reportTypes = useReportTypes(yearId);
+  const reportTypes = useReportTypes(yearId, termId);
   const reportTypeIds = (reportTypes.data ?? []).map((t) => t.report_type_id);
   const formulasByType = useReportFormulasForTypes(reportTypeIds);
 
@@ -761,10 +767,10 @@ export function WeightMatrix({
     setHydrated(true);
   }, [formulasByType.isLoading, formulasByType.data, evaluations, hydrated]);
 
-  // Reset hydration when the subject/year changes.
+  // Reset hydration when the subject/year/term changes.
   React.useEffect(() => {
     setHydrated(false);
-  }, [subjectId, yearId]);
+  }, [subjectId, yearId, termId]);
 
   if (reportTypes.isLoading || !reportTypes.data) {
     return <Skeleton className="h-24 w-full" />;

@@ -103,18 +103,25 @@ export type SubjectReportScore = {
 
 // ── Evaluation queries ───────────────────────────────────────────────────────
 
-export const evaluationsQueryKey = (homeroomId?: string, subjectId?: string, academicYearId?: string) =>
-  ["grading", "evaluations", homeroomId, subjectId, academicYearId] as const;
+export const evaluationsQueryKey = (homeroomId?: string, subjectId?: string, academicYearId?: string, termId?: string) =>
+  ["grading", "evaluations", homeroomId, subjectId, academicYearId, termId] as const;
 
-export function useEvaluations(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+export function useEvaluations(homeroomId?: string, subjectId?: string, academicYearId?: string, termId?: string) {
   return useQuery({
-    queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId),
-    queryFn: () =>
-      apiFetch<Evaluation[]>({
+    queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId, termId),
+    queryFn: () => {
+      const params = new URLSearchParams({
+        homeroom_id: homeroomId!,
+        subject_id: subjectId!,
+        academic_year_id: academicYearId!,
+      });
+      if (termId) params.set("term_id", termId);
+      return apiFetch<Evaluation[]>({
         service: "grading",
-        path: `/api/v1/grading/evaluations?homeroom_id=${homeroomId}&subject_id=${subjectId}&academic_year_id=${academicYearId}`,
+        path: `/api/v1/grading/evaluations?${params.toString()}`,
         authenticated: true,
-      }),
+      });
+    },
     enabled: Boolean(homeroomId && subjectId && academicYearId),
   });
 }
@@ -222,18 +229,21 @@ export function useMyReportCardDetail(studentId?: string, academicYearId?: strin
 
 // ── Report type queries ──────────────────────────────────────────────────────
 
-export const reportTypesQueryKey = (academicYearId?: string) =>
-  ["grading", "report-types", academicYearId] as const;
+export const reportTypesQueryKey = (academicYearId?: string, termId?: string) =>
+  ["grading", "report-types", academicYearId, termId] as const;
 
-export function useReportTypes(academicYearId?: string) {
+export function useReportTypes(academicYearId?: string, termId?: string) {
   return useQuery({
-    queryKey: reportTypesQueryKey(academicYearId),
-    queryFn: () =>
-      apiFetch<ReportType[]>({
+    queryKey: reportTypesQueryKey(academicYearId, termId),
+    queryFn: () => {
+      const params = new URLSearchParams({ academic_year_id: academicYearId! });
+      if (termId) params.set("term_id", termId);
+      return apiFetch<ReportType[]>({
         service: "grading",
-        path: `/api/v1/grading/report-types?academic_year_id=${academicYearId}`,
+        path: `/api/v1/grading/report-types?${params.toString()}`,
         authenticated: true,
-      }),
+      });
+    },
     enabled: Boolean(academicYearId),
   });
 }

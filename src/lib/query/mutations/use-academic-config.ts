@@ -5,7 +5,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api/client";
 import {
   ACADEMIC_YEARS_QUERY_KEY,
+  ACADEMIC_TERMS_QUERY_KEY,
   AcademicYear,
+  AcademicTerm,
   ClassTemplate,
   CLASS_TEMPLATES_QUERY_KEY,
   CurriculumVersion,
@@ -15,6 +17,7 @@ import {
   SUBJECTS_QUERY_KEY,
 } from "@/lib/query/queries/use-academic-config";
 import type { AcademicYearForm, YearStatusForm, TransitionRequestForm } from "@/lib/schemas/academic-year";
+import type { AcademicTermForm, TermTransitionRequestForm } from "@/lib/schemas/academic-term";
 import type { ClassTemplateForm } from "@/lib/schemas/class-template";
 import type { GradingPolicyForm } from "@/lib/schemas/grading-policy";
 import type { CurriculumVersionForm, SubjectForm } from "@/lib/schemas/subject";
@@ -79,6 +82,72 @@ export function useBulkDeleteAcademicYears() {
         body: { ids },
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Academic terms
+// ---------------------------------------------------------------------------
+
+export function useCreateAcademicTerm(yearId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AcademicTermForm) =>
+      apiFetch<AcademicTerm>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${yearId}/terms`,
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId] }),
+  });
+}
+
+export function useUpdateAcademicTerm(termId: string, yearId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: AcademicTermForm) =>
+      apiFetch<AcademicTerm>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-terms/${termId}`,
+        method: "PATCH",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId] }),
+  });
+}
+
+export function useTransitionAcademicTerm(termId: string, yearId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TermTransitionRequestForm) =>
+      apiFetch<AcademicTerm>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-terms/${termId}/status`,
+        method: "PATCH",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId] });
+      qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY });
+    },
+  });
+}
+
+export function useDeleteAcademicTerm(yearId: string) {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationFn: (termId) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-terms/${termId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId] }),
   });
 }
 

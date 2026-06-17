@@ -13,7 +13,7 @@ import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useTenantPermissions } from "@/lib/query/queries/use-tenant-roles";
 import { EmailVerifiedBadge } from "@/components/ui/email-verified-badge";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
-import { useAcademicYears, useCurriculumVersions } from "@/lib/query/queries/use-academic-config";
+import { useAcademicYears, useCurriculumVersions, useTerms } from "@/lib/query/queries/use-academic-config";
 import { QuerySelect } from "@/components/ui/query-select";
 import {
   DropdownMenu,
@@ -169,7 +169,7 @@ function useMenuVisibility() {
 }
 
 function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) {
-  const { yearId, curriculumId, setYearId, setCurriculumId, isResolving } = useAcademicScope();
+  const { yearId, curriculumId, termId, setYearId, setCurriculumId, setTermId, hasNoActiveTerm, isResolving } = useAcademicScope();
   const yearsQuery = useAcademicYears();
   const years = yearsQuery.data ?? [];
   const activeYear = years.find((y) => y.status === "Active");
@@ -178,9 +178,13 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
   const curriculumsQuery = useCurriculumVersions(yearId ?? undefined);
   const curriculums = curriculumsQuery.data ?? [];
 
+  const termsQuery = useTerms(yearId ?? undefined);
+  const terms = termsQuery.data ?? [];
+
   if (isResolving) {
     return (
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
         <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
         <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
       </div>
@@ -210,6 +214,28 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
         {!hasActiveYear && !yearId && (
           <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium animate-pulse">
             Silakan pilih tahun ajaran
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <div className="w-[180px]">
+          <QuerySelect
+            items={terms}
+            isLoading={termsQuery.isLoading}
+            value={termId ?? undefined}
+            onValueChange={(val) => setTermId(val)}
+            getValue={(t) => t.term_id}
+            getLabel={(t) => t.name}
+            placeholder="Pilih Semester"
+            emptyText="Belum ada semester"
+            disabled={!yearId || terms.length === 0}
+            className={triggerClass}
+          />
+        </div>
+        {hasNoActiveTerm && (
+          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+            Tidak ada semester aktif
           </span>
         )}
       </div>
