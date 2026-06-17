@@ -89,7 +89,7 @@ async function mockApis(page: Page) {
 
     if (path === "/api/v1/academic-config/academic-years" && method === "POST") {
       const body = request.postDataJSON();
-      const year = { academic_year_id: academicYearId, tenant_id: tenantId, status: "Planning", ...body };
+      const year = { academic_year_id: academicYearId, tenant_id: tenantId, status: "Draft", ...body };
       years.splice(0, years.length, year);
       await ok(year, 201);
       return;
@@ -183,8 +183,24 @@ test("tenant admin walks academic config pages end to end", async ({ page }) => 
   await expect(page.getByText("2026/2027")).toBeVisible();
   await page.getByRole("button", { name: /aksi/i }).click();
   await page.getByRole("menuitem", { name: /edit/i }).click();
-  await page.getByRole("button", { name: /lanjutkan ke configuration/i }).click();
-  await expect(page.getByText("Configuration", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: /ubah status/i }).click();
+  await page.getByLabel(/alasan perubahan status/i).fill("Alasan transisi ke aktif yang sah");
+  await page.getByRole("button", { name: /^konfirmasi$/i }).click();
+  await expect(page.getByText("Aktif", { exact: true }).first()).toBeVisible();
+
+  // Test the type-to-confirm undo path (Active -> Draft)
+  await page.getByRole("button", { name: /ubah status/i }).click();
+  await page.getByLabel(/alasan perubahan status/i).fill("Membatalkan aktivasi tahun ajaran");
+  await page.getByPlaceholder('Ketik "Draft"').fill("Draft");
+  await expect(page.getByRole("button", { name: /^konfirmasi$/i })).toBeEnabled({ timeout: 6000 });
+  await page.getByRole("button", { name: /^konfirmasi$/i }).click();
+  await expect(page.getByText("Draft", { exact: true }).first()).toBeVisible();
+
+  // Re-transition back to Active so the rest of the test proceeds as expected
+  await page.getByRole("button", { name: /ubah status/i }).click();
+  await page.getByLabel(/alasan perubahan status/i).fill("Alasan transisi ke aktif yang sah");
+  await page.getByRole("button", { name: /^konfirmasi$/i }).click();
+  await expect(page.getByText("Aktif", { exact: true }).first()).toBeVisible();
 
   // We are currently in the edit year modal.
   // Click "Versi Kurikulum" tab

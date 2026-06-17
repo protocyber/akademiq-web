@@ -14,7 +14,7 @@ import {
   Subject,
   SUBJECTS_QUERY_KEY,
 } from "@/lib/query/queries/use-academic-config";
-import type { AcademicYearForm, YearStatusForm } from "@/lib/schemas/academic-year";
+import type { AcademicYearForm, YearStatusForm, TransitionRequestForm } from "@/lib/schemas/academic-year";
 import type { ClassTemplateForm } from "@/lib/schemas/class-template";
 import type { GradingPolicyForm } from "@/lib/schemas/grading-policy";
 import type { CurriculumVersionForm, SubjectForm } from "@/lib/schemas/subject";
@@ -41,7 +41,7 @@ export function useCreateAcademicYear() {
 export function useTransitionAcademicYear(academicYearId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: YearStatusForm) =>
+    mutationFn: (input: TransitionRequestForm) =>
       apiFetch<AcademicYear>({
         service: "academic-config",
         path: `/api/v1/academic-config/academic-years/${academicYearId}/status`,

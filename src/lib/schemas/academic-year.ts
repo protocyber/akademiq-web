@@ -7,16 +7,14 @@ export const academicYearSchema = z.object({
 });
 
 export const yearStatusSchema = z.object({
-  status: z.enum([
-    "Planning",
-    "Configuration",
-    "Active",
-    "Locked",
-    "Finalizing",
-    "Closed",
-    "Archived",
-  ]),
+  status: z.enum(["Draft", "Active", "Closed", "Archived"]),
+});
+
+export const transitionRequestSchema = z.object({
+  status: z.enum(["Draft", "Active", "Closed", "Archived"]),
+  reason: z.string().min(10, "Alasan minimal harus 10 karakter"),
 });
 
 export type AcademicYearForm = z.infer<typeof academicYearSchema>;
 export type YearStatusForm = z.infer<typeof yearStatusSchema>;
+export type TransitionRequestForm = z.infer<typeof transitionRequestSchema>;

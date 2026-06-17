@@ -60,6 +60,7 @@ import {
   type AcademicYearForm,
   type YearStatusForm,
 } from "@/lib/schemas/academic-year";
+import { StatusConfirmDialog } from "@/components/features/academic-config/status-confirm-dialog";
 import {
   DEFAULT_ACADEMIC_YEARS_PARAMS,
   parseAcademicYearsParams,
@@ -89,12 +90,9 @@ import { reportTypeCreateSchema, reportTypeUpdateSchema, type ReportTypeCreateFo
 import { useReportTypes, type ReportType } from "@/lib/query/queries/use-grading";
 
 const nextStatuses: Record<string, string[]> = {
-  Planning: ["Configuration"],
-  Configuration: ["Active"],
-  Active: ["Locked"],
-  Locked: ["Finalizing"],
-  Finalizing: ["Closed"],
-  Closed: ["Archived"],
+  Draft: ["Active"],
+  Active: ["Draft", "Closed"],
+  Closed: ["Draft", "Active", "Archived"],
   Archived: [],
 };
 
@@ -300,8 +298,8 @@ function YearsTableSection({
         </Button>
       ),
       cell: ({ row }) => (
-        <Badge variant={row.original.status === "Active" ? "default" : "secondary"}>
-          {row.original.status}
+        <Badge variant={row.original.status === "Active" ? "default" : row.original.status === "Archived" ? "destructive" : "secondary"}>
+          {STATUS_LABELS[row.original.status] ?? row.original.status}
         </Badge>
       ),
     },
@@ -510,7 +508,7 @@ function YearFormModal({
           </DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "Mulai dari status Planning. Pengaturan nilai, kurikulum & jenis rapor tersedia setelah tahun dibuat."
+              ? "Mulai dari status Draft. Pengaturan nilai, kurikulum & jenis rapor tersedia setelah tahun dibuat."
               : "Perbarui identitas, kebijakan nilai, kurikulum, dan jenis rapor."}
           </DialogDescription>
         </DialogHeader>
@@ -581,16 +579,13 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
-const STATUS_ORDER = ["Planning", "Configuration", "Active", "Locked", "Finalizing", "Closed", "Archived"];
+const STATUS_ORDER = ["Draft", "Active", "Closed", "Archived"];
 
 const STATUS_LABELS: Record<string, string> = {
-  Planning: "Planning",
-  Configuration: "Config",
-  Active: "Active",
-  Locked: "Locked",
-  Finalizing: "Finalizing",
-  Closed: "Closed",
-  Archived: "Archived",
+  Draft: "Draft",
+  Active: "Aktif",
+  Closed: "Ditutup",
+  Archived: "Arsip",
 };
 
 function StatusTimeline({ currentStatus }: { currentStatus: string }) {
@@ -682,6 +677,9 @@ function IdentitySection({
 
   const options = React.useMemo(() => (year ? nextStatuses[year.status] ?? [] : []), [year]);
   const [nextStatus, setNextStatus] = React.useState(options[0] ?? "");
+  const [statusConfirmOpen, setStatusConfirmOpen] = React.useState(false);
+  const [statusError, setStatusError] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     setNextStatus(options[0] ?? "");
   }, [options]);
@@ -702,15 +700,29 @@ function IdentitySection({
     }
   }
 
-  async function onTransition() {
+  const handleStatusConfirm = async (reason: string) => {
     if (!year || !nextStatus) return;
     try {
-      await transition.mutateAsync({ status: nextStatus as YearStatusForm["status"] });
+      await transition.mutateAsync({
+        status: nextStatus as any,
+        reason,
+      });
       toast.success("Status tahun ajaran diperbarui.");
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah status." }));
+      setStatusConfirmOpen(false);
+    } catch (err: any) {
+      let msg = "Tidak bisa mengubah status.";
+      const code = err?.error?.code || err?.code;
+      if (code === "ACTIVE_YEAR_EXISTS") {
+        msg = "Tahun ajaran aktif sudah ada untuk penyewa ini. Silakan tutup tahun ajaran aktif terlebih dahulu.";
+      } else if (code === "INVALID_STATE_TRANSITION") {
+        msg = "Transisi status ini tidak diperbolehkan.";
+      } else if (code === "VALIDATION_ERROR") {
+        msg = "Alasan tidak valid. Alasan minimal harus 10 karakter.";
+      }
+      setStatusError(msg);
+      throw err;
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -770,24 +782,50 @@ function IdentitySection({
       {mode === "edit" && year ? (
         <div className="rounded-lg border p-4 space-y-4">
           <div>
-            <p className="text-sm font-semibold text-foreground">Status saat ini: <span className="text-primary font-bold">{year.status}</span></p>
-            <p className="text-xs text-muted-foreground">Tahun ajaran mengikuti alur siklus hidup linear berikut.</p>
+            <p className="text-sm font-semibold text-foreground">Status saat ini: <span className="text-primary font-bold">{STATUS_LABELS[year.status] ?? year.status}</span></p>
+            <p className="text-xs text-muted-foreground">Tahun ajaran mengikuti alur siklus hidup berikut.</p>
           </div>
           
           <StatusTimeline currentStatus={year.status} />
 
-          {options.length > 0 && nextStatus ? (
-            <div className="flex justify-end border-t pt-4">
+          {options.length > 0 ? (
+            <div className="flex items-center justify-end gap-3 border-t pt-4">
+              <span className="text-xs text-muted-foreground">Ubah status ke:</span>
+              <Select value={nextStatus} onValueChange={setNextStatus}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Pilih status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {options.map((opt) => (
+                    <SelectItem key={opt} value={opt}>
+                      {STATUS_LABELS[opt] ?? opt}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
-                variant="outline"
-                loading={transition.isPending}
-                disabled={!canManage}
-                onClick={onTransition}
+                variant={nextStatus === "Archived" ? "destructive" : "default"}
+                disabled={!canManage || !nextStatus}
+                onClick={() => {
+                  setStatusError(null);
+                  setStatusConfirmOpen(true);
+                }}
               >
-                Lanjutkan ke {nextStatus}
+                Ubah Status
               </Button>
             </div>
           ) : null}
+
+          <StatusConfirmDialog
+            open={statusConfirmOpen}
+            onOpenChange={setStatusConfirmOpen}
+            currentStatus={year.status}
+            targetStatus={nextStatus}
+            onConfirm={handleStatusConfirm}
+            loading={transition.isPending}
+            error={statusError}
+            setError={setStatusError}
+          />
         </div>
       ) : null}
     </div>
