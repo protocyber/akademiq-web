@@ -88,11 +88,13 @@ export function StatusConfirmDialog({
     try {
       await onConfirm(reason);
       onOpenChange(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Handled by caller or local error state
       if (!propSetError) {
         let msg = "Terjadi kesalahan saat mengubah status.";
-        const code = err?.error?.code || err?.code;
+        const code =
+          (err as { error?: { code?: string } })?.error?.code ||
+          (err as { code?: string })?.code;
         if (code === "ACTIVE_YEAR_EXISTS") {
           msg = "Tahun ajaran aktif sudah ada untuk penyewa ini. Silakan tutup tahun ajaran aktif terlebih dahulu.";
         } else if (code === "INVALID_STATE_TRANSITION") {

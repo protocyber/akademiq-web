@@ -7,7 +7,7 @@ import { AcademicScopeProvider } from "@/components/providers/academic-scope-pro
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { getAccessToken } from "@/lib/api/client";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
-import { useAcademicYears, useCurriculumVersions, useSubjects } from "@/lib/query/queries/use-academic-config";
+import { useAcademicYears, useCurriculumVersions } from "@/lib/query/queries/use-academic-config";
 import { QueryProvider } from "@/lib/query/provider";
 
 import GradeEntryPage from "@/app/grading/entry/page";
@@ -101,7 +101,7 @@ describe("AcademicScopeProvider", () => {
         ],
       },
       isLoading: false,
-    } as any);
+    } as unknown as never);
   });
 
   afterEach(() => {
@@ -115,7 +115,7 @@ describe("AcademicScopeProvider", () => {
         { academic_year_id: "year-2", name: "Year 2", status: "Draft" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     vi.mocked(useCurriculumVersions).mockReturnValue({
       data: [
@@ -123,7 +123,7 @@ describe("AcademicScopeProvider", () => {
         { curriculum_version_id: "cur-2", name: "v2.0" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(
       <AcademicScopeProvider>
@@ -152,7 +152,7 @@ describe("AcademicScopeProvider", () => {
         { academic_year_id: "year-2", name: "Year 2", status: "Draft" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     vi.mocked(useCurriculumVersions).mockReturnValue({
       data: [
@@ -160,7 +160,7 @@ describe("AcademicScopeProvider", () => {
         { curriculum_version_id: "cur-2", name: "v2.0" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(
       <AcademicScopeProvider>
@@ -186,14 +186,14 @@ describe("AcademicScopeProvider", () => {
         { academic_year_id: "year-1", name: "Year 1", status: "Active" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     vi.mocked(useCurriculumVersions).mockReturnValue({
       data: [
         { curriculum_version_id: "cur-1", name: "v1.0" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(
       <AcademicScopeProvider>
@@ -214,12 +214,12 @@ describe("AcademicScopeProvider", () => {
         { academic_year_id: "year-2", name: "Year 2", status: "Draft" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     vi.mocked(useCurriculumVersions).mockReturnValue({
       data: [],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(
       <AcademicScopeProvider>
@@ -242,7 +242,7 @@ describe("AcademicScopeProvider", () => {
         { academic_year_id: "year-2", name: "Year 2", status: "Draft" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     vi.mocked(useCurriculumVersions).mockReturnValue({
       data: [
@@ -250,9 +250,9 @@ describe("AcademicScopeProvider", () => {
         { curriculum_version_id: "cur-2", name: "v2.0" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
-    let store: Record<string, string> = {};
+    const store: Record<string, string> = {};
     vi.mocked(localStorage.getItem).mockImplementation((key) => store[key] || null);
     vi.mocked(localStorage.setItem).mockImplementation((key, val) => {
       store[key] = val;
@@ -312,7 +312,7 @@ describe("AcademicScope integration with screens", () => {
         ],
       },
       isLoading: false,
-    } as any);
+    } as unknown as never);
   });
 
   afterEach(() => {
@@ -325,14 +325,14 @@ describe("AcademicScope integration with screens", () => {
         { academic_year_id: "year-1", name: "Year 1", status: "Active" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     vi.mocked(useCurriculumVersions).mockReturnValue({
       data: [
         { curriculum_version_id: "cur-1", name: "v1.0" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(
       <QueryProvider>
@@ -354,14 +354,14 @@ describe("AcademicScope integration with screens", () => {
         { academic_year_id: "year-1", name: "Year 1", status: "Active" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     vi.mocked(useCurriculumVersions).mockReturnValue({
       data: [
         { curriculum_version_id: "cur-1", name: "v1.0" },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(
       <QueryProvider>

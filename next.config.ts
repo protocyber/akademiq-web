@@ -1,9 +1,10 @@
-/** @type {import("next").NextConfig} */
+import type { NextConfig } from "next";
+
 const devOrigins = process.env.WEB_DEV_ORIGIN
   ? process.env.WEB_DEV_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean)
   : [];
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   ...(devOrigins.length > 0 ? { allowedDevOrigins: devOrigins } : {}),
@@ -25,4 +26,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

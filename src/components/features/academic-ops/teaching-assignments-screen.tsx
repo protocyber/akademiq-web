@@ -215,12 +215,6 @@ function AssignmentTable({
   const allSelected = assignments.length > 0 && assignments.every((a) => rowSelection[a.assignment_id]);
   const someSelected = assignments.some((a) => rowSelection[a.assignment_id]);
 
-  function startDelete(id: string) {
-    setPendingId(id);
-    setRowSelection({ [id]: true });
-    setConfirmDelete(true);
-  }
-
   const columns: ColumnDef<TeachingAssignment>[] = [
     {
       id: "select",

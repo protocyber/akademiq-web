@@ -4,7 +4,6 @@ import {
   DEFAULT_ACADEMIC_SUBJECTS_PARAMS,
   parseAcademicSubjectsParams,
   serializeAcademicSubjectsParams,
-  academicSubjectsParamsKey,
 } from "./academic-subjects-params";
 
 function roundTrip(params: ReturnType<typeof parseAcademicSubjectsParams>) {

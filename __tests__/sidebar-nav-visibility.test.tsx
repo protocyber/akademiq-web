@@ -96,7 +96,7 @@ describe("SidebarContent nav visibility", () => {
         modules: modulesFrom(["academic_config", "grading", "academic_ops"]),
       },
       isLoading: false,
-    } as any);
+    } as unknown as never);
     vi.mocked(useTenantPermissions).mockReturnValue({
       data: [
         { code: "user.read", held: true },
@@ -107,7 +107,7 @@ describe("SidebarContent nav visibility", () => {
         { code: "billing.view", held: true },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(<SidebarContent pathname="/dashboard" />);
 
@@ -127,7 +127,7 @@ describe("SidebarContent nav visibility", () => {
         modules: modulesFrom(["grading", "academic_ops"]),
       },
       isLoading: false,
-    } as any);
+    } as unknown as never);
     vi.mocked(useTenantPermissions).mockReturnValue({
       data: [
         { code: "grade.read", held: true },
@@ -135,7 +135,7 @@ describe("SidebarContent nav visibility", () => {
         { code: "academic.config.read", held: true },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(<SidebarContent pathname="/dashboard" />);
 
@@ -157,13 +157,13 @@ describe("SidebarContent nav visibility", () => {
         modules: modulesFrom(["grading"]),
       },
       isLoading: false,
-    } as any);
+    } as unknown as never);
     vi.mocked(useTenantPermissions).mockReturnValue({
       data: [
         { code: "report.read", held: true },
       ],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(<SidebarContent pathname="/dashboard" />);
 
@@ -185,11 +185,11 @@ describe("SidebarContent nav visibility", () => {
         modules: modulesFrom(["academic_ops"]),
       },
       isLoading: false,
-    } as any);
+    } as unknown as never);
     vi.mocked(useTenantPermissions).mockReturnValue({
       data: [],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(<SidebarContent pathname="/dashboard" />);
 
@@ -211,11 +211,11 @@ describe("SidebarContent nav visibility", () => {
         modules: modulesFrom(["academic_ops", "grading"]),
       },
       isLoading: false,
-    } as any);
+    } as unknown as never);
     vi.mocked(useTenantPermissions).mockReturnValue({
       data: [],
       isLoading: false,
-    } as any);
+    } as unknown as never);
 
     render(<SidebarContent pathname="/dashboard" />);
 

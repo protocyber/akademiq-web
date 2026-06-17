@@ -30,7 +30,7 @@ import {
   useUpdateEvaluation,
   useUpsertGrade,
 } from "@/lib/query/mutations/use-grading";
-import { useAcademicYears, useCurriculumVersions, useSubjects } from "@/lib/query/queries/use-academic-config";
+import { useSubjects } from "@/lib/query/queries/use-academic-config";
 import { useHomeroomRoster, useHomerooms, useTeachingAssignments } from "@/lib/query/queries/use-academic-ops";
 import { useClassGrades, useEvaluations, useReportTypes, useSubjectReportScoresForTypes, type Evaluation, type Grade } from "@/lib/query/queries/use-grading";
 import { useReportFormulasForTypes } from "@/lib/query/queries/use-grading";

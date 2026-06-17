@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { UseFormReturn, FieldValues } from "react-hook-form";
 
 import { ApiHttpError } from "@/lib/api/types";
 import {
@@ -25,7 +26,7 @@ describe("applyServerFieldErrors", () => {
         plan_id: ["unknown"],
       },
     });
-    const applied = applyServerFieldErrors(form as any, err);
+    const applied = applyServerFieldErrors(form as unknown as UseFormReturn<FieldValues>, err);
     expect(applied).toEqual(["admin_email", "plan_id"]);
     expect(form.setError).toHaveBeenCalledTimes(2);
     expect(form.setError).toHaveBeenCalledWith("admin_email", {
@@ -44,13 +45,13 @@ describe("applyServerFieldErrors", () => {
       code: "EMAIL_ALREADY_EXISTS",
       message: "email taken",
     });
-    expect(applyServerFieldErrors(form as any, err)).toEqual([]);
+    expect(applyServerFieldErrors(form as unknown as UseFormReturn<FieldValues>, err)).toEqual([]);
     expect(form.setError).not.toHaveBeenCalled();
   });
 
   it("returns [] for an arbitrary thrown value", () => {
     const form = makeForm();
-    expect(applyServerFieldErrors(form as any, new Error("network"))).toEqual([]);
+    expect(applyServerFieldErrors(form as unknown as UseFormReturn<FieldValues>, new Error("network"))).toEqual([]);
     expect(form.setError).not.toHaveBeenCalled();
   });
 
@@ -64,7 +65,7 @@ describe("applyServerFieldErrors", () => {
         plan_id: ["unknown"],
       },
     });
-    const applied = applyServerFieldErrors(form as any, err);
+    const applied = applyServerFieldErrors(form as unknown as UseFormReturn<FieldValues>, err);
     expect(applied).toEqual(["plan_id"]);
     expect(form.setError).toHaveBeenCalledTimes(1);
   });

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -73,12 +73,15 @@ import {
 import {
   academicYearSchema,
   type AcademicYearForm,
-  type YearStatusForm,
+  type AcademicYearStatus,
 } from "@/lib/schemas/academic-year";
-import { academicTermSchema, type AcademicTermForm, type TermTransitionRequestForm } from "@/lib/schemas/academic-term";
+import {
+  academicTermSchema,
+  type AcademicTermForm,
+  type AcademicTermStatus,
+} from "@/lib/schemas/academic-term";
 import { StatusConfirmDialog } from "@/components/features/academic-config/status-confirm-dialog";
 import {
-  DEFAULT_ACADEMIC_YEARS_PARAMS,
   parseAcademicYearsParams,
   serializeAcademicYearsParams,
   type AcademicYearsParams,
@@ -92,7 +95,7 @@ import {
   curriculumVersionSchema,
   type CurriculumVersionForm,
 } from "@/lib/schemas/subject";
-import { reportTypeCreateSchema, reportTypeUpdateSchema, type ReportTypeCreateForm, type ReportTypeUpdateForm } from "@/lib/schemas/grading";
+import { reportTypeCreateSchema, type ReportTypeCreateForm } from "@/lib/schemas/grading";
 import { useReportTypes, type ReportType } from "@/lib/query/queries/use-grading";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 
@@ -116,7 +119,9 @@ export default function AcademicYearsPage() {
       description="Kelola kalender akademik, kebijakan nilai, dan versi kurikulum."
     >
       {({ canManageAcademicConfig, upgradeMessage }) => (
-        <AcademicYearsContent canManage={canManageAcademicConfig} upgradeMessage={upgradeMessage} />
+        <React.Suspense fallback={null}>
+          <AcademicYearsContent canManage={canManageAcademicConfig} upgradeMessage={upgradeMessage} />
+        </React.Suspense>
       )}
     </AcademicSettingsPage>
   );
@@ -581,15 +586,6 @@ function YearFormModal({
   );
 }
 
-function SectionHeading({ title, hint }: { title: string; hint?: string }) {
-  return (
-    <div className="border-t pt-4">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
-    </div>
-  );
-}
-
 const STATUS_ORDER = ["Draft", "Active", "Closed", "Archived"];
 
 const STATUS_LABELS: Record<string, string> = {
@@ -715,14 +711,16 @@ function IdentitySection({
     if (!year || !nextStatus) return;
     try {
       await transition.mutateAsync({
-        status: nextStatus as any,
+        status: nextStatus as AcademicYearStatus,
         reason,
       });
       toast.success("Status tahun ajaran diperbarui.");
       setStatusConfirmOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       let msg = "Tidak bisa mengubah status.";
-      const code = err?.error?.code || err?.code;
+      const code =
+        (err as { error?: { code?: string } })?.error?.code ||
+        (err as { code?: string })?.code;
       if (code === "ACTIVE_YEAR_EXISTS") {
         msg = "Tahun ajaran aktif sudah ada untuk penyewa ini. Silakan tutup tahun ajaran aktif terlebih dahulu.";
       } else if (code === "INVALID_STATE_TRANSITION") {
@@ -1290,7 +1288,6 @@ const termNextStatuses: Record<string, string[]> = {
 function TermsSection({ yearId, yearStatus, canManage }: { yearId: string; yearStatus?: string; canManage: boolean }) {
   const terms = useTerms(yearId);
   const create = useCreateAcademicTerm(yearId);
-  const update = useUpdateAcademicTerm;
   const remove = useDeleteAcademicTerm(yearId);
 
   const termList = React.useMemo(() => terms.data ?? [], [terms.data]);
@@ -1460,10 +1457,10 @@ function TermRow({
   const handleStatusConfirm = async (reason: string) => {
     if (!targetStatus) return;
     try {
-      await transition.mutateAsync({ status: targetStatus as any, reason });
+      await transition.mutateAsync({ status: targetStatus as AcademicTermStatus, reason });
       toast.success("Status semester diperbarui.");
       setStatusDialogOpen(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatusError(getErrorMessage(err, { fallback: "Tidak bisa mengubah status." }));
       throw err;
     }

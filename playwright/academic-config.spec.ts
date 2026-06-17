@@ -85,6 +85,11 @@ async function mockApis(page: Page) {
       return;
     }
 
+    if (path === "/api/v1/iam/tenants/me/permissions") {
+      await ok([]);
+      return;
+    }
+
     if (path === "/api/v1/billing/tenants/me") {
       await ok({
         tenant_id: tenantId,
@@ -415,6 +420,7 @@ test("header shows no-active-term warning when year is Active but no term is Act
       return;
     }
     if (path === "/api/v1/iam/roles/me/permissions") { await ok(route, []); return; }
+    if (path === "/api/v1/iam/tenants/me/permissions") { await ok(route, []); return; }
     if (path === "/api/v1/academic-config/academic-years") {
       await ok(route, [{ academic_year_id: academicYearId, tenant_id: tenantId, name: "2026/2027", start_date: "2026-07-01", end_date: "2027-06-30", status: "Active" }]);
       return;
@@ -431,7 +437,7 @@ test("header shows no-active-term warning when year is Active but no term is Act
   });
 
   await page.goto("/dashboard");
-  await expect(page.getByText(/tidak ada semester aktif/i)).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(/tidak ada semester aktif/i).first()).toBeVisible({ timeout: 10000 });
 });
 
 // ---------------------------------------------------------------------------
@@ -444,7 +450,6 @@ test("header term selector resolves default: Active → today-in-range → first
   const termToday   = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
   const termFuture  = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
-  const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const tomorrow  = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const farFuture = new Date(Date.now() + 60 * 86400000).toISOString().slice(0, 10);
@@ -488,6 +493,7 @@ test("header term selector resolves default: Active → today-in-range → first
       return;
     }
     if (path === "/api/v1/iam/roles/me/permissions") { await ok(route, []); return; }
+    if (path === "/api/v1/iam/tenants/me/permissions") { await ok(route, []); return; }
     if (path === "/api/v1/academic-config/academic-years") {
       await ok(route, [{ academic_year_id: academicYearId, tenant_id: tenantId, name: "2026/2027", start_date: yesterday, end_date: farFuture, status: "Active" }]);
       return;
@@ -505,9 +511,7 @@ test("header term selector resolves default: Active → today-in-range → first
 
   await page.goto("/dashboard");
   // Scenario A: Active term → "Sem Active" should be selected in the header
-  await expect(page.getByRole("combobox", { name: /pilih semester/i }).or(
-    page.locator('[data-testid="term-select"]')
-  ).filter({ hasText: "Sem Active" })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("banner").locator('[data-testid="term-select"]').filter({ hasText: "Sem Active" })).toBeVisible({ timeout: 10000 });
 
   // Scenario B: No Active term, but today-in-range term exists → "Sem Today"
   termsToServe = [
@@ -520,7 +524,7 @@ test("header term selector resolves default: Active → today-in-range → first
     localStorage.removeItem(`akademiq.academic_scope.${tid}`);
   }, tenantId);
   await page.reload();
-  await expect(page.locator("button, [role=combobox]").filter({ hasText: "Sem Today" })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("banner").locator('[data-testid="term-select"]').filter({ hasText: "Sem Today" })).toBeVisible({ timeout: 10000 });
 
   // Scenario C: No Active, none in-range → first term (Sem Future by start_date)
   termsToServe = [
@@ -532,7 +536,7 @@ test("header term selector resolves default: Active → today-in-range → first
   }, tenantId);
   await page.reload();
   // resolveDefaultTerm returns terms[0] — first element returned by API
-  await expect(page.locator("button, [role=combobox]").filter({ hasText: "Sem Future" })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByRole("banner").locator('[data-testid="term-select"]').filter({ hasText: "Sem Future" })).toBeVisible({ timeout: 10000 });
 });
 
 // ---------------------------------------------------------------------------

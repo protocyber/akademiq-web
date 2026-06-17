@@ -231,6 +231,8 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
             emptyText="Belum ada semester"
             disabled={!yearId || terms.length === 0}
             className={triggerClass}
+            aria-label="Pilih Semester"
+            data-testid="term-select"
           />
         </div>
         {hasNoActiveTerm && (

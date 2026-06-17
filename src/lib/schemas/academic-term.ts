@@ -11,5 +11,7 @@ export const termTransitionRequestSchema = z.object({
   reason: z.string().min(10, "Alasan minimal harus 10 karakter"),
 });
 
+export type AcademicTermStatus = z.infer<typeof termTransitionRequestSchema>["status"];
+
 export type AcademicTermForm = z.infer<typeof academicTermSchema>;
 export type TermTransitionRequestForm = z.infer<typeof termTransitionRequestSchema>;

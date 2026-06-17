@@ -9,7 +9,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { QuerySelect } from "@/components/ui/query-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { useReportTypes } from "@/lib/query/queries/use-grading";

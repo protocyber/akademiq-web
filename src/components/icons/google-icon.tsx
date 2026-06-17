@@ -2,7 +2,7 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-interface GoogleIconProps extends React.SVGProps<SVGSVGElement> {}
+type GoogleIconProps = React.SVGProps<SVGSVGElement>;
 
 const GoogleIcon = React.forwardRef<SVGSVGElement, GoogleIconProps>(
   ({ className, ...props }, ref) => {

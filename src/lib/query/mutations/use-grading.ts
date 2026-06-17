@@ -17,7 +17,6 @@ import {
   reportCardsQueryKey,
   reportFormulasQueryKey,
   reportTypesQueryKey,
-  subjectReportScoresQueryKey,
   type Evaluation,
   type Grade,
   type ReportCard,

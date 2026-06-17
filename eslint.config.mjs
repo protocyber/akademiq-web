@@ -1,4 +1,6 @@
-import next from "eslint-config-next";
+import { defineConfig, globalIgnores } from "eslint/config";
+import nextVitals from "eslint-config-next/core-web-vitals";
+import nextTs from "eslint-config-next/typescript";
 import react from "eslint-plugin-react";
 
 const SHADCN_UI = "src/components/ui/**/*.{ts,tsx}";
@@ -21,15 +23,28 @@ const forbidElementsRule = [
   },
 ];
 
-export default [
+const eslintConfig = defineConfig([
   {
     ignores: [".next/**", "node_modules/**", "out/**", "coverage/**"],
   },
-  ...next,
+  ...nextVitals,
+  ...nextTs,
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
   {
     plugins: { react },
     rules: {
       "react/forbid-elements": forbidElementsRule,
+      // Dead imports/variables are bugs waiting to happen: promote to error
+      // so the compiler catches them early. Underscore-prefixed identifiers
+      // are intentionally ignored (e.g. destructured-but-unused fields).
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
       // Next 16 + React Compiler: these rules are valid but the existing
       // codebase predates them. Downgrade to warnings so the upgrade lands
       // without blocking lint; track the refactor separately.
@@ -43,4 +58,6 @@ export default [
       "react/forbid-elements": "off",
     },
   },
-];
+]);
+
+export default eslintConfig;

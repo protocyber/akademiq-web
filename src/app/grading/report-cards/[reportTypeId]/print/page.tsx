@@ -2,12 +2,11 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Printer, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 import { AuthGuard } from "@/components/features/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useSubjectsForYear } from "@/lib/query/queries/use-academic-config";
 import { useReportCardDetail } from "@/lib/query/queries/use-grading";

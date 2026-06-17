@@ -16,7 +16,7 @@ import {
   Subject,
   SUBJECTS_QUERY_KEY,
 } from "@/lib/query/queries/use-academic-config";
-import type { AcademicYearForm, YearStatusForm, TransitionRequestForm } from "@/lib/schemas/academic-year";
+import type { AcademicYearForm, TransitionRequestForm } from "@/lib/schemas/academic-year";
 import type { AcademicTermForm, TermTransitionRequestForm } from "@/lib/schemas/academic-term";
 import type { ClassTemplateForm } from "@/lib/schemas/class-template";
 import type { GradingPolicyForm } from "@/lib/schemas/grading-policy";

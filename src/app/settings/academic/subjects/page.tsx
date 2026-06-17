@@ -548,7 +548,3 @@ function SubjectDeleteConfirm({
     />
   );
 }
-
-function DEFAULTS(): AcademicSubjectsParams {
-  return { page: 1, page_size: 25, sort: "name" };
-}
