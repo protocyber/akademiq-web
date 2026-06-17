@@ -360,7 +360,8 @@ export function SidebarLayout({
   );
 }
 
-function SidebarContent({
+/** @visibleForTesting */
+export function SidebarContent({
   pathname,
 }: {
   pathname: string;
