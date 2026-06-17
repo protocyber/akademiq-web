@@ -3,11 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck, ChevronDown, Settings, UserRound, DoorOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
 import { useMe } from "@/lib/query/queries/use-me";
+import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { useTenantPermissions } from "@/lib/query/queries/use-tenant-roles";
 import { EmailVerifiedBadge } from "@/components/ui/email-verified-badge";
 import {
   DropdownMenu,
@@ -25,6 +28,143 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+type VisibilityRule =
+  | { kind: "always" }
+  | { kind: "permission"; code: string }
+  | { kind: "module"; featureCode: string }
+  | { kind: "moduleAndPermission"; featureCode: string; permissionCode: string };
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  activePrefixes?: string[];
+  visibility: VisibilityRule;
+}
+
+interface NavGroup {
+  label: string;
+  icon: LucideIcon;
+  children: NavItem[];
+  visibility: VisibilityRule;
+}
+
+type NavEntry =
+  | { kind: "item"; item: NavItem }
+  | { kind: "group"; group: NavGroup };
+
+const navEntries: NavEntry[] = [
+  {
+    kind: "item",
+    item: { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, visibility: { kind: "always" } },
+  },
+  {
+    kind: "group",
+    group: {
+      label: "Pengaturan",
+      icon: Settings,
+      visibility: { kind: "always" },
+      children: [
+        { href: "/settings/modules", label: "Modul Aktif", icon: Boxes, visibility: { kind: "permission", code: "billing.view" } },
+        { href: "/settings/users", label: "Pengguna", icon: Users, visibility: { kind: "permission", code: "user.read" } },
+        { href: "/settings/roles", label: "Role & Izin", icon: ShieldCheck, visibility: { kind: "permission", code: "role.read" } },
+        { href: "/settings/academic/years", label: "Akademik", icon: BookOpen, activePrefixes: ["/settings/academic"], visibility: { kind: "moduleAndPermission", featureCode: "academic_config", permissionCode: "academic.config.read" } },
+      ],
+    },
+  },
+  {
+    kind: "group",
+    group: {
+      label: "Operasional",
+      icon: School,
+      visibility: { kind: "module", featureCode: "academic_ops" },
+      children: [
+        { href: "/students", label: "Siswa", icon: UserRound, visibility: { kind: "always" } },
+        { href: "/teachers", label: "Guru", icon: User, visibility: { kind: "always" } },
+        { href: "/homerooms", label: "Kelas", icon: DoorOpen, visibility: { kind: "always" } },
+        { href: "/teaching-assignments", label: "Penugasan", icon: ClipboardList, visibility: { kind: "always" } },
+      ],
+    },
+  },
+  {
+    kind: "group",
+    group: {
+      label: "Akademik",
+      icon: BookOpen,
+      visibility: { kind: "always" },
+      children: [
+        { href: "/grading/entry", label: "Nilai", icon: ClipboardList, activePrefixes: ["/grading/entry"], visibility: { kind: "moduleAndPermission", featureCode: "grading", permissionCode: "grade.read" } },
+        { href: "/grading/report-cards", label: "Rapor", icon: GraduationCap, activePrefixes: ["/grading/report-cards"], visibility: { kind: "moduleAndPermission", featureCode: "grading", permissionCode: "report.read" } },
+      ],
+    },
+  },
+];
+
+function isItemActive(pathname: string, item: NavItem): boolean {
+  if (pathname === item.href) return true;
+  if (item.activePrefixes?.some((p) => pathname.startsWith(p))) return true;
+  return false;
+}
+
+function isGroupActive(pathname: string, group: NavGroup): boolean {
+  return group.children.some((child) => isItemActive(pathname, child));
+}
+
+function isItemVisible(
+  item: NavItem,
+  heldPermissions: Set<string>,
+  enabledModules: Set<string>,
+): boolean {
+  return checkVisibility(item.visibility, heldPermissions, enabledModules);
+}
+
+function isGroupVisible(
+  group: NavGroup,
+  heldPermissions: Set<string>,
+  enabledModules: Set<string>,
+): boolean {
+  return checkVisibility(group.visibility, heldPermissions, enabledModules);
+}
+
+function checkVisibility(
+  rule: VisibilityRule,
+  heldPermissions: Set<string>,
+  enabledModules: Set<string>,
+): boolean {
+  switch (rule.kind) {
+    case "always":
+      return true;
+    case "permission":
+      return heldPermissions.has(rule.code);
+    case "module":
+      return enabledModules.has(rule.featureCode);
+    case "moduleAndPermission":
+      return enabledModules.has(rule.featureCode) && heldPermissions.has(rule.permissionCode);
+  }
+}
+
+function useMenuVisibility() {
+  const tenantMe = useTenantMe();
+  const permissions = useTenantPermissions();
+  const isLoading = tenantMe.isLoading || permissions.isLoading;
+
+  const enabledModules = React.useMemo(() => {
+    if (!tenantMe.data?.modules) return new Set<string>();
+    return new Set(
+      tenantMe.data.modules.filter((m) => m.enabled).map((m) => m.feature_code),
+    );
+  }, [tenantMe.data]);
+
+  const heldPermissions = React.useMemo(() => {
+    if (!permissions.data) return new Set<string>();
+    return new Set(
+      permissions.data.filter((p) => p.held).map((p) => p.code),
+    );
+  }, [permissions.data]);
+
+  return { enabledModules, heldPermissions, isLoading };
+}
+
 interface SidebarLayoutProps {
   children: React.ReactNode;
   schoolName: string;
@@ -34,53 +174,6 @@ interface SidebarLayoutProps {
   onLogout: () => void;
   className?: string;
 }
-
-const navItems = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/settings/modules",
-    label: "Modul Aktif",
-    icon: Boxes,
-  },
-  {
-    href: "/settings/users",
-    label: "Pengguna",
-    icon: Users,
-  },
-  {
-    href: "/settings/roles",
-    label: "Role & Izin",
-    icon: ShieldCheck,
-  },
-  {
-    href: "/settings/academic/years",
-    activePrefix: "/settings/academic",
-    label: "Akademik",
-    icon: BookOpen,
-  },
-  {
-    href: "/students",
-    activePrefixes: ["/students", "/teachers", "/homerooms", "/teaching-assignments", "/import"],
-    label: "Operasional",
-    icon: School,
-  },
-  {
-    href: "/grading/entry",
-    activePrefix: "/grading",
-    label: "Nilai",
-    icon: ClipboardList,
-  },
-  {
-    href: "/grading/report-cards",
-    activePrefix: "/grading/report-cards",
-    label: "Rapor",
-    icon: GraduationCap,
-  },
-];
 
 export function SidebarLayout({
   children,
@@ -102,11 +195,6 @@ export function SidebarLayout({
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-background">
-      {/* 
-        NOTE: The sidebar is intentionally styled with a permanently dark palette 
-        (bg-slate-900, text-slate-100, border-slate-800) as a brand choice, 
-        so it does not follow the light/dark theme switcher.
-      */}
       <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-100 lg:flex">
         <SidebarContent pathname={pathname} />
       </aside>
@@ -187,10 +275,6 @@ export function SidebarLayout({
           </main>
         </div>
 
-        {/* 
-          NOTE: The mobile menu drawer is also intentionally styled with the brand dark palette 
-          (bg-slate-900, border-slate-800) to match the main sidebar.
-        */}
         <SheetContent side="left" className="w-72 border-slate-800 bg-slate-900 p-0 text-slate-100 sm:max-w-80">
           <SheetTitle className="sr-only">Navigasi utama</SheetTitle>
           <SheetDescription className="sr-only">
@@ -208,6 +292,61 @@ function SidebarContent({
 }: {
   pathname: string;
 }) {
+  const { enabledModules, heldPermissions, isLoading } = useMenuVisibility();
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(() => {
+    const expanded = new Set<string>();
+    for (const entry of navEntries) {
+      if (entry.kind === "group" && isGroupActive(pathname, entry.group)) {
+        expanded.add(entry.group.label);
+      }
+    }
+    return expanded;
+  });
+
+  const toggleGroup = (label: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) {
+        next.delete(label);
+      } else {
+        next.add(label);
+      }
+      return next;
+    });
+  };
+
+  React.useEffect(() => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const entry of navEntries) {
+        if (entry.kind === "group" && isGroupActive(pathname, entry.group)) {
+          if (!next.has(entry.group.label)) {
+            next.add(entry.group.label);
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [pathname]);
+
+  const visibleEntries = React.useMemo(() => {
+    if (isLoading) return navEntries;
+
+    return navEntries.filter((entry) => {
+      if (entry.kind === "item") {
+        return isItemVisible(entry.item, heldPermissions, enabledModules);
+      }
+      const groupVisible = isGroupVisible(entry.group, heldPermissions, enabledModules);
+      if (!groupVisible) return false;
+      const hasVisibleChild = entry.group.children.some((child) =>
+        isItemVisible(child, heldPermissions, enabledModules),
+      );
+      return hasVisibleChild;
+    });
+  }, [isLoading, heldPermissions, enabledModules]);
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-3 border-b border-slate-800 p-6">
@@ -221,29 +360,79 @@ function SidebarContent({
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {navItems.map((item) => {
-          const active =
-            pathname === item.href ||
-            Boolean(item.activePrefix && pathname.startsWith(item.activePrefix)) ||
-            Boolean(item.activePrefixes?.some((prefix) => pathname.startsWith(prefix)));
-          const Icon = item.icon;
+        {visibleEntries.map((entry) => {
+          if (entry.kind === "item") {
+            const active = isItemActive(pathname, entry.item);
+            const ItemIcon = entry.item.icon;
+            return (
+              <Button
+                key={entry.item.href}
+                asChild
+                variant="ghost"
+                className={`w-full justify-start gap-3 rounded-lg px-4 py-2.5 text-sm transition-all ${
+                  active
+                    ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
+                    : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                }`}
+              >
+                <Link href={entry.item.href}>
+                  <ItemIcon className="h-4 w-4" />
+                  {entry.item.label}
+                </Link>
+              </Button>
+            );
+          }
+
+          const group = entry.group;
+          const GroupIcon = group.icon;
+          const isExpanded = expandedGroups.has(group.label);
+          const visibleChildren = isLoading
+            ? group.children
+            : group.children.filter((child) => isItemVisible(child, heldPermissions, enabledModules));
 
           return (
-            <Button
-              key={item.href}
-              asChild
-              variant="ghost"
-              className={`w-full justify-start gap-3 rounded-lg px-4 py-2.5 text-sm transition-all ${
-                active
-                  ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
-                  : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
-              }`}
-            >
-              <Link href={item.href}>
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            </Button>
+            <div key={group.label} className="space-y-0.5">
+              <Button
+                variant="ghost"
+                onClick={() => toggleGroup(group.label)}
+                className="flex w-full justify-between rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-300"
+              >
+                <span className="flex items-center gap-3">
+                  <GroupIcon className="h-4 w-4" />
+                  {group.label}
+                </span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform ${
+                    isExpanded ? "rotate-0" : "-rotate-90"
+                  }`}
+                />
+              </Button>
+              {isExpanded && (
+                <div className="space-y-0.5 pl-3">
+                  {visibleChildren.map((child) => {
+                    const active = isItemActive(pathname, child);
+                    const ChildIcon = child.icon;
+                    return (
+                      <Button
+                        key={child.href}
+                        asChild
+                        variant="ghost"
+                        className={`w-full justify-start gap-3 rounded-lg px-4 py-2 text-sm transition-all ${
+                          active
+                            ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
+                            : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                        }`}
+                      >
+                        <Link href={child.href}>
+                          <ChildIcon className="h-4 w-4" />
+                          {child.label}
+                        </Link>
+                      </Button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
