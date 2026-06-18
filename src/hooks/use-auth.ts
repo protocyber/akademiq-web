@@ -33,9 +33,11 @@ export function useAuth(): AuthSnapshot {
     };
     window.addEventListener("storage", sync);
     window.addEventListener("focus", sync);
+    window.addEventListener("akademiq:tokens-changed", sync);
     return () => {
       window.removeEventListener("storage", sync);
       window.removeEventListener("focus", sync);
+      window.removeEventListener("akademiq:tokens-changed", sync);
     };
   }, []);
 

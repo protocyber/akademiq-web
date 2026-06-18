@@ -55,14 +55,21 @@ export function getIdentityToken(): string | null {
   return window.localStorage.getItem(IDENTITY_KEY);
 }
 
+function notifyTokenChange() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event("akademiq:tokens-changed"));
+}
+
 export function setIdentityToken(token: string) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(IDENTITY_KEY, token);
+  notifyTokenChange();
 }
 
 export function clearIdentityToken() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(IDENTITY_KEY);
+  notifyTokenChange();
 }
 
 // --- scoped token helpers ---------------------------------------------------
@@ -81,12 +88,14 @@ export function setTokens(access: string, refresh: string) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(ACCESS_KEY, access);
   window.localStorage.setItem(REFRESH_KEY, refresh);
+  notifyTokenChange();
 }
 
 export function clearTokens() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(ACCESS_KEY);
   window.localStorage.removeItem(REFRESH_KEY);
+  notifyTokenChange();
 }
 
 export function clearAllTokens() {
@@ -228,13 +237,21 @@ async function performFetch<T>(
       code: `HTTP_${resp.status}`,
       message: resp.statusText || "request failed",
     };
-    if (
-      options.authenticated &&
+    const authTokenError =
       resp.status === 401 &&
-      !retried &&
       (payload.code === "EXPIRED_ACCESS_TOKEN" ||
         payload.code === "UNAUTHENTICATED" ||
-        payload.code === "INVALID_TOKEN")
+        payload.code === "INVALID_TOKEN");
+
+    if (options.identityAuthenticated && authTokenError) {
+      clearIdentityToken();
+      redirectToLogin();
+    }
+
+    if (
+      options.authenticated &&
+      authTokenError &&
+      !retried
     ) {
       const ok = await tryRefresh();
       if (ok) {
