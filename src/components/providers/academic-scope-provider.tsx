@@ -38,7 +38,7 @@ export function AcademicScopeProvider({ children }: { children: React.ReactNode 
   const tenantMe = useTenantMe(isAuthenticated);
   const tenantId = tenantMe.data?.tenant_id;
 
-  const yearsQuery = useAcademicYears();
+  const yearsQuery = useAcademicYears({ enabled: isAuthenticated });
   const curriculumQuery = useCurriculumVersions(yearId ?? undefined);
   const termsQuery = useTerms(yearId ?? undefined);
 

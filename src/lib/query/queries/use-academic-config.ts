@@ -109,7 +109,7 @@ function listParamsQuery(params: {
 /**
  * Paginated, server-driven academic years for the data table.
  */
-export function useAcademicYearsTable(params: AcademicYearsParams) {
+export function useAcademicYearsTable(params: AcademicYearsParams, { enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: [...ACADEMIC_YEARS_QUERY_KEY, ...academicYearsParamsKey(params)],
     queryFn: async () => {
@@ -120,14 +120,15 @@ export function useAcademicYearsTable(params: AcademicYearsParams) {
       });
       return { data: envelope.data, meta: envelope.meta as PageMeta };
     },
+    enabled,
   });
 }
 
 /**
  * Unpaginated academic years for dropdowns/pickers (first 100 by name).
  */
-export function useAcademicYears() {
-  const query = useAcademicYearsTable({ page: 1, page_size: 100, sort: "name" });
+export function useAcademicYears(options?: { enabled?: boolean }) {
+  const query = useAcademicYearsTable({ page: 1, page_size: 100, sort: "name" }, options);
   return { ...query, data: query.data?.data };
 }
 

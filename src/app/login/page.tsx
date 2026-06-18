@@ -36,7 +36,7 @@ import { loginSchema, type LoginFormValues } from "@/lib/schemas/login";
 export default function LoginPage() {
   return (
     <React.Suspense fallback={<LoginSkeleton />}>
-      <PublicOnly>
+      <PublicOnly suppressIdentityRedirect>
         <LoginForm />
       </PublicOnly>
     </React.Suspense>
@@ -102,7 +102,11 @@ function LoginForm() {
         // Single-tenant fast path: auto-enter and proceed to app.
         await enterTenant.mutateAsync({ tenantId: tenants[0].tenant_id });
         setNavigating(true);
-        router.push(next);
+        // After entering the only tenant, the user is scoped. A stale
+        // next target like /tenant-select would bounce them back to the
+        // picker (or redirect to /dashboard) — normalize it to /dashboard.
+        const safeNext = next === "/tenant-select" ? "/dashboard" : next;
+        router.push(safeNext);
       } else if (tenants.length === 0) {
         // 0-tenant: go to empty state.
         setNavigating(true);

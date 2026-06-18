@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/components/ui/toaster";
 import { IdentityGuard } from "@/components/features/auth-guard";
+import { useAuth } from "@/hooks/use-auth";
 import { useMyTenants, useEnterTenant, type TenantEntry } from "@/lib/query/mutations/use-login";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { clearAllTokens } from "@/lib/api/client";
@@ -32,23 +33,42 @@ export default function TenantSelectPage() {
 
 function TenantSelectContent() {
   const router = useRouter();
+  const { hasScopedToken } = useAuth();
   const [tenants, setTenants] = React.useState<TenantEntry[] | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [isAutoEntering, setIsAutoEntering] = React.useState(false);
 
   const myTenants = useMyTenants();
   const enterTenant = useEnterTenant();
 
-  // Load tenant list on mount.
+  // A user who already holds a tenant-scoped access token has entered a
+  // tenant and must not remain on the picker. Redirect before rendering.
   React.useEffect(() => {
+    if (hasScopedToken) {
+      router.replace("/dashboard");
+    }
+  }, [hasScopedToken, router]);
+
+  // Load tenant list on mount — but only when the user is not already
+  // scoped (scoped users are being redirected to /dashboard).
+  React.useEffect(() => {
+    if (hasScopedToken) return;
     myTenants
       .mutateAsync()
       .then((data) => {
         setTenants(data);
         // Single-tenant fast path.
         if (data.length === 1) {
-          enterTenant.mutateAsync({ tenantId: data[0].tenant_id }).then(() => {
-            router.push("/dashboard");
-          });
+          setIsAutoEntering(true);
+          enterTenant
+            .mutateAsync({ tenantId: data[0].tenant_id })
+            .then(() => {
+              router.push("/dashboard");
+            })
+            .catch(() => {
+              setIsAutoEntering(false);
+              toast.error("Gagal masuk ke sekolah. Coba lagi.");
+            });
         }
       })
       .catch(() => {
@@ -57,7 +77,7 @@ function TenantSelectContent() {
       })
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasScopedToken]);
 
   async function handleEnter(tenantId: string) {
     try {
@@ -73,7 +93,7 @@ function TenantSelectContent() {
     router.push("/login");
   }
 
-  if (isLoading || (tenants?.length === 1 && enterTenant.isPending)) {
+  if (isLoading || isAutoEntering || hasScopedToken) {
     return <TenantSelectSkeleton />;
   }
 
