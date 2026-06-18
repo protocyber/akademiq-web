@@ -9,7 +9,7 @@ import { FileText } from "lucide-react";
 import { ReportCardsShell } from "@/components/features/grading/report-cards-shell";
 import { ReportCardDetailBody } from "@/components/features/grading/report-card-detail-body";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DataTable } from "@/components/ui/data-table";
 import {
@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toaster";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { useGenerateReportCards } from "@/lib/query/mutations/use-grading";
@@ -36,7 +37,7 @@ const LABELS: Record<ReportCardStatus, string> = {
 };
 
 export default function ClassroomBoardPage() {
-  const params = useParams<{ reportTypeId: string; classroomId: string }>();
+  const params = useParams<{ reportTypeId: string; classroomId: string; }>();
   const reportTypeId = params.reportTypeId;
   const homeroomId = params.classroomId;
 
@@ -47,7 +48,7 @@ export default function ClassroomBoardPage() {
   );
 }
 
-function ClassroomBoard({ reportTypeId, homeroomId }: { reportTypeId: string; homeroomId: string }) {
+function ClassroomBoard({ reportTypeId, homeroomId }: { reportTypeId: string; homeroomId: string; }) {
   const cards = useReportCards(reportTypeId, homeroomId);
   const roster = useHomeroomRoster(homeroomId);
   const generate = useGenerateReportCards(reportTypeId, homeroomId);
@@ -139,27 +140,30 @@ function ClassroomBoard({ reportTypeId, homeroomId }: { reportTypeId: string; ho
         <Button loading={generate.isPending} onClick={() => void generateDrafts()}>Generate Draft</Button>
       </div>
 
-      <div className="flex flex-wrap gap-1 border-b">
-        {STATUSES.map((status) => (
-          <Button
-            key={status}
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setActiveStatus(status);
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Papan Rapor</CardTitle>
+          <CardDescription>Filter kartu berdasarkan status alur persetujuan.</CardDescription>
+          <Tabs
+            value={activeStatus}
+            onValueChange={(value) => {
+              setActiveStatus(value as ReportCardStatus);
               setSelection({});
             }}
-            className={`-mb-px rounded-none border-b-2 px-3 text-sm ${
-              activeStatus === status ? "border-foreground font-semibold text-foreground" : "border-transparent font-normal text-muted-foreground hover:text-foreground"
-            }`}
+            className="pt-1"
           >
-            {LABELS[status]} <span className="text-xs">({byStatus[status].length})</span>
-          </Button>
-        ))}
-      </div>
-
-      <Card>
-        <CardContent className="p-0">
+            <TabsList>
+              {STATUSES.map((status) => (
+                <TabsTrigger key={status} value={status} className="gap-1.5">
+                  {LABELS[status]}
+                  {byStatus[status].length > 0 ?
+                    <span>{byStatus[status].length}</span> : ''}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </CardHeader>
+        <CardContent className="p-6 pt-0">
           {cards.isLoading || roster.isLoading ? (
             <Skeleton className="h-48 w-full" />
           ) : (
@@ -180,7 +184,7 @@ function ClassroomBoard({ reportTypeId, homeroomId }: { reportTypeId: string; ho
       </p>
 
       <Dialog open={detailCardId !== null} onOpenChange={(open) => { if (!open) setDetailCardId(null); }}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Detail Rapor</DialogTitle>
             <DialogDescription>Status, nilai akhir per mapel, dan riwayat approval.</DialogDescription>

@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
@@ -106,7 +107,7 @@ const nextStatuses: Record<string, string[]> = {
   Archived: [],
 };
 
-const SORT_FIELDS: Record<string, { asc: AcademicYearsSort; desc: AcademicYearsSort }> = {
+const SORT_FIELDS: Record<string, { asc: AcademicYearsSort; desc: AcademicYearsSort; }> = {
   name: { asc: "name", desc: "-name" },
   start_date: { asc: "start_date", desc: "-start_date" },
   status: { asc: "status", desc: "-status" },
@@ -115,7 +116,7 @@ const SORT_FIELDS: Record<string, { asc: AcademicYearsSort; desc: AcademicYearsS
 export default function AcademicYearsPage() {
   return (
     <AcademicSettingsPage
-      title="Tahun Ajaran"
+      title="Pengaturan Akademik"
       description="Kelola kalender akademik, kebijakan nilai, dan versi kurikulum."
     >
       {({ canManageAcademicConfig, upgradeMessage }) => (
@@ -127,7 +128,7 @@ export default function AcademicYearsPage() {
   );
 }
 
-function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolean; upgradeMessage: string }) {
+function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolean; upgradeMessage: string; }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseAcademicYearsParams(searchParams), [searchParams]);
@@ -150,24 +151,6 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-2">
-          <Input
-            value={searchDraft}
-            onChange={(event) => setSearchDraft(event.target.value)}
-            placeholder="Cari nama tahun ajaran"
-            className="md:w-72"
-          />
-        </div>
-        <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
-          <span>
-            <Button disabled={!canManage} onClick={() => setCreateOpen(true)} className="gap-1">
-              <Plus className="h-4 w-4" /> Buat Tahun Ajaran
-            </Button>
-          </span>
-        </EntitlementTooltip>
-      </div>
-
       {years.isLoading ? <YearsTableSkeleton /> : null}
       {years.error ? (
         <Card>
@@ -175,16 +158,43 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         </Card>
       ) : null}
 
-      {years.data ? (
-        <YearsTableSection
-          years={years.data.data}
-          meta={meta}
-          params={params}
-          canManage={canManage}
-          onParamsChange={(next) => replaceParams(router, next)}
-          onEdit={(year) => setEditing(year)}
-        />
-      ) : null}
+      <Card className="border border-border shadow-sm">
+        <CardHeader className="border-b pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Tahun Ajaran</CardTitle>
+              <CardDescription>Kalender akademik, kebijakan nilai, dan versi kurikulum.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Cari nama tahun ajaran"
+                className="md:w-72"
+              />
+              <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
+                <span>
+                  <Button disabled={!canManage} onClick={() => setCreateOpen(true)} className="gap-1">
+                    <Plus className="h-4 w-4" /> Buat Tahun Ajaran
+                  </Button>
+                </span>
+              </EntitlementTooltip>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {years.data ? (
+            <YearsTableSection
+              years={years.data.data}
+              meta={meta}
+              params={params}
+              canManage={canManage}
+              onParamsChange={(next) => replaceParams(router, next)}
+              onEdit={(year) => setEditing(year)}
+            />
+          ) : null}
+        </CardContent>
+      </Card>
 
       <YearFormModal
         open={createOpen}
@@ -214,7 +224,7 @@ function YearsTableSection({
   onEdit,
 }: {
   years: AcademicYear[];
-  meta: { page: number; page_size: number; total: number };
+  meta: { page: number; page_size: number; total: number; };
   params: AcademicYearsParams;
   canManage: boolean;
   onParamsChange: (next: AcademicYearsParams) => void;
@@ -361,18 +371,14 @@ function YearsTableSection({
         />
       ) : null}
 
-      <Card className="border border-border shadow-sm">
-        <CardContent className="p-0">
-          <DataTable
-            columns={columns}
-            data={years}
-            getRowId={(row) => row.academic_year_id}
-            rowSelection={rowSelection}
-            onRowSelectionChange={setRowSelection}
-            emptyText="Belum ada tahun ajaran."
-          />
-        </CardContent>
-      </Card>
+      <DataTable
+        columns={columns}
+        data={years}
+        getRowId={(row) => row.academic_year_id}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
+        emptyText="Belum ada tahun ajaran."
+      />
 
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>
@@ -513,7 +519,7 @@ function YearFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Buat Tahun Ajaran" : `Edit ${year?.name ?? ""}`}
@@ -536,48 +542,42 @@ function YearFormModal({
             </p>
           ) : (
             <>
-              {/* Tab strip */}
-              <div className="flex gap-0 border-b">
-                {(
-                  [
-                    { id: "kebijakan", label: "Kebijakan Nilai" },
-                    { id: "kurikulum", label: "Versi Kurikulum" },
-                    { id: "semester", label: "Semester" },
-                    { id: "jenis-rapor", label: "Jenis Rapor" },
-                  ] as const
-                ).map((tab) => (
-                  <Button
-                    key={tab.id}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`-mb-px rounded-none border-b-2 px-4 text-sm font-normal ${
-                      activeTab === tab.id
-                        ? "border-foreground font-semibold text-foreground"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {tab.label}
-                  </Button>
-                ))}
-              </div>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTab)}>
+                <TabsList className="">
+                  {(
+                    [
+                      { id: "kebijakan", label: "Kebijakan Nilai" },
+                      { id: "kurikulum", label: "Versi Kurikulum" },
+                      { id: "semester", label: "Semester" },
+                      { id: "jenis-rapor", label: "Jenis Rapor" },
+                    ] as const
+                  ).map((tab) => (
+                    <TabsTrigger
+                      key={tab.id}
+                      value={tab.id}
+                      className="gap-1.5"
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
 
-              {/* Tab panels */}
-              <div className="pt-4">
-                {activeTab === "kebijakan" && (
-                  <GradingPolicySection yearId={yearId} canManage={canManage} />
-                )}
-                {activeTab === "kurikulum" && (
-                  <CurriculumSection yearId={yearId} canManage={canManage} />
-                )}
-                {activeTab === "semester" && (
-                  <TermsSection yearId={yearId} yearStatus={year?.status} canManage={canManage} />
-                )}
-                {activeTab === "jenis-rapor" && (
-                  <ReportTypesSection yearId={yearId} canManage={canManage} />
-                )}
-              </div>
+                {/* Tab panels */}
+                <div className="pt-4">
+                  {activeTab === "kebijakan" && (
+                    <GradingPolicySection yearId={yearId} canManage={canManage} />
+                  )}
+                  {activeTab === "kurikulum" && (
+                    <CurriculumSection yearId={yearId} canManage={canManage} />
+                  )}
+                  {activeTab === "semester" && (
+                    <TermsSection yearId={yearId} yearStatus={year?.status} canManage={canManage} />
+                  )}
+                  {activeTab === "jenis-rapor" && (
+                    <ReportTypesSection yearId={yearId} canManage={canManage} />
+                  )}
+                </div>
+              </Tabs>
             </>
           )}
         </div>
@@ -595,7 +595,7 @@ const STATUS_LABELS: Record<string, string> = {
   Archived: "Arsip",
 };
 
-function StatusTimeline({ currentStatus }: { currentStatus: string }) {
+function StatusTimeline({ currentStatus }: { currentStatus: string; }) {
   const currentIndex = STATUS_ORDER.indexOf(currentStatus);
 
   return (
@@ -634,7 +634,7 @@ function StatusTimeline({ currentStatus }: { currentStatus: string }) {
                 >
                   {STATUS_LABELS[status]}
                 </span>
-                
+
                 {/* Descriptive context for screen-readers */}
                 <span className="sr-only">
                   Status {status}: {isCompleted ? "Selesai" : isActive ? "Aktif saat ini" : "Akan datang"}
@@ -719,8 +719,8 @@ function IdentitySection({
     } catch (err: unknown) {
       let msg = "Tidak bisa mengubah status.";
       const code =
-        (err as { error?: { code?: string } })?.error?.code ||
-        (err as { code?: string })?.code;
+        (err as { error?: { code?: string; }; })?.error?.code ||
+        (err as { code?: string; })?.code;
       if (code === "ACTIVE_YEAR_EXISTS") {
         msg = "Tahun ajaran aktif sudah ada untuk penyewa ini. Silakan tutup tahun ajaran aktif terlebih dahulu.";
       } else if (code === "INVALID_STATE_TRANSITION") {
@@ -794,7 +794,7 @@ function IdentitySection({
             <p className="text-sm font-semibold text-foreground">Status saat ini: <span className="text-primary font-bold">{STATUS_LABELS[year.status] ?? year.status}</span></p>
             <p className="text-xs text-muted-foreground">Tahun ajaran mengikuti alur siklus hidup berikut.</p>
           </div>
-          
+
           <StatusTimeline currentStatus={year.status} />
 
           {options.length > 0 ? (
@@ -841,7 +841,7 @@ function IdentitySection({
   );
 }
 
-function GradingPolicySection({ yearId, canManage }: { yearId?: string; canManage: boolean }) {
+function GradingPolicySection({ yearId, canManage }: { yearId?: string; canManage: boolean; }) {
   const policy = useGradingPolicy(yearId);
   const upsert = useUpsertGradingPolicy(yearId ?? "");
   const form = useForm<GradingPolicyForm>({
@@ -930,7 +930,7 @@ function GradingPolicySection({ yearId, canManage }: { yearId?: string; canManag
   );
 }
 
-function ReportTypesSection({ yearId, canManage }: { yearId: string; canManage: boolean }) {
+function ReportTypesSection({ yearId, canManage }: { yearId: string; canManage: boolean; }) {
   const { termId } = useAcademicScope();
   const types = useReportTypes(yearId, termId ?? undefined);
   const create = useCreateReportType(yearId);
@@ -1039,7 +1039,7 @@ function ReportTypesSection({ yearId, canManage }: { yearId: string; canManage: 
                 <FormItem>
                   <FormLabel className="text-xs">Kode</FormLabel>
                   <FormControl>
-                     <Input placeholder="Rapor UTS" disabled={!canManage || !termId} {...field} />
+                    <Input placeholder="Rapor UTS" disabled={!canManage || !termId} {...field} />
 
                   </FormControl>
                   <FormMessage />
@@ -1053,7 +1053,7 @@ function ReportTypesSection({ yearId, canManage }: { yearId: string; canManage: 
                 <FormItem>
                   <FormLabel className="text-xs">Nama</FormLabel>
                   <FormControl>
-                     <Input placeholder="Rapor Tengah Semester" disabled={!canManage || !termId} {...field} />
+                    <Input placeholder="Rapor Tengah Semester" disabled={!canManage || !termId} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1189,7 +1189,7 @@ function ReportTypeRow({
   );
 }
 
-function CurriculumSection({ yearId, canManage }: { yearId?: string; canManage: boolean }) {
+function CurriculumSection({ yearId, canManage }: { yearId?: string; canManage: boolean; }) {
   const versions = useCurriculumVersions(yearId);
   const add = useAddCurriculumVersion(yearId ?? "");
   const remove = useDeleteCurriculumVersion();
@@ -1285,7 +1285,7 @@ const termNextStatuses: Record<string, string[]> = {
   Archived: [],
 };
 
-function TermsSection({ yearId, yearStatus, canManage }: { yearId: string; yearStatus?: string; canManage: boolean }) {
+function TermsSection({ yearId, yearStatus, canManage }: { yearId: string; yearStatus?: string; canManage: boolean; }) {
   const terms = useTerms(yearId);
   const create = useCreateAcademicTerm(yearId);
   const remove = useDeleteAcademicTerm(yearId);

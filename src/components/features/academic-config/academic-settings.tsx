@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { QuerySelect } from "@/components/ui/query-select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
@@ -117,21 +118,15 @@ function AcademicSettingsContent({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {academicNav.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Button
-                key={item.href}
-                asChild
-                size="sm"
-                variant={active ? "default" : "outline"}
-              >
+        <Tabs value={pathname} activationMode="manual">
+          <TabsList>
+            {academicNav.map((item) => (
+              <TabsTrigger key={item.href} value={item.href} asChild>
                 <Link href={item.href}>{item.label}</Link>
-              </Button>
-            );
-          })}
-        </div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {!canManageAcademicConfig ? (

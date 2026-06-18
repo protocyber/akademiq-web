@@ -8,7 +8,7 @@ import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -69,6 +69,14 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
     };
   }, [searchParams, yearId]);
   const assignments = useTeachingAssignmentsTable(params);
+  const homerooms = useHomerooms();
+  const filteredHomerooms = React.useMemo(
+    () =>
+      (homerooms.data ?? []).filter(
+        (h) => !params.academic_year_id || h.academic_year_id === params.academic_year_id,
+      ),
+    [homerooms.data, params.academic_year_id],
+  );
 
   const [createOpen, setCreateOpen] = React.useState(false);
 
@@ -93,29 +101,58 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
 
   return (
     <div className="space-y-4">
-      <AssignmentFilters
-        params={params}
-        onParamsChange={onParamsChange}
-        extras={
-          <Button size="sm" className="gap-1" onClick={() => setCreateOpen(true)}>
-            <Plus className="h-4 w-4" /> Tambah Penugasan
-          </Button>
-        }
-      />
-
-      {assignments.isLoading ? (
-        <TableSkeleton />
-      ) : assignments.error ? (
-        <p className="text-sm text-destructive">{getErrorMessage(assignments.error)}</p>
-      ) : (
-        <AssignmentTable
-          assignments={assignments.data?.data ?? []}
-          meta={assignments.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-          params={params}
-          canManage={canManage}
-          onParamsChange={onParamsChange}
-        />
-      )}
+      <Card className="border border-border shadow-sm">
+        <CardHeader className="border-b pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Penugasan Mengajar</CardTitle>
+              <CardDescription>Assign guru ke mata pelajaran dan kelas untuk tahun ajaran aktif.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select
+                value={params.homeroom_id ?? "all"}
+                onValueChange={(value) =>
+                  onParamsChange({
+                    ...params,
+                    homeroom_id: value === "all" ? undefined : value,
+                    page: 1,
+                  })
+                }
+              >
+                <SelectTrigger className="w-[10rem]">
+                  <SelectValue placeholder="Kelas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua kelas</SelectItem>
+                  {filteredHomerooms.map((homeroom) => (
+                    <SelectItem key={homeroom.homeroom_id} value={homeroom.homeroom_id}>
+                      {homeroom.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" className="gap-1" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" /> Tambah Penugasan
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {assignments.isLoading ? (
+            <TableSkeleton />
+          ) : assignments.error ? (
+            <p className="text-sm text-destructive">{getErrorMessage(assignments.error)}</p>
+          ) : (
+            <AssignmentTable
+              assignments={assignments.data?.data ?? []}
+              meta={assignments.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
+              params={params}
+              canManage={canManage}
+              onParamsChange={onParamsChange}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <AssignmentDialog
         canManage={canManage}
@@ -127,56 +164,9 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
   );
 }
 
-function AssignmentFilters({
-  params,
-  onParamsChange,
-  extras,
-}: {
-  params: TeachingAssignmentsParams;
-  onParamsChange: (params: TeachingAssignmentsParams) => void;
-  extras: React.ReactNode;
-}) {
-  const homerooms = useHomerooms();
-  const filteredHomerooms = React.useMemo(
-    () =>
-      (homerooms.data ?? []).filter(
-        (h) => !params.academic_year_id || h.academic_year_id === params.academic_year_id,
-      ),
-    [homerooms.data, params.academic_year_id],
-  );
 
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-wrap gap-2">
-        <Select
-          value={params.homeroom_id ?? "all"}
-          onValueChange={(value) =>
-            onParamsChange({
-              ...params,
-              homeroom_id: value === "all" ? undefined : value,
-              page: 1,
-            })
-          }
-        >
-          <SelectTrigger className="w-[10rem]">
-            <SelectValue placeholder="Kelas" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua kelas</SelectItem>
-            {filteredHomerooms.map((homeroom) => (
-              <SelectItem key={homeroom.homeroom_id} value={homeroom.homeroom_id}>
-                {homeroom.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {extras}
-    </div>
-  );
-}
 
-type Meta = { page: number; page_size: number; total: number };
+type Meta = { page: number; page_size: number; total: number; };
 
 function AssignmentTable({
   assignments,
@@ -284,59 +274,55 @@ function AssignmentTable({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          {selectedIds.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-              <span>{selectedIds.length} dipilih</span>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="gap-1"
-                disabled={!canManage}
-                onClick={() => {
-                  setPendingId(null);
-                  setConfirmDelete(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </Button>
-            </div>
-          ) : null}
+      {selectedIds.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+          <span>{selectedIds.length} dipilih</span>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="gap-1"
+            disabled={!canManage}
+            onClick={() => {
+              setPendingId(null);
+              setConfirmDelete(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4" /> Hapus
+          </Button>
+        </div>
+      ) : null}
 
-          <DataTable
-            columns={columns}
-            data={assignments}
-            getRowId={(row) => row.assignment_id}
-            rowSelection={rowSelection}
-            emptyText="Tidak ada penugasan yang cocok."
-          />
+      <DataTable
+        columns={columns}
+        data={assignments}
+        getRowId={(row) => row.assignment_id}
+        rowSelection={rowSelection}
+        emptyText="Tidak ada penugasan yang cocok."
+      />
 
-          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>
-              Halaman {meta.page} dari {pageCount} · {meta.total} penugasan
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={meta.page <= 1}
-                onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={meta.page >= pageCount}
-                onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-              >
-                Berikutnya
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>
+          Halaman {meta.page} dari {pageCount} · {meta.total} penugasan
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page <= 1}
+            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
+          >
+            Sebelumnya
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page >= pageCount}
+            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
+          >
+            Berikutnya
+          </Button>
+        </div>
+      </div>
 
       <DeleteConfirm
         open={confirmDelete}
@@ -397,7 +383,7 @@ function DeleteConfirm({
   );
 }
 
-function RowDelete({ assignmentId, canManage }: { assignmentId: string; canManage: boolean }) {
+function RowDelete({ assignmentId, canManage }: { assignmentId: string; canManage: boolean; }) {
   const del = useDeleteAssignment();
   return (
     <DropdownMenuItem

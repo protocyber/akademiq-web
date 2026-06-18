@@ -52,12 +52,6 @@ function ReportCardsShell() {
       }}
       className="mx-auto max-w-7xl"
     >
-      <div className="space-y-2">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">Rapor</h1>
-        <p className="text-sm text-muted-foreground">
-          Pilih tahun, lalu buka jenis rapor untuk memilih kelas dan menjalankan workflow persetujuan.
-        </p>
-      </div>
       <ReportTypeList />
     </SidebarLayout>
   );
@@ -87,8 +81,8 @@ function ReportTypeList() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Jenis Rapor</CardTitle>
-        <CardDescription>Daftar jenis rapor yang tersedia untuk tahun ajaran terpilih.</CardDescription>
+        <CardTitle>Daftar Rapor</CardTitle>
+        <CardDescription>Daftar jenis rapor yang tersedia untuk semester ini.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {reportTypes.isLoading ? (

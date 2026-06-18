@@ -168,7 +168,8 @@ function useMenuVisibility() {
   return { enabledModules, heldPermissions, isLoading };
 }
 
-function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) {
+/** @visibleForTesting */
+export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) {
   const { yearId, curriculumId, termId, setYearId, setCurriculumId, setTermId, hasNoActiveTerm, isResolving } = useAcademicScope();
   const yearsQuery = useAcademicYears();
   const years = yearsQuery.data ?? [];
@@ -177,16 +178,17 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
 
   const curriculumsQuery = useCurriculumVersions(yearId ?? undefined);
   const curriculums = curriculumsQuery.data ?? [];
+  const showCurriculum = curriculums.length > 1;
 
   const termsQuery = useTerms(yearId ?? undefined);
   const terms = termsQuery.data ?? [];
 
   if (isResolving) {
     return (
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+      <div className={isSidebar ? "flex w-full flex-col gap-2" : "flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"}>
+        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
+        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
+        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
       </div>
     );
   }
@@ -194,11 +196,15 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
   const triggerClass = isSidebar
     ? "bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-slate-700 focus:ring-offset-slate-900 hover:bg-slate-800/80 hover:text-white"
     : "";
+  const wrapperClass = isSidebar
+    ? "flex w-full flex-col gap-2"
+    : "flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3";
+  const selectWidthClass = isSidebar ? "w-full" : "w-[180px]";
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+    <div className={wrapperClass}>
       <div className="flex flex-col gap-1">
-        <div className="w-[180px]">
+        <div className={selectWidthClass}>
           <QuerySelect
             items={years}
             isLoading={yearsQuery.isLoading}
@@ -219,7 +225,7 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
       </div>
 
       <div className="flex flex-col gap-1">
-        <div className="w-[180px]">
+        <div className={selectWidthClass}>
           <QuerySelect
             items={terms}
             isLoading={termsQuery.isLoading}
@@ -242,20 +248,22 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
         )}
       </div>
 
-      <div className="w-[180px]">
-        <QuerySelect
-          items={curriculums}
-          isLoading={curriculumsQuery.isLoading}
-          value={curriculumId ?? undefined}
-          onValueChange={(val) => setCurriculumId(val)}
-          getValue={(c) => c.curriculum_version_id}
-          getLabel={(c) => c.name}
-          placeholder="Pilih Kurikulum"
-          emptyText="Belum ada kurikulum"
-          disabled={!yearId}
-          className={triggerClass}
-        />
-      </div>
+      {showCurriculum ? (
+        <div className={selectWidthClass}>
+          <QuerySelect
+            items={curriculums}
+            isLoading={curriculumsQuery.isLoading}
+            value={curriculumId ?? undefined}
+            onValueChange={(val) => setCurriculumId(val)}
+            getValue={(c) => c.curriculum_version_id}
+            getLabel={(c) => c.name}
+            placeholder="Pilih Kurikulum"
+            emptyText="Belum ada kurikulum"
+            disabled={!yearId}
+            className={triggerClass}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -331,7 +339,7 @@ export function SidebarLayout({
                     variant="ghost"
                     className="relative h-8 w-8 rounded-full p-0 overflow-hidden focus-visible:ring-1 focus-visible:ring-ring"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
                       {userName.charAt(0).toUpperCase()}
                     </div>
                   </Button>

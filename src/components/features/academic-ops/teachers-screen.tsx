@@ -18,7 +18,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -101,41 +101,50 @@ export function TeachersScreen({ canManage, upgradeMessage }: OpsContext) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Input
-          value={searchDraft}
-          onChange={(event) => setSearchDraft(event.target.value)}
-          placeholder="Cari nama atau NIP"
-          className="max-w-xs"
-        />
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4" /> Impor
-          </Button>
-          <TeacherDialog
-            canManage={canManage}
-            upgradeMessage={upgradeMessage}
-            trigger={<Button size="sm">+ Tambah</Button>}
-          />
-        </div>
-      </div>
-
-      {teachers.isLoading ? (
-        <TableSkeleton />
-      ) : teachers.error ? (
-        <p className="text-sm text-destructive">{getErrorMessage(teachers.error)}</p>
-      ) : (
-        <TeachersTable
-          teachers={teachers.data?.data ?? []}
-          meta={teachers.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-          params={params}
-          canManage={canManage}
-          upgradeMessage={upgradeMessage}
-          teacherUsers={teacherUsers}
-          usersLoading={users.isLoading}
-          onParamsChange={(next) => replaceParams(router, next)}
-        />
-      )}
+      <Card className="border border-border shadow-sm">
+        <CardHeader className="border-b pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Daftar Guru</CardTitle>
+              <CardDescription>Kelola master data guru, NIP, dan akun login.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Cari nama atau NIP"
+                className="md:w-72"
+              />
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4" /> Impor
+              </Button>
+              <TeacherDialog
+                canManage={canManage}
+                upgradeMessage={upgradeMessage}
+                trigger={<Button size="sm">+ Tambah</Button>}
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {teachers.isLoading ? (
+            <TableSkeleton />
+          ) : teachers.error ? (
+            <p className="text-sm text-destructive">{getErrorMessage(teachers.error)}</p>
+          ) : (
+            <TeachersTable
+              teachers={teachers.data?.data ?? []}
+              meta={teachers.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
+              params={params}
+              canManage={canManage}
+              upgradeMessage={upgradeMessage}
+              teacherUsers={teacherUsers}
+              usersLoading={users.isLoading}
+              onParamsChange={(next) => replaceParams(router, next)}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <ImportDialog
         open={importOpen}
@@ -304,59 +313,55 @@ function TeachersTable({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          {selectedIds.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-              <span>{selectedIds.length} dipilih</span>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="gap-1"
-                disabled={!canManage}
-                onClick={() => {
-                  setPendingId(null);
-                  setConfirmDelete(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </Button>
-            </div>
-          ) : null}
+      {selectedIds.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+          <span>{selectedIds.length} dipilih</span>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="gap-1"
+            disabled={!canManage}
+            onClick={() => {
+              setPendingId(null);
+              setConfirmDelete(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4" /> Hapus
+          </Button>
+        </div>
+      ) : null}
 
-          <DataTable
-            columns={columns}
-            data={teachers}
-            getRowId={(row) => row.teacher_id}
-            rowSelection={rowSelection}
-            emptyText="Tidak ada guru yang cocok."
-          />
+      <DataTable
+        columns={columns}
+        data={teachers}
+        getRowId={(row) => row.teacher_id}
+        rowSelection={rowSelection}
+        emptyText="Tidak ada guru yang cocok."
+      />
 
-          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>
-              Halaman {meta.page} dari {pageCount} · {meta.total} guru
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={meta.page <= 1}
-                onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={meta.page >= pageCount}
-                onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-              >
-                Berikutnya
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>
+          Halaman {meta.page} dari {pageCount} · {meta.total} guru
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page <= 1}
+            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
+          >
+            Sebelumnya
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page >= pageCount}
+            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
+          >
+            Berikutnya
+          </Button>
+        </div>
+      </div>
 
       {editing ? (
         <TeacherDialog

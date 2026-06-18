@@ -8,7 +8,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Pencil, Plus, Trash
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -59,7 +59,7 @@ import {
 } from "@/lib/schemas/academic-subjects-params";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 
-const SORT_FIELDS: Record<string, { asc: AcademicSubjectsSort; desc: AcademicSubjectsSort }> = {
+const SORT_FIELDS: Record<string, { asc: AcademicSubjectsSort; desc: AcademicSubjectsSort; }> = {
   name: { asc: "name", desc: "-name" },
   code: { asc: "code", desc: "-code" },
   passing_grade: { asc: "passing_grade", desc: "-passing_grade" },
@@ -78,7 +78,7 @@ export default function AcademicSubjectsPage() {
   );
 }
 
-function SubjectsContent({ canManage }: { canManage: boolean; upgradeMessage: string }) {
+function SubjectsContent({ canManage }: { canManage: boolean; upgradeMessage: string; }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseAcademicSubjectsParams(searchParams), [searchParams]);
@@ -171,7 +171,7 @@ function SubjectsTableSection({
   curriculumVersionId,
 }: {
   subjects: Subject[];
-  meta: { page: number; page_size: number; total: number };
+  meta: { page: number; page_size: number; total: number; };
   params: AcademicSubjectsParams;
   canManage: boolean;
   searchDraft: string;
@@ -308,18 +308,6 @@ function SubjectsTableSection({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <Input
-          value={searchDraft}
-          onChange={(event) => onSearchDraftChange(event.target.value)}
-          placeholder="Cari nama atau kode"
-          className="md:w-72"
-        />
-        <Button disabled={!canManage} onClick={() => setCreating(true)} className="gap-1">
-          <Plus className="h-4 w-4" /> Tambah Mapel
-        </Button>
-      </div>
-
       {selectedIds.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
           <span>{selectedIds.length} dipilih</span>
@@ -329,17 +317,32 @@ function SubjectsTableSection({
         </div>
       ) : null}
 
-      {isLoading ? (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            {Array.from({ length: 4 }).map((_, i) => (
+      <Card className="border border-border shadow-sm">
+        <CardHeader className="border-b pb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-lg">Mata Pelajaran</CardTitle>
+              <CardDescription>Kelola mata pelajaran per versi kurikulum.</CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <Input
+                value={searchDraft}
+                onChange={(event) => onSearchDraftChange(event.target.value)}
+                placeholder="Cari nama atau kode"
+                className="md:w-72"
+              />
+              <Button disabled={!canManage} onClick={() => setCreating(true)} className="gap-1">
+                <Plus className="h-4 w-4" /> Tambah Mapel
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className={isLoading ? "space-y-3 pt-6" : "p-6"}>
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border border-border shadow-sm">
-          <CardContent className="p-0">
+            ))
+          ) : (
             <DataTable
               columns={columns}
               data={subjects}
@@ -348,9 +351,9 @@ function SubjectsTableSection({
               onRowSelectionChange={setRowSelection}
               emptyText="Belum ada mata pelajaran."
             />
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>

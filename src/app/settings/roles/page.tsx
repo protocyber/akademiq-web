@@ -10,8 +10,10 @@ import {
   ArrowUp,
   ChevronsUpDown,
   Copy,
+  Eye,
   MoreHorizontal,
   Pencil,
+  Plus,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
@@ -135,7 +137,6 @@ function RolesContent() {
           <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">Role & Izin</h1>
           <p className="mt-1 text-sm text-muted-foreground">Kelola role bawaan dan role custom tenant dari palet izin yang Anda miliki.</p>
         </div>
-        <RoleDialog permissions={permissions.data ?? []} />
       </div>
 
       {!canManageRoles ? (
@@ -145,15 +146,23 @@ function RolesContent() {
         </Alert>
       ) : null}
 
-      <RolesTableSection
-        roles={roles.data?.data ?? []}
-        meta={roles.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-        permissions={permissions.data ?? []}
-        params={params}
-        searchDraft={searchDraft}
-        onSearchDraftChange={setSearchDraft}
-        onParamsChange={(next) => replaceRolesParams(router, next)}
-      />
+      <Card className="border border-border shadow-sm">
+        {/* <CardHeader className="border-b pb-4">
+          <CardTitle className="text-lg">Daftar Role</CardTitle>
+          <CardDescription>Role bawaan tidak dapat diubah; gunakan Clone untuk membuat versi custom.</CardDescription>
+        </CardHeader> */}
+        <CardContent className="pt-6">
+          <RolesTableSection
+            roles={roles.data?.data ?? []}
+            meta={roles.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
+            permissions={permissions.data ?? []}
+            params={params}
+            searchDraft={searchDraft}
+            onSearchDraftChange={setSearchDraft}
+            onParamsChange={(next) => replaceRolesParams(router, next)}
+          />
+        </CardContent>
+      </Card>
     </SidebarLayout>
   );
 }
@@ -163,7 +172,7 @@ function replaceRolesParams(router: ReturnType<typeof useRouter>, params: Tenant
   router.replace(query ? `/settings/roles?${query}` : "/settings/roles", { scroll: false });
 }
 
-type Meta = { page: number; page_size: number; total: number };
+type Meta = { page: number; page_size: number; total: number; };
 
 type RolesTableSectionProps = {
   roles: TenantRole[];
@@ -175,7 +184,7 @@ type RolesTableSectionProps = {
   onParamsChange: (params: TenantRolesParams) => void;
 };
 
-const SORT_FIELDS: Record<string, { asc: TenantRolesSort; desc: TenantRolesSort }> = {
+const SORT_FIELDS: Record<string, { asc: TenantRolesSort; desc: TenantRolesSort; }> = {
   name: { asc: "name", desc: "-name" },
   type: { asc: "type", desc: "-type" },
   users: { asc: "users", desc: "-users" },
@@ -195,6 +204,7 @@ function RolesTableSection(props: RolesTableSectionProps) {
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [editing, setEditing] = React.useState<TenantRole | null>(null);
   const [cloning, setCloning] = React.useState<TenantRole | null>(null);
+  const [viewing, setViewing] = React.useState<TenantRole | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
 
   // Clear selection when the page / data changes to avoid stale selections.
@@ -310,6 +320,9 @@ function RolesTableSection(props: RolesTableSectionProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>{role.name}</DropdownMenuLabel>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setViewing(role)}>
+                <Eye className="h-4 w-4" /> Lihat
+              </DropdownMenuItem>
               <DropdownMenuItem
                 disabled={role.is_builtin}
                 onClick={() => setEditing(role)}
@@ -338,20 +351,23 @@ function RolesTableSection(props: RolesTableSectionProps) {
 
   return (
     <div className="space-y-4">
-      <Input
-        value={searchDraft}
-        onChange={(event) => onSearchDraftChange(event.target.value)}
-        placeholder="Cari nama atau kode role"
-      />
-
-      {selectedIds.length > 0 ? (
-        <BulkActionBar
-          selectedCount={selectedIds.length}
-          selectedIds={selectedIds}
-          selectionHasBuiltin={selectionHasBuiltin}
-          onConfirm={() => setConfirmDelete(true)}
+      <div className="flex space-x-4">
+        <Input
+          value={searchDraft}
+          onChange={(event) => onSearchDraftChange(event.target.value)}
+          placeholder="Cari nama atau kode role"
+          className="w-[300px]"
         />
-      ) : null}
+        {selectedIds.length > 0 ? (
+          <BulkActionBar
+            selectedCount={selectedIds.length}
+            selectedIds={selectedIds}
+            selectionHasBuiltin={selectionHasBuiltin}
+            onConfirm={() => setConfirmDelete(true)}
+          />
+        ) : null}
+        <RoleDialog permissions={permissions ?? []} />
+      </div>
 
       <DataTable
         columns={columns}
@@ -360,7 +376,6 @@ function RolesTableSection(props: RolesTableSectionProps) {
         rowSelection={rowSelection}
         emptyText="Tidak ada role yang cocok."
       />
-
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>
           Halaman {meta.page} dari {pageCount} · {meta.total} role
@@ -402,6 +417,16 @@ function RolesTableSection(props: RolesTableSectionProps) {
           open={Boolean(cloning)}
           onOpenChange={(open) => {
             if (!open) setCloning(null);
+          }}
+        />
+      ) : null}
+      {viewing ? (
+        <RoleViewDialog
+          role={viewing}
+          permissions={permissions}
+          open={Boolean(viewing)}
+          onOpenChange={(open) => {
+            if (!open) setViewing(null);
           }}
         />
       ) : null}
@@ -546,7 +571,7 @@ function RoleDialog({
   const trigger = open === undefined ? (
     <DialogTrigger asChild>
       <Button variant={role ? "outline" : cloneFrom ? "secondary" : "default"}>
-        {cloneFrom ? <Copy className="h-4 w-4" /> : null}
+        <Plus className="h-4 w-4" /> {cloneFrom ? <Copy className="h-4 w-4" /> : null}
         {role ? "Edit" : cloneFrom ? "Clone" : "Buat Role"}
       </Button>
     </DialogTrigger>
@@ -610,6 +635,99 @@ function RoleDialog({
             </DialogFooter>
           </form>
         </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RoleViewDialog({
+  role,
+  permissions,
+  open,
+  onOpenChange,
+}: {
+  role: TenantRole;
+  permissions: Permission[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const active = new Set(role.permissions);
+  const heldPermissions = permissions.filter((p) => active.has(p.code));
+  const inactiveHeld = permissions.filter((p) => !active.has(p.code));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Detail role: {role.name}</DialogTitle>
+          <DialogDescription>
+            Ringkasan izin aktif untuk role <span className="font-medium text-foreground">{role.code}</span>.
+            {role.is_builtin ? " Role bawaan tidak dapat diubah." : null}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="rounded-md border p-3 text-sm">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Nama</p>
+              <p className="font-semibold text-foreground">{role.name}</p>
+            </div>
+            <div className="rounded-md border p-3 text-sm">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">Kode</p>
+              <p className="font-mono text-foreground">{role.code}</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-foreground">Izin aktif</h4>
+              <Badge variant="secondary">{heldPermissions.length} izin</Badge>
+            </div>
+            {heldPermissions.length === 0 ? (
+              <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                Role ini belum memiliki izin aktif.
+              </p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {heldPermissions.map((permission) => (
+                  <div
+                    key={permission.code}
+                    className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-3 text-sm"
+                  >
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>
+                      <span className="block font-medium text-foreground">{permission.code}</span>
+                      <span className="block text-xs text-muted-foreground">{permission.description}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {inactiveHeld.length > 0 ? (
+            <div className="space-y-2">
+              <h4 className="text-sm font-semibold text-muted-foreground">Izin tersedia (tidak aktif)</h4>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {inactiveHeld.map((permission) => (
+                  <div
+                    key={permission.code}
+                    className="flex items-start gap-2 rounded-md border p-3 text-sm opacity-70"
+                  >
+                    <span>
+                      <span className="block font-medium text-foreground">{permission.code}</span>
+                      <span className="block text-xs text-muted-foreground">{permission.description}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Tutup</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
