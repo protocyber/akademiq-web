@@ -466,9 +466,9 @@ function KelolEvaluasiModal({
   const [deleteTarget, setDeleteTarget] = React.useState<Evaluation | null>(null);
   const [showAddForm, setShowAddForm] = React.useState(false);
 
-  const createMut = useCreateEvaluation(homeroomId, subjectId, yearId);
-  const updateMut = useUpdateEvaluation(homeroomId, subjectId, yearId);
-  const deleteMut = useDeleteEvaluation(homeroomId, subjectId, yearId);
+  const createMut = useCreateEvaluation(homeroomId, subjectId, yearId, termId ?? undefined);
+  const updateMut = useUpdateEvaluation(homeroomId, subjectId, yearId, termId ?? undefined);
+  const deleteMut = useDeleteEvaluation(homeroomId, subjectId, yearId, termId ?? undefined);
 
   // ── Add form state ──────────────────────────────────────────────────────────
   const [newCode, setNewCode] = React.useState("");

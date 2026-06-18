@@ -25,7 +25,7 @@ import {
 
 // ── Evaluation mutations ─────────────────────────────────────────────────────
 
-export function useCreateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+export function useCreateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: EvaluationForm) =>
@@ -36,11 +36,11 @@ export function useCreateEvaluation(homeroomId?: string, subjectId?: string, aca
         authenticated: true,
         body: input,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId, termId) }),
   });
 }
 
-export function useUpdateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+export function useUpdateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ evaluationId, ...body }: EvaluationUpdateForm & { evaluationId: string }) =>
@@ -51,11 +51,11 @@ export function useUpdateEvaluation(homeroomId?: string, subjectId?: string, aca
         authenticated: true,
         body,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId, termId) }),
   });
 }
 
-export function useDeleteEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+export function useDeleteEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (evaluationId: string) =>
@@ -66,7 +66,7 @@ export function useDeleteEvaluation(homeroomId?: string, subjectId?: string, aca
         authenticated: true,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) });
+      qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId, termId) });
       qc.invalidateQueries({ queryKey: classGradesQueryKey(homeroomId, subjectId, academicYearId) });
     },
   });
