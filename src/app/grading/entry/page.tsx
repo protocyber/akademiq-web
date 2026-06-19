@@ -145,7 +145,7 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="border-b pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle>Entri Nilai</CardTitle>
@@ -159,7 +159,7 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="pt-6 space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
           <QuerySelect
             items={filteredHomerooms}

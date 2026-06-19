@@ -533,7 +533,7 @@ export function SidebarContent({
                         key={child.href}
                         asChild
                         variant="ghost"
-                        className={`w-full justify-start gap-3 rounded-lg px-4 py-2 text-sm transition-all ${active
+                        className={`w-full justify-start gap-3 rounded-md px-4 py-2 text-sm transition-all ${active
                           ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
                           : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
                           }`}

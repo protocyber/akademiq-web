@@ -211,3 +211,42 @@ export function useTransitionReportCard(reportCardId: string, reportTypeId?: str
     },
   });
 }
+
+/**
+ * Transition many report cards by calling the single-card PATCH endpoint per
+ * card (the grading service exposes no bulk endpoint). `action` is fixed per
+ * run so the caller picks the right advance for the selected statuses. Returns
+ * a per-card result list so the UI can report partial failures.
+ */
+export function useBulkTransitionReportCards(reportTypeId?: string, homeroomId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      reportCardIds,
+      action,
+    }: {
+      reportCardIds: string[];
+      action: "submit" | "homeroom-approve" | "return" | "principal-approve" | "reject";
+    }) => {
+      const results = await Promise.allSettled(
+        reportCardIds.map((reportCardId) =>
+          apiFetch<ReportCard>({
+            service: "grading",
+            path: `/api/v1/grading/report-cards/${reportCardId}/${action}`,
+            method: "PATCH",
+            authenticated: true,
+            body: {},
+          }),
+        ),
+      );
+      return results.map((result, index) => ({
+        report_card_id: reportCardIds[index],
+        ok: result.status === "fulfilled",
+      }));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["grading", "report-card"] });
+      qc.invalidateQueries({ queryKey: reportCardsQueryKey(reportTypeId, homeroomId) });
+    },
+  });
+}
