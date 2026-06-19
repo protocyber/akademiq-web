@@ -7,6 +7,7 @@ import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil, Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/date-utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -288,7 +289,7 @@ function YearsTableSection({
       ),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {row.original.start_date} — {row.original.end_date}
+          {formatDate(row.original.start_date)} — {formatDate(row.original.end_date)}
         </span>
       ),
     },

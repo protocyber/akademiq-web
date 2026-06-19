@@ -21,6 +21,7 @@ import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { getErrorMessage } from "@/lib/errors/messages";
+import { formatDate } from "@/lib/date-utils";
 import { schoolProfileSchema, type SchoolProfileForm } from "@/lib/schemas/academic-ops";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import type { MediaAsset } from "@/lib/query/queries/use-academic-ops";
@@ -484,7 +485,7 @@ function MediaHistoryList({ media }: { media: MediaAsset[] }) {
         <div key={m.media_id} className="space-y-2">
           <img src={m.file_url} alt="Logo" className="h-24 w-24 rounded-lg border object-cover" />
           <div className="text-xs text-muted-foreground">
-            {new Date(m.uploaded_at).toLocaleDateString("id-ID")}
+            {formatDate(m.uploaded_at)}
             {m.is_active && <span className="ml-1 text-green-600">(Aktif)</span>}
           </div>
         </div>

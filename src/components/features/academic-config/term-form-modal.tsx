@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toaster";
 import { StatusConfirmDialog } from "@/components/features/academic-config/status-confirm-dialog";
 import { getErrorMessage } from "@/lib/errors/messages";
+import { formatDate } from "@/lib/date-utils";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import {
   useCreateAcademicTerm,
@@ -273,7 +274,7 @@ function TermCreateSection({
               <SelectContent>
                 {sourceOptions.map((opt) => (
                   <SelectItem key={opt.term_id} value={opt.term_id}>
-                    {opt.name} ({opt.start_date} — {opt.end_date})
+                    {opt.name} ({formatDate(opt.start_date)} — {formatDate(opt.end_date)})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -684,7 +685,7 @@ function CopyReportTypesButton({
             <SelectContent>
               {sourceOptions.map((opt) => (
                 <SelectItem key={opt.term_id} value={opt.term_id}>
-                  {opt.name} ({opt.start_date} — {opt.end_date})
+                  {opt.name} ({formatDate(opt.start_date)} — {formatDate(opt.end_date)})
                 </SelectItem>
               ))}
             </SelectContent>

@@ -27,6 +27,7 @@ import {
 } from "@/components/features/academic-config/academic-settings";
 import { TermFormModal } from "@/components/features/academic-config/term-form-modal";
 import { getErrorMessage } from "@/lib/errors/messages";
+import { formatDate } from "@/lib/date-utils";
 import { useDeleteAcademicTerm } from "@/lib/query/mutations/use-academic-config";
 import { type AcademicTerm, useTermsTable } from "@/lib/query/queries/use-academic-config";
 import {
@@ -233,7 +234,7 @@ function TermsTableSection({
       ),
       cell: ({ row }) => (
         <span className="text-sm text-muted-foreground">
-          {row.original.start_date} — {row.original.end_date}
+          {formatDate(row.original.start_date)} — {formatDate(row.original.end_date)}
         </span>
       ),
     },

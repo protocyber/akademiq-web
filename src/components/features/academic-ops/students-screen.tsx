@@ -56,6 +56,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
+import { formatDate } from "@/lib/date-utils";
 import {
   useArchiveStudent,
   useBulkDeleteStudents,
@@ -308,7 +309,7 @@ function StudentsTable({
     {
       id: "birth_date",
       header: () => <span>Tgl Lahir</span>,
-      cell: ({ row }) => <span className="text-muted-foreground">{row.original.birth_date}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{formatDate(row.original.birth_date)}</span>,
     },
     {
       id: "status",

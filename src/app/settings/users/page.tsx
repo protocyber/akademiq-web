@@ -54,6 +54,7 @@ import { toast } from "@/components/ui/toaster";
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { ApiHttpError } from "@/lib/api/types";
+import { formatDate } from "@/lib/date-utils";
 import { ErrorView } from "@/components/ui/error-view";
 import {
   CREATE_USER_ALREADY_EXISTS_MESSAGE,
@@ -1095,7 +1096,7 @@ function InvitationCard({ invitation }: { invitation: TenantInvitation; }) {
         <p className="break-all text-sm font-semibold text-foreground">{invitation.email}</p>
         <p className="text-xs text-muted-foreground">
           {invitationRoles.map((role) => roleLabels[role] ?? role).join(", ") || "Tanpa role"} · kedaluwarsa{" "}
-          {new Date(invitation.expires_at).toLocaleDateString("id-ID")}
+          {formatDate(invitation.expires_at)}
         </p>
       </div>
       <div className="flex gap-2">
