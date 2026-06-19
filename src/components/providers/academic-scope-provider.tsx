@@ -4,6 +4,11 @@ import * as React from "react";
 import { useAcademicYears, useCurriculumVersions, useTerms } from "@/lib/query/queries/use-academic-config";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { getAccessToken } from "@/lib/api/client";
+import {
+  resolveDefaultAcademicYear,
+  resolveDefaultTerm,
+  resolveDefaultCurriculum,
+} from "@/lib/scope-resolvers";
 
 interface AcademicScopeContextType {
   yearId: string | null;
@@ -24,15 +29,17 @@ export function AcademicScopeProvider({ children }: { children: React.ReactNode 
   const [curriculumId, setCurriculumIdState] = React.useState<string | null>(null);
   const [termId, setTermIdState] = React.useState<string | null>(null);
   const [isResolving, setIsResolving] = React.useState(true);
-
-  const tempRestoredCurriculumIdRef = React.useRef<string | null>(null);
-  const tempRestoredTermIdRef = React.useRef<string | null>(null);
-  const shouldSelectNewestCurriculumRef = React.useRef(false);
-  const shouldResolveDefaultTermRef = React.useRef(false);
-  const isInitialLoadRef = React.useRef(true);
+  const isInitialResolveDone = React.useRef(false);
 
   React.useEffect(() => {
     setIsAuthenticated(Boolean(getAccessToken()));
+
+    const handleTokensChanged = () => {
+      setIsAuthenticated(Boolean(getAccessToken()));
+    };
+
+    window.addEventListener("akademiq:tokens-changed", handleTokensChanged);
+    return () => window.removeEventListener("akademiq:tokens-changed", handleTokensChanged);
   }, []);
 
   const tenantMe = useTenantMe(isAuthenticated);
@@ -44,112 +51,44 @@ export function AcademicScopeProvider({ children }: { children: React.ReactNode 
 
   const storageKey = tenantId ? `akademiq.academic_scope.${tenantId}` : null;
 
-  // Initial mount: load and validate from localStorage
+  // Step 1: resolve year once on initial mount
   React.useEffect(() => {
-    if (!isAuthenticated) {
-      setIsResolving(false);
-      return;
-    }
+    if (!isAuthenticated) return;
     if (tenantMe.isLoading) return;
-    if (!tenantId) {
-      setIsResolving(false);
-      return;
-    }
+    if (!tenantId) return;
     if (yearsQuery.isLoading) return;
+    if (isInitialResolveDone.current) return;
 
+    isInitialResolveDone.current = true;
     const years = yearsQuery.data ?? [];
+    const resolved = resolveDefaultAcademicYear(years);
+    setYearIdState(resolved);
 
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      const saved = localStorage.getItem(`akademiq.academic_scope.${tenantId}`);
-      let restoredYearId: string | null = null;
-      let restoredCurriculumId: string | null = null;
-      let restoredTermId: string | null = null;
-
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          restoredYearId = parsed.academic_year_id || null;
-          restoredCurriculumId = parsed.curriculum_version_id || null;
-          restoredTermId = parsed.term_id || null;
-        } catch (e) {
-          console.error("Failed to parse saved academic scope", e);
-        }
-      } else {
-        shouldSelectNewestCurriculumRef.current = true;
-        shouldResolveDefaultTermRef.current = true;
-      }
-
-      const yearExists = years.some((y) => y.academic_year_id === restoredYearId);
-      if (!yearExists) {
-        const activeYear = years.find((y) => y.status === "Active");
-        restoredYearId = activeYear ? activeYear.academic_year_id : null;
-        restoredCurriculumId = null;
-        restoredTermId = null;
-        shouldSelectNewestCurriculumRef.current = true;
-        shouldResolveDefaultTermRef.current = true;
-      }
-
-      setYearIdState(restoredYearId);
-
-      if (!restoredYearId) {
-        setCurriculumIdState(null);
-        setTermIdState(null);
-        setIsResolving(false);
-      } else {
-        tempRestoredCurriculumIdRef.current = restoredCurriculumId;
-        tempRestoredTermIdRef.current = restoredTermId;
-      }
+    if (!resolved) {
+      setCurriculumIdState(null);
+      setTermIdState(null);
+      setIsResolving(false);
     }
   }, [isAuthenticated, tenantMe.isLoading, tenantId, yearsQuery.isLoading, yearsQuery.data]);
 
-  // Resolve curriculum once yearId is set and curriculum versions load
+  // Step 2: resolve curriculum when yearId and curriculum data are available
   React.useEffect(() => {
     if (!yearId || curriculumQuery.isLoading || !curriculumQuery.data) return;
 
     const curriculums = curriculumQuery.data ?? [];
-
-    if (tempRestoredCurriculumIdRef.current !== null) {
-      const restoredCurriculumId = tempRestoredCurriculumIdRef.current;
-      const curriculumExists = curriculums.some((c) => c.curriculum_version_id === restoredCurriculumId);
-      setCurriculumIdState(
-        curriculumExists
-          ? restoredCurriculumId
-          : curriculums.length > 0 ? curriculums[curriculums.length - 1].curriculum_version_id : null
-      );
-      tempRestoredCurriculumIdRef.current = null;
-    } else if (shouldSelectNewestCurriculumRef.current) {
-      setCurriculumIdState(
-        curriculums.length > 0 ? curriculums[curriculums.length - 1].curriculum_version_id : null
-      );
-      shouldSelectNewestCurriculumRef.current = false;
-    }
+    setCurriculumIdState(resolveDefaultCurriculum(curriculums));
   }, [yearId, curriculumQuery.isLoading, curriculumQuery.data]);
 
-  // Resolve term once yearId is set and terms load
+  // Step 3: resolve term when yearId and term data are available, then finish resolving
   React.useEffect(() => {
     if (!yearId || termsQuery.isLoading || !termsQuery.data) return;
 
     const terms = termsQuery.data ?? [];
-
-    if (tempRestoredTermIdRef.current !== null) {
-      const restoredTermId = tempRestoredTermIdRef.current;
-      const termExists = terms.some((t) => t.term_id === restoredTermId);
-      if (termExists) {
-        setTermIdState(restoredTermId);
-      } else {
-        setTermIdState(resolveDefaultTerm(terms));
-      }
-      tempRestoredTermIdRef.current = null;
-      setIsResolving(false);
-    } else if (shouldResolveDefaultTermRef.current) {
-      setTermIdState(resolveDefaultTerm(terms));
-      shouldResolveDefaultTermRef.current = false;
-      setIsResolving(false);
-    }
+    setTermIdState(resolveDefaultTerm(terms));
+    setIsResolving(false);
   }, [yearId, termsQuery.isLoading, termsQuery.data]);
 
-  // Save to localStorage when yearId, curriculumId, or termId changes
+  // Save to localStorage when scope changes (after initial resolve)
   React.useEffect(() => {
     if (!storageKey || isResolving) return;
     localStorage.setItem(
@@ -192,9 +131,6 @@ export function AcademicScopeProvider({ children }: { children: React.ReactNode 
     if (!id) {
       setCurriculumIdState(null);
       setTermIdState(null);
-    } else {
-      shouldSelectNewestCurriculumRef.current = true;
-      shouldResolveDefaultTermRef.current = true;
     }
   }, []);
 
@@ -228,14 +164,4 @@ export function AcademicScopeProvider({ children }: { children: React.ReactNode 
       {children}
     </AcademicScopeContext.Provider>
   );
-}
-
-function resolveDefaultTerm(terms: { term_id: string; status: string; start_date: string; end_date: string }[]): string | null {
-  if (terms.length === 0) return null;
-  const active = terms.find((t) => t.status === "Active");
-  if (active) return active.term_id;
-  const today = new Date().toISOString().slice(0, 10);
-  const inRange = terms.find((t) => t.start_date <= today && today <= t.end_date);
-  if (inRange) return inRange.term_id;
-  return terms[0].term_id;
 }
