@@ -53,8 +53,14 @@ export function ReportCardDetailBody({
   const teacherNameByUserId = new Map(
     (teachers.data ?? []).flatMap((teacher) => (teacher.user_id ? [[teacher.user_id, teacher.full_name] as const] : [])),
   );
-  const subjectNameById = new Map(
-    (subjects.data ?? []).map((s) => [s.subject_id, s.name]),
+  const subjectById = new Map(
+    (subjects.data ?? []).map((s) => [s.subject_id, s]),
+  );
+
+  const groupedScores = groupScoresByKelompok(
+    detail.data.subject_scores,
+    subjectById,
+    card.summary.subjects,
   );
 
   return (
@@ -81,25 +87,28 @@ export function ReportCardDetailBody({
             <CardTitle>Nilai dan Kelulusan</CardTitle>
             <CardDescription>Nilai final per mapel dibekukan saat Generate Draft; lulus/remedial mengacu kebijakan nilai minimum.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {detail.data.subject_scores.length === 0 ? (
               <p className="text-sm text-muted-foreground">Belum ada nilai yang dibekukan. Jalankan Generate Draft.</p>
             ) : (
-              detail.data.subject_scores.map((score) => {
-                const subjectRow = card.summary.subjects?.find((item) => item.subject_id === score.subject_id);
-                const subjectName = subjectNameById.get(score.subject_id) ?? `Mapel #${score.subject_id.slice(-4)}`;
-                return (
-                  <div key={`${score.report_card_id}-${score.subject_id}`} className="flex items-center justify-between rounded-lg border p-3 text-sm">
-                    <div>
-                      <p className="font-medium">{subjectName}</p>
-                      <p className="text-xs text-muted-foreground">Nilai akhir {score.final_score.toFixed(1)}</p>
+              groupedScores.map((group) => (
+                <div key={group.key} className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                  </p>
+                  {group.rows.map((row) => (
+                    <div key={`${row.score.report_card_id}-${row.score.subject_id}`} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+                      <div>
+                        <p className="font-medium">{row.name}</p>
+                        <p className="text-xs text-muted-foreground">Nilai akhir {row.score.final_score.toFixed(1)}</p>
+                      </div>
+                      <span className={row.passed ? "text-emerald-600" : "text-destructive"}>
+                        {row.passed ? "Lulus" : "Remedial"}
+                      </span>
                     </div>
-                    <span className={subjectRow?.passed ? "text-emerald-600" : "text-destructive"}>
-                      {subjectRow?.passed ? "Lulus" : "Remedial"}
-                    </span>
-                  </div>
-                );
-              })
+                  ))}
+                </div>
+              ))
             )}
           </CardContent>
         </Card>
@@ -176,4 +185,54 @@ function roleLabel(role: string) {
   if (role === "homeroom_teacher") return "Wali Kelas";
   if (role === "principal") return "Kepala Sekolah";
   return role;
+}
+
+type ScoreRow = {
+  name: string;
+  passed: boolean;
+  score: { report_card_id: string; subject_id: string; final_score: number; computed_at: string };
+};
+
+type ScoreGroup = {
+  key: string;
+  label: string;
+  position: number;
+  rows: ScoreRow[];
+};
+
+/**
+ * Group subject scores by their kelompok (subject_group), ordered by group
+ * position then subject name. Subjects whose group cannot be resolved are NOT
+ * dropped — they render under a fallback bucket so nothing is silently lost.
+ */
+export function groupScoresByKelompok(
+  scores: Array<{ report_card_id: string; subject_id: string; final_score: number; computed_at: string }>,
+  subjectById: Map<string, { subject_id: string; name: string; subject_group?: { subject_group_id: string; name: string; position: number } }>,
+  summarySubjects?: Array<{ subject_id: string; final_score: number; passed: boolean }>,
+): ScoreGroup[] {
+  const buckets = new Map<string, ScoreGroup>();
+  const fallbackKey = "__ungrouped__";
+
+  for (const score of scores) {
+    const subject = subjectById.get(score.subject_id);
+    const passed = summarySubjects?.find((item) => item.subject_id === score.subject_id)?.passed ?? false;
+    const name = subject?.name ?? `Mapel #${score.subject_id.slice(-4)}`;
+    const group = subject?.subject_group;
+    const key = group?.subject_group_id ?? fallbackKey;
+    const bucket = buckets.get(key) ?? {
+      key,
+      label: group?.name ?? "Tanpa Kelompok",
+      position: group?.position ?? Number.MAX_SAFE_INTEGER,
+      rows: [],
+    };
+    bucket.rows.push({ name, passed, score });
+    buckets.set(key, bucket);
+  }
+
+  return Array.from(buckets.values())
+    .sort((a, b) => a.position - b.position || a.label.localeCompare(b.label))
+    .map((bucket) => {
+      bucket.rows.sort((a, b) => a.name.localeCompare(b.name));
+      return bucket;
+    });
 }

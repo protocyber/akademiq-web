@@ -68,6 +68,7 @@ const navEntries: NavEntry[] = [
       icon: Settings,
       visibility: { kind: "always" },
       children: [
+        { href: "/settings/school-profile", label: "Profil Sekolah", icon: School, visibility: { kind: "permission", code: "billing.view" } },
         { href: "/settings/modules", label: "Modul Aktif", icon: Boxes, visibility: { kind: "permission", code: "billing.view" } },
         { href: "/settings/users", label: "Pengguna", icon: Users, visibility: { kind: "permission", code: "user.read" } },
         { href: "/settings/roles", label: "Role & Izin", icon: ShieldCheck, visibility: { kind: "permission", code: "role.read" } },

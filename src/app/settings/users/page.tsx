@@ -129,7 +129,7 @@ export default function SettingsUsersPage() {
 
 function UsersSkeleton() {
   return (
-    <main className="container mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <main className="container mx-auto w-full space-y-6 px-4 py-10">
       <Skeleton className="h-9 w-56" />
       <Card>
         <CardContent className="space-y-3 pt-6">
@@ -200,7 +200,7 @@ function UsersContent() {
           await logout.mutateAsync();
           router.push("/login");
         }}
-        className="mx-auto max-w-7xl"
+        className="mx-auto w-full"
       >
         <ErrorView
           status={status}
@@ -229,7 +229,7 @@ function UsersContent() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
       <Card className="border border-border shadow-sm">
         <CardHeader className="border-b pb-4">

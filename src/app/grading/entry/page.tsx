@@ -69,7 +69,7 @@ function GradeEntryShell() {
       userEmail={me.data.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => { await logout.mutateAsync(); router.push("/login"); }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
       {!canWrite ? <Alert><AlertTitle>Kontrol dibatasi</AlertTitle><AlertDescription>{lockedMessage}</AlertDescription></Alert> : null}
       <GradeEntryPanel canWrite={canWrite} />

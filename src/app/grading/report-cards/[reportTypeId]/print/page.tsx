@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { AuthGuard } from "@/components/features/auth-guard";
+import { groupScoresByKelompok } from "@/components/features/grading/report-card-detail-body";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
@@ -95,107 +96,16 @@ function PrintReportCardShell() {
     ? teacherNameByUserId.get(homeroomTeacherApproval.approver_id)
     : null;
 
-  // Static template subjects for TPQ Baitur Rochman
-  const defaultMateriPokok = [
-    "Bacaan Iqro / Al qur'an",
-    "Hafalan Bacaan Sholat",
-    "Hafalan Juz Amma",
-    "Doa Doa Harian",
-    "Ilmu Tajwid",
-    "Menyambung/ILHAK",
-    "Mendekte/Imla'",
-    "Terjemah/Tahsin"
-  ];
+  // Build subject lookup from year's curriculum (carries kelompok metadata).
+  const subjectById = new Map((subjects.data ?? []).map((s) => [s.subject_id, s]));
 
-  const defaultMateriPenunjang = [
-    "Akidah Akhlaq",
-    "Fiqih",
-    "Pego",
-    "PAI",
-    "Praktik Sholat"
-  ];
-
-  // Build subject name lookup from year's curriculum
-  const subjectNameById = new Map((subjects.data ?? []).map((s) => [s.subject_id, s.name]));
-
-  // Map frozen subject scores to { name, score } using resolved subject names.
-  // Falls back to "Mapel #xxxx" if the subject isn't found in the curriculum.
-  const studentGradesWithNames = (detail.data.subject_scores ?? []).map((score) => ({
-    name: subjectNameById.get(score.subject_id) ?? `Mapel #${score.subject_id.slice(-4)}`,
-    score: score.final_score,
-  }));
-
-  // Helper to check if a subject matches name (case insensitive)
-  const findMatchingGrade = (subjectName: string) => {
-    return studentGradesWithNames.find(
-      (g) => g.name.toLowerCase().replace(/\s+/g, "") === subjectName.toLowerCase().replace(/\s+/g, "")
-    );
-  };
-
-  // Build MATERI POKOK list
-  const finalMateriPokok: Array<{ name: string; score?: number }> = [];
-  const usedGrades = new Set<string>();
-
-  // 1. Try to find exact matches for default subjects
-  defaultMateriPokok.forEach((defaultName) => {
-    const match = findMatchingGrade(defaultName);
-    if (match) {
-      finalMateriPokok.push(match);
-      usedGrades.add(match.name);
-    }
-  });
-
-  // 2. Identify student grades that belong to MATERI POKOK but weren't matched
-  const unmatchedMateriPokok = studentGradesWithNames.filter((g) => {
-    if (usedGrades.has(g.name)) return false;
-    // Classify as penunjang if it matches penunjang keywords, otherwise pokok
-    const isPenunjang = /akidah|akhlaq|fiqih|pego|pai|agama|praktik|penunjang|seni|olahraga/i.test(g.name);
-    return !isPenunjang;
-  });
-
-  // 3. Put unmatched grades into the list first, replacing default subjects at the beginning
-  const finalPokokRows: Array<{ name: string; score?: number }> = [];
-  unmatchedMateriPokok.forEach((g) => {
-    finalPokokRows.push(g);
-    usedGrades.add(g.name);
-  });
-
-  // Fill/pad with default subjects that were not matched or used
-  defaultMateriPokok.forEach((defaultName) => {
-    if (finalPokokRows.length >= 8) return;
-    const isAlreadyUsed = studentGradesWithNames.some((g) => g.name === defaultName);
-    if (!isAlreadyUsed) {
-      finalPokokRows.push({ name: defaultName });
-    }
-  });
-
-  // Build MATERI PENUNJANG list
-  const finalPenunjangRows: Array<{ name: string; score?: number }> = [];
-  
-  // 1. Try to find exact matches for default subjects
-  defaultMateriPenunjang.forEach((defaultName) => {
-    const match = findMatchingGrade(defaultName);
-    if (match) {
-      finalPenunjangRows.push(match);
-      usedGrades.add(match.name);
-    }
-  });
-
-  // 2. Identify student grades that belong to MATERI PENUNJANG but weren't matched
-  const unmatchedMateriPenunjang = studentGradesWithNames.filter((g) => !usedGrades.has(g.name));
-
-  unmatchedMateriPenunjang.forEach((g) => {
-    finalPenunjangRows.push(g);
-  });
-
-  // Fill/pad with default subjects
-  defaultMateriPenunjang.forEach((defaultName) => {
-    if (finalPenunjangRows.length >= 5) return;
-    const isAlreadyUsed = studentGradesWithNames.some((g) => g.name === defaultName);
-    if (!isAlreadyUsed) {
-      finalPenunjangRows.push({ name: defaultName });
-    }
-  });
+  // Group frozen subject scores by kelompok, ordered by group position then
+  // subject name. Subjects whose group cannot be resolved are NOT dropped.
+  const kelompokGroups = groupScoresByKelompok(
+    detail.data.subject_scores ?? [],
+    subjectById,
+    detail.data.report_card.summary.subjects,
+  );
 
   return (
     <div className="min-h-screen bg-white text-black font-sans p-6 sm:p-12 md:max-w-[210mm] mx-auto print:p-0 print:m-0 print:max-w-none">
@@ -315,49 +225,29 @@ function PrintReportCardShell() {
               Wali Kelas ( Ustadzah ) : <span className="font-semibold underline pl-1">{homeroomTeacherName ?? "___________________"}</span>
             </div>
 
-            {/* Table 1: MATERI POKOK */}
-            <div className="border border-black overflow-hidden shadow-sm">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-[#76c345] text-white border-b border-black" style={{ backgroundColor: "#76c345" }}>
-                    <th className="p-2 text-left border-r border-black font-extrabold uppercase w-[48%] tracking-wider">MATERI POKOK</th>
-                    <th className="p-2 text-center border-r border-black font-extrabold uppercase w-[17%] tracking-wider">ANGKA</th>
-                    <th className="p-2 text-center font-extrabold uppercase w-[35%] tracking-wider">HURUF</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {finalPokokRows.map((row, index) => (
-                    <tr key={index} className="border-b border-black last:border-b-0 hover:bg-muted/10 transition-colors">
-                      <td className="p-2 border-r border-black font-semibold text-gray-800">{row.name}</td>
-                      <td className="p-2 border-r border-black text-center font-bold">{row.score ?? "-"}</td>
-                      <td className="p-2 text-center text-gray-600 italic font-medium">{row.score !== undefined ? scoreToIndonesianWords(row.score) : "-"}</td>
+            {/* One table per kelompok, ordered by position then subject name */}
+            {kelompokGroups.map((group) => (
+              <div key={group.key} className="border border-black overflow-hidden shadow-sm">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-[#76c345] text-white border-b border-black" style={{ backgroundColor: "#76c345" }}>
+                      <th className="p-2 text-left border-r border-black font-extrabold uppercase w-[48%] tracking-wider">{group.label}</th>
+                      <th className="p-2 text-center border-r border-black font-extrabold uppercase w-[17%] tracking-wider">ANGKA</th>
+                      <th className="p-2 text-center font-extrabold uppercase w-[35%] tracking-wider">HURUF</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table 2: MATERI PENUNJANG */}
-            <div className="border border-black overflow-hidden shadow-sm">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-[#76c345] text-white border-b border-black" style={{ backgroundColor: "#76c345" }}>
-                    <th className="p-2 text-left border-r border-black font-extrabold uppercase w-[48%] tracking-wider">MATERI PENUNJANG</th>
-                    <th className="p-2 text-center border-r border-black font-extrabold uppercase w-[17%] tracking-wider">ANGKA</th>
-                    <th className="p-2 text-center font-extrabold uppercase w-[35%] tracking-wider">HURUF</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {finalPenunjangRows.map((row, index) => (
-                    <tr key={index} className="border-b border-black last:border-b-0 hover:bg-muted/10 transition-colors">
-                      <td className="p-2 border-r border-black font-semibold text-gray-800">{row.name}</td>
-                      <td className="p-2 border-r border-black text-center font-bold">{row.score ?? "-"}</td>
-                      <td className="p-2 text-center text-gray-600 italic font-medium">{row.score !== undefined ? scoreToIndonesianWords(row.score) : "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {group.rows.map((row) => (
+                      <tr key={`${row.score.report_card_id}-${row.score.subject_id}`} className="border-b border-black last:border-b-0 hover:bg-muted/10 transition-colors">
+                        <td className="p-2 border-r border-black font-semibold text-gray-800">{row.name}</td>
+                        <td className="p-2 border-r border-black text-center font-bold">{row.score.final_score}</td>
+                        <td className="p-2 text-center text-gray-600 italic font-medium">{scoreToIndonesianWords(row.score.final_score)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
           </div>
 
           {/* Right Column: Photo, Student Info & Scale */}

@@ -3,8 +3,31 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
-import type { EnrollmentForm, HomeroomForm, StudentForm, TeacherForm, TeachingAssignmentForm } from "@/lib/schemas/academic-ops";
-import { HOMEROOMS_QUERY_KEY, STUDENTS_QUERY_KEY, TEACHING_ASSIGNMENTS_QUERY_KEY, TEACHERS_QUERY_KEY, type Homeroom, type Student, type Teacher, type TeachingAssignment } from "@/lib/query/queries/use-academic-ops";
+import type {
+  EnrollmentForm,
+  FamilyLinkForm,
+  FamilyLinkUpdateForm,
+  FamilyProfileForm,
+  HomeroomForm,
+  StudentForm,
+  TeacherForm,
+  TeachingAssignmentForm,
+} from "@/lib/schemas/academic-ops";
+import {
+  FAMILIES_QUERY_KEY,
+  HOMEROOMS_QUERY_KEY,
+  MEDIA_QUERY_KEY,
+  STUDENTS_QUERY_KEY,
+  TEACHING_ASSIGNMENTS_QUERY_KEY,
+  TEACHERS_QUERY_KEY,
+  type FamilyProfile,
+  type Homeroom,
+  type MediaAsset,
+  type Student,
+  type StudentFamilyLink,
+  type Teacher,
+  type TeachingAssignment,
+} from "@/lib/query/queries/use-academic-ops";
 
 export function useCreateStudent() {
   const qc = useQueryClient();
@@ -195,4 +218,159 @@ function upload(path: string, file: File) {
   const body = new FormData();
   body.set("file", file);
   return apiFetch<{ imported: number }>({ service: "academic-ops", path, method: "POST", authenticated: true, body });
+}
+
+// --- archive ---------------------------------------------------------------
+
+export function useArchiveStudent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId, reason }: { studentId: string; reason: string }) =>
+      apiFetch<Student>({ service: "academic-ops", path: `/api/v1/academic-ops/students/${studentId}/archive`, method: "POST", authenticated: true, body: { reason } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY }),
+  });
+}
+
+export function useArchiveTeacher() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teacherId, reason }: { teacherId: string; reason: string }) =>
+      apiFetch<Teacher>({ service: "academic-ops", path: `/api/v1/academic-ops/teachers/${teacherId}/archive`, method: "POST", authenticated: true, body: { reason } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TEACHERS_QUERY_KEY }),
+  });
+}
+
+export function useArchiveFamilyProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ familyId, reason }: { familyId: string; reason: string }) =>
+      apiFetch<FamilyProfile>({ service: "academic-ops", path: `/api/v1/academic-ops/family-profiles/${familyId}/archive`, method: "POST", authenticated: true, body: { reason } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY }),
+  });
+}
+
+// --- family profiles -------------------------------------------------------
+
+type CreateFamilyResult = {
+  family: FamilyProfile;
+  duplicate_warning: {
+    duplicates: { family_id: string; full_name: string; nik?: string | null; phone_number?: string | null; matched_on: string }[];
+  } | null;
+};
+
+export function useCreateFamilyProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: FamilyProfileForm) =>
+      apiFetch<CreateFamilyResult>({ service: "academic-ops", path: "/api/v1/academic-ops/family-profiles", method: "POST", authenticated: true, body: input }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY }),
+  });
+}
+
+export function useUpdateFamilyProfile(familyId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<FamilyProfileForm>) =>
+      apiFetch<FamilyProfile>({ service: "academic-ops", path: `/api/v1/academic-ops/family-profiles/${familyId}`, method: "PATCH", authenticated: true, body: input }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY }),
+  });
+}
+
+export function useDeleteFamilyProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (familyId: string) =>
+      apiFetch({ service: "academic-ops", path: `/api/v1/academic-ops/family-profiles/${familyId}`, method: "DELETE", authenticated: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY }),
+  });
+}
+
+// --- student-family links --------------------------------------------------
+
+export function useCreateFamilyLink(studentId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: FamilyLinkForm & { studentId: string }) =>
+      apiFetch<StudentFamilyLink>({
+        service: "academic-ops",
+        path: `/api/v1/academic-ops/students/${input.studentId}/family-links`,
+        method: "POST",
+        authenticated: true,
+        body: { family_id: input.family_id, relationship_type: input.relationship_type, primary_contact: input.primary_contact, emergency_contact: input.emergency_contact, lives_with_student: input.lives_with_student, financial_responsible: input.financial_responsible },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...STUDENTS_QUERY_KEY, studentId, "family-links"] });
+      qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY });
+    },
+  });
+}
+
+export function useUpdateFamilyLink(studentId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ linkId, ...input }: { linkId: string } & FamilyLinkUpdateForm) =>
+      apiFetch<StudentFamilyLink>({ service: "academic-ops", path: `/api/v1/academic-ops/family-links/${linkId}`, method: "PATCH", authenticated: true, body: input }),
+    onSuccess: () => {
+      if (studentId) qc.invalidateQueries({ queryKey: [...STUDENTS_QUERY_KEY, studentId, "family-links"] });
+    },
+  });
+}
+
+export function useInactivateFamilyLink(studentId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      apiFetch({ service: "academic-ops", path: `/api/v1/academic-ops/family-links/${linkId}/inactivate`, method: "POST", authenticated: true }),
+    onSuccess: () => {
+      if (studentId) qc.invalidateQueries({ queryKey: [...STUDENTS_QUERY_KEY, studentId, "family-links"] });
+    },
+  });
+}
+
+export function useDeleteFamilyLink(studentId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (linkId: string) =>
+      apiFetch({ service: "academic-ops", path: `/api/v1/academic-ops/family-links/${linkId}`, method: "DELETE", authenticated: true }),
+    onSuccess: () => {
+      if (studentId) qc.invalidateQueries({ queryKey: [...STUDENTS_QUERY_KEY, studentId, "family-links"] });
+    },
+  });
+}
+
+// --- media upload -----------------------------------------------------------
+
+export function useUploadMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ownerType, ownerId, file }: { ownerType: string; ownerId: string; file: File }) => {
+      const body = new FormData();
+      body.set("owner_type", ownerType);
+      body.set("owner_id", ownerId);
+      body.set("file", file);
+      return apiFetch<MediaAsset>({ service: "academic-ops", path: "/api/v1/academic-ops/media", method: "POST", authenticated: true, body });
+    },
+    onSuccess: (_, { ownerType, ownerId }) => {
+      qc.invalidateQueries({ queryKey: MEDIA_QUERY_KEY });
+      // Also invalidate the owner entity to refresh photo_media_id
+      if (ownerType === "student") qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY });
+      if (ownerType === "teacher") qc.invalidateQueries({ queryKey: TEACHERS_QUERY_KEY });
+      if (ownerType === "family") qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY });
+    },
+  });
+}
+
+export function useUploadSchoolLogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => {
+      const body = new FormData();
+      body.set("file", file);
+      return apiFetch<MediaAsset>({ service: "billing", path: "/api/v1/billing/tenants/me/school-profile/media", method: "POST", authenticated: true, body });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["billing", "school-profile"] });
+      qc.invalidateQueries({ queryKey: ["billing", "school-media"] });
+    },
+  });
 }

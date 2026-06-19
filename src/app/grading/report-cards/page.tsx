@@ -59,7 +59,7 @@ const PAGE_SIZE = 10;
 
 type TransitionAction = "submit" | "homeroom-approve" | "return" | "principal-approve" | "reject";
 
-const BULK_ACTIONS: { action: TransitionAction; label: string }[] = [
+const BULK_ACTIONS: { action: TransitionAction; label: string; }[] = [
   { action: "submit", label: "Submit ke Wali Kelas" },
   { action: "homeroom-approve", label: "Approve ke Kepala Sekolah" },
   { action: "return", label: "Return ke Draft" },
@@ -77,7 +77,7 @@ export default function ReportCardsPage() {
 
 function PageSkeleton() {
   return (
-    <main className="container mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <main className="container mx-auto w-full space-y-6 px-4 py-10">
       <Skeleton className="h-9 w-56" />
       <Skeleton className="h-64 w-full" />
     </main>
@@ -110,7 +110,7 @@ function ReportCardsShell() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
       <ReportCardsBoard />
     </SidebarLayout>
@@ -196,7 +196,7 @@ function ReportCardsBoard() {
   );
 }
 
-function GenerateDraftButton({ reportTypeId, homeroomId, disabled }: { reportTypeId: string; homeroomId: string; disabled?: boolean }) {
+function GenerateDraftButton({ reportTypeId, homeroomId, disabled }: { reportTypeId: string; homeroomId: string; disabled?: boolean; }) {
   const generate = useGenerateReportCards(disabled ? undefined : reportTypeId, disabled ? undefined : homeroomId);
 
   async function generateDrafts() {
@@ -216,7 +216,7 @@ function GenerateDraftButton({ reportTypeId, homeroomId, disabled }: { reportTyp
   );
 }
 
-function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; homeroomId: string }) {
+function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; homeroomId: string; }) {
   const cards = useReportCards(reportTypeId, homeroomId);
   const roster = useHomeroomRoster(homeroomId);
   const [activeStatus, setActiveStatus] = React.useState<ReportCardStatus>("Draft");
@@ -310,7 +310,7 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
           setSelection({});
         }}
       >
-        <TabsList>
+        <TabsList scrollable showScrollFade>
           {STATUSES.map((status) => (
             <TabsTrigger key={status} value={status} className="gap-1.5">
               {LABELS[status]}

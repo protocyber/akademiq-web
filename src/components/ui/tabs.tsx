@@ -42,10 +42,13 @@ Tabs.displayName = TabsPrimitive.Root.displayName;
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & {
+    scrollable?: boolean;
+    showScrollFade?: boolean;
+  }
+>(({ className, scrollable = false, showScrollFade = false, ...props }, ref) => {
   const { variant } = React.useContext(TabsContext);
-  return (
+  const list = (
     <TabsPrimitive.List
       ref={ref}
       className={cn(
@@ -55,10 +58,27 @@ const TabsList = React.forwardRef<
           : variant === "tinted"
             ? "rounded-md bg-primary/5 dark:bg-primary/5 border border-primary/10 p-1"
             : "rounded-md bg-primary/10 dark:bg-primary/5 border border-primary/20 dark:border-primary/10 p-1",
+        scrollable && "min-w-max justify-start",
         className,
       )}
       {...props}
     />
+  );
+
+  if (!scrollable) {
+    return list;
+  }
+
+  return (
+    <div className="relative w-full overflow-x-auto overflow-y-hidden">
+      {showScrollFade && (
+        <>
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
+        </>
+      )}
+      {list}
+    </div>
   );
 });
 TabsList.displayName = TabsPrimitive.List.displayName;

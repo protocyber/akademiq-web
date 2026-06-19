@@ -10,10 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLogout } from "@/lib/query/mutations/use-logout";
-import { useAcademicYears } from "@/lib/query/queries/use-academic-config";
+import { useAcademicYears, useSubjectsForYear } from "@/lib/query/queries/use-academic-config";
 import { useMyReportCards, useMyReportCardDetail } from "@/lib/query/queries/use-grading";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { groupScoresByKelompok } from "@/components/features/grading/report-card-detail-body";
 
 export default function PublishedReportCardPage() {
   return <AuthGuard fallback={<PageSkeleton />}><PublishedReportCardShell /></AuthGuard>;
@@ -68,6 +69,7 @@ function PublishedReportCardShell() {
     studentId && !isDeepLinkUnauthorized ? studentId : undefined,
     academicYearId || undefined
   );
+  const subjects = useSubjectsForYear(academicYearId || undefined);
 
   if (tenant.isLoading || me.isLoading || yearsQuery.isLoading || (academicYearId && myReportCardsQuery.isLoading)) {
     return <PageSkeleton />;
@@ -75,7 +77,7 @@ function PublishedReportCardShell() {
 
   if (tenant.error || me.error || !tenant.data || !me.data) {
     return (
-      <main className="container mx-auto max-w-7xl px-4 py-10">
+      <main className="container mx-auto w-full px-4 py-10">
         <Alert variant="destructive">
           <AlertTitle>Portal tidak bisa dimuat</AlertTitle>
           <AlertDescription>Coba muat ulang halaman.</AlertDescription>
@@ -96,7 +98,7 @@ function PublishedReportCardShell() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
       <div className="space-y-2">
         <h1 className="font-display text-3xl font-extrabold tracking-tight">Rapor Terbit</h1>
@@ -176,26 +178,32 @@ function PublishedReportCardShell() {
             <CardTitle>Rapor Siswa</CardTitle>
             <CardDescription>Status {report.data.report_card.status}</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {report.data.subject_scores.length === 0 ? (
               <p className="text-sm text-muted-foreground">Belum ada nilai final.</p>
             ) : (
-              report.data.subject_scores.map((score) => {
-                const subjectRow = report.data?.report_card.summary.subjects?.find(
-                  (item) => item.subject_id === score.subject_id
-                );
-                return (
-                  <div
-                    key={`${score.report_card_id}-${score.subject_id}`}
-                    className="flex items-center justify-between rounded-lg border p-3 text-sm"
-                  >
-                    <span>Mapel #{score.subject_id.slice(-4)}</span>
-                    <span>
-                      {score.final_score.toFixed(1)} - {subjectRow?.passed ? "Lulus" : "Remedial"}
-                    </span>
-                  </div>
-                );
-              })
+              groupScoresByKelompok(
+                report.data.subject_scores,
+                new Map((subjects.data ?? []).map((s) => [s.subject_id, s])),
+                report.data.report_card.summary.subjects,
+              ).map((group) => (
+                <div key={group.key} className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {group.label}
+                  </p>
+                  {group.rows.map((row) => (
+                    <div
+                      key={`${row.score.report_card_id}-${row.score.subject_id}`}
+                      className="flex items-center justify-between rounded-lg border p-3 text-sm"
+                    >
+                      <span>{row.name}</span>
+                      <span>
+                        {row.score.final_score.toFixed(1)} - {row.passed ? "Lulus" : "Remedial"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))
             )}
           </CardContent>
         </Card>
@@ -206,7 +214,7 @@ function PublishedReportCardShell() {
 
 function PageSkeleton() {
   return (
-    <main className="container mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <main className="container mx-auto w-full space-y-6 px-4 py-10">
       <Skeleton className="h-9 w-56" />
       <Skeleton className="h-64 w-full" />
     </main>

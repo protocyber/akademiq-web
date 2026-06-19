@@ -8,12 +8,14 @@ import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import {
   ArrowDown,
   ArrowUp,
+  Camera,
   ChevronsUpDown,
   LinkIcon,
   MoreHorizontal,
   Pencil,
   Trash2,
   Upload,
+  Archive,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
   DialogContent,
@@ -42,19 +45,23 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { QuerySelect } from "@/components/ui/query-select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
 import { ImportDialog } from "@/components/features/academic-ops/import-dialog";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
 import {
+  useArchiveTeacher,
   useBulkDeleteTeachers,
   useCreateTeacher,
   useDeleteTeacher,
   useLinkTeacherAccount,
   useUpdateTeacher,
+  useUploadMedia,
 } from "@/lib/query/mutations/use-academic-ops";
-import { useTeachersTable, type Teacher } from "@/lib/query/queries/use-academic-ops";
+import { useMediaAssets, useTeachersTable, type MediaAsset, type Teacher } from "@/lib/query/queries/use-academic-ops";
 import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-users";
 import { teacherSchema, type TeacherForm } from "@/lib/schemas/academic-ops";
 import {
@@ -63,6 +70,21 @@ import {
   type TeachersParams,
   type TeachersSort,
 } from "@/lib/schemas/teachers-params";
+
+const TEACHER_ARCHIVE_REASONS = [
+  { value: "nonaktif_sementara", label: "Nonaktif Sementara" },
+  { value: "resign", label: "Resign" },
+  { value: "mutasi", label: "Mutasi" },
+  { value: "pensiun", label: "Pensiun" },
+  { value: "meninggal", label: "Meninggal" },
+  { value: "lainnya", label: "Lainnya" },
+];
+
+const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  aktif: { label: "Aktif", variant: "default" },
+  nonaktif: { label: "Nonaktif", variant: "secondary" },
+  arsip: { label: "Arsip", variant: "outline" },
+};
 
 const SORT_FIELDS: Record<string, { asc: TeachersSort; desc: TeachersSort }> = {
   name: { asc: "name", desc: "-name" },
@@ -189,6 +211,7 @@ function TeachersTable({
   const [linking, setLinking] = React.useState<Teacher | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = React.useState<Teacher | null>(null);
 
   React.useEffect(() => {
     setRowSelection({});
@@ -266,6 +289,15 @@ function TeachersTable({
       cell: ({ row }) => <span className="font-medium text-foreground">{row.original.full_name}</span>,
     },
     {
+      id: "status",
+      header: () => <span>Status</span>,
+      cell: ({ row }) => {
+        const status = row.original.status;
+        const config = STATUS_LABELS[status] ?? { label: status, variant: "outline" };
+        return <Badge variant={config.variant}>{config.label}</Badge>;
+      },
+    },
+    {
       id: "account",
       header: () => <span>Akun</span>,
       cell: ({ row }) =>
@@ -297,6 +329,11 @@ function TeachersTable({
               <DropdownMenuItem disabled={!canManage} onClick={() => setLinking(teacher)}>
                 <LinkIcon className="h-4 w-4" /> Hubungkan akun
               </DropdownMenuItem>
+              {teacher.status !== "arsip" && (
+                <DropdownMenuItem disabled={!canManage} onClick={() => setArchiveTarget(teacher)}>
+                  <Archive className="h-4 w-4" /> Arsipkan
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 disabled={!canManage}
                 className="text-destructive focus:text-destructive"
@@ -384,6 +421,17 @@ function TeachersTable({
           open={Boolean(linking)}
           onOpenChange={(open) => {
             if (!open) setLinking(null);
+          }}
+        />
+      ) : null}
+
+      {archiveTarget ? (
+        <ArchiveTeacherDialog
+          teacher={archiveTarget}
+          canManage={canManage}
+          open={Boolean(archiveTarget)}
+          onOpenChange={(open) => {
+            if (!open) setArchiveTarget(null);
           }}
         />
       ) : null}
@@ -533,7 +581,25 @@ function TeacherDialog({
   const create = useCreateTeacher();
   const update = useUpdateTeacher(teacher?.teacher_id ?? "");
   const defaultValues = React.useMemo<TeacherForm>(
-    () => ({ nip: teacher?.nip ?? "", full_name: teacher?.full_name ?? "" }),
+    () => ({
+      nip: teacher?.nip ?? "",
+      full_name: teacher?.full_name ?? "",
+      nik: teacher?.nik ?? "",
+      education_level: teacher?.education_level ?? "",
+      gender: teacher?.gender as "male" | "female" | "other" ?? "",
+      birth_date: teacher?.birth_date ?? "",
+      birth_place: teacher?.birth_place ?? "",
+      address_line: teacher?.address_line ?? "",
+      phone_number: teacher?.phone_number ?? "",
+      email: teacher?.email ?? "",
+      employment_status: teacher?.employment_status ?? "",
+      role_position: teacher?.role_position ?? "",
+      start_date: teacher?.start_date ?? "",
+      end_date: teacher?.end_date ?? "",
+      primary_subject_area: teacher?.primary_subject_area ?? "",
+      nuptk: teacher?.nuptk ?? "",
+      certification_number: teacher?.certification_number ?? "",
+    }),
     [teacher],
   );
   const form = useForm<TeacherForm>({ resolver: zodResolver(teacherSchema), defaultValues });
@@ -566,10 +632,10 @@ function TeacherDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
         <DialogHeader>
           <DialogTitle>{teacher ? "Edit guru" : "Tambah guru"}</DialogTitle>
-          <DialogDescription>NIP unik per tenant.</DialogDescription>
+          <DialogDescription>NIP unik per sekolah.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" noValidate>
@@ -599,6 +665,218 @@ function TeacherDialog({
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="nik"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NIK</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="3201012345678901" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="education_level"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pendidikan</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="S1" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <SelectTrigger><SelectValue placeholder="Pilih gender" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Laki-laki</SelectItem>
+                        <SelectItem value="female">Perempuan</SelectItem>
+                        <SelectItem value="other">Lainnya</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="birth_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tanggal lahir</FormLabel>
+                    <FormControl>
+                      <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="1990-01-01" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="birth_place"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tempat lahir</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Jakarta" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="address_line"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Alamat</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Jl. Pendidikan No. 1" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nomor telepon</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="081234567890" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="guru@example.com" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="employment_status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status kepegawaian</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Tetap" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="role_position"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Jabatan</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Guru Kelas" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="start_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tanggal masuk</FormLabel>
+                    <FormControl>
+                      <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="2020-01-01" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="end_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tanggal keluar</FormLabel>
+                    <FormControl>
+                      <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="—" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <FormField
+              control={form.control}
+              name="primary_subject_area"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bidang mata pelajaran</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Matematika" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="nuptk"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NUPTK</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="1234567890123456" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="certification_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nomor sertifikasi</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="—" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <DialogFooter>
               <GuardedButton enabled={canManage} message={upgradeMessage} loading={loading}>
                 Simpan
@@ -606,6 +884,66 @@ function TeacherDialog({
             </DialogFooter>
           </form>
         </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ArchiveTeacherDialog({
+  teacher,
+  canManage,
+  open,
+  onOpenChange,
+}: {
+  teacher: Teacher;
+  canManage: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const archive = useArchiveTeacher();
+  const [reason, setReason] = React.useState("");
+
+  async function onConfirm() {
+    if (!reason) return;
+    try {
+      await archive.mutateAsync({ teacherId: teacher.teacher_id, reason });
+      toast.success("Guru diarsipkan.");
+      onOpenChange(false);
+      setReason("");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengarsipkan guru." }));
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Arsipkan guru — {teacher.full_name}</DialogTitle>
+          <DialogDescription>
+            Pilih alasan pengarsipan. Guru yang diarsipkan tidak akan muncul di daftar aktif.
+          </DialogDescription>
+        </DialogHeader>
+        <Select value={reason} onValueChange={setReason}>
+          <SelectTrigger>
+            <SelectValue placeholder="Pilih alasan arsip" />
+          </SelectTrigger>
+          <SelectContent>
+            {TEACHER_ARCHIVE_REASONS.map((r) => (
+              <SelectItem key={r.value} value={r.value}>
+                {r.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <DialogFooter>
+          <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
+            Batal
+          </Button>
+          <Button type="button" disabled={!canManage || !reason || archive.isPending} loading={archive.isPending} onClick={onConfirm}>
+            Arsipkan
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

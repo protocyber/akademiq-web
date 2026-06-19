@@ -130,7 +130,7 @@ function RolesContent() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
 
       <Card className="border border-border shadow-sm">
@@ -138,7 +138,7 @@ function RolesContent() {
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
               <CardTitle className="text-lg">Daftar Role</CardTitle>
-              <CardDescription>Kelola role bawaan dan role custom tenant dari palet izin yang Anda miliki.</CardDescription>
+              <CardDescription>Kelola role bawaan dan role custom sekolah dari palet izin yang Anda miliki.</CardDescription>
             </div>
             <div className="flex flex-col md:flex-row gap-2">
               <Input

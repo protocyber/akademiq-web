@@ -12,6 +12,10 @@ import {
   type AcademicSubjectsParams,
 } from "@/lib/schemas/academic-subjects-params";
 import {
+  academicSubjectGroupsParamsKey,
+  type AcademicSubjectGroupsParams,
+} from "@/lib/schemas/academic-subject-groups-params";
+import {
   academicTermsParamsKey,
   type AcademicTermsParams,
 } from "@/lib/schemas/academic-terms-params";
@@ -47,13 +51,33 @@ export type CurriculumVersion = {
   description?: string | null;
 };
 
+export type SubjectGroupSummary = {
+  subject_group_id: string;
+  name: string;
+  code?: string | null;
+  position: number;
+};
+
 export type Subject = {
   subject_id: string;
   tenant_id: string;
   curriculum_version_id: string;
+  subject_group_id: string;
   name: string;
   code?: string | null;
   passing_grade: number;
+  subject_group: SubjectGroupSummary;
+};
+
+export type SubjectGroup = {
+  subject_group_id: string;
+  tenant_id: string;
+  curriculum_version_id: string;
+  name: string;
+  code?: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type GradingPolicy = {
@@ -90,6 +114,7 @@ export const CURRICULUM_VERSIONS_QUERY_KEY = [
   "curriculum-versions",
 ] as const;
 export const SUBJECTS_QUERY_KEY = ["academic-config", "subjects"] as const;
+export const SUBJECT_GROUPS_QUERY_KEY = ["academic-config", "subject-groups"] as const;
 export const CLASS_TEMPLATES_QUERY_KEY = ["academic-config", "class-templates"] as const;
 
 function buildQuery(serialized: string) {
@@ -216,6 +241,44 @@ export function useSubjects(curriculumVersionId?: string) {
       return envelope.data;
     },
     enabled: Boolean(curriculumVersionId),
+  });
+}
+
+/**
+ * Unpaginated subject groups for a curriculum version (first 100 by position).
+ */
+export function useSubjectGroups(curriculumVersionId?: string) {
+  return useQuery({
+    queryKey: [...SUBJECT_GROUPS_QUERY_KEY, "all", curriculumVersionId ?? ""],
+    queryFn: async () => {
+      const envelope = await apiFetchEnvelope<SubjectGroup[]>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/curriculum-versions/${curriculumVersionId}/subject-groups?page=1&page_size=100&sort=position`,
+        authenticated: true,
+      });
+      return envelope.data;
+    },
+    enabled: Boolean(curriculumVersionId),
+  });
+}
+
+/**
+ * Paginated, server-driven subject groups for the data table.
+ */
+export function useSubjectGroupsTable(params: AcademicSubjectGroupsParams) {
+  return useQuery({
+    queryKey: [...SUBJECT_GROUPS_QUERY_KEY, ...academicSubjectGroupsParamsKey(params)],
+    queryFn: async () => {
+      const envelope = await apiFetchEnvelope<SubjectGroup[]>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/curriculum-versions/${params.curriculum_version_id}/subject-groups${buildQuery(
+          listParamsQuery(params),
+        )}`,
+        authenticated: true,
+      });
+      return { data: envelope.data, meta: envelope.meta as PageMeta };
+    },
+    enabled: Boolean(params.curriculum_version_id),
   });
 }
 
