@@ -32,10 +32,10 @@ import {
 } from "@/components/ui/sheet";
 
 type VisibilityRule =
-  | { kind: "always" }
-  | { kind: "permission"; code: string }
-  | { kind: "module"; featureCode: string }
-  | { kind: "moduleAndPermission"; featureCode: string; permissionCode: string };
+  | { kind: "always"; }
+  | { kind: "permission"; code: string; }
+  | { kind: "module"; featureCode: string; }
+  | { kind: "moduleAndPermission"; featureCode: string; permissionCode: string; };
 
 interface NavItem {
   href: string;
@@ -53,8 +53,8 @@ interface NavGroup {
 }
 
 type NavEntry =
-  | { kind: "item"; item: NavItem }
-  | { kind: "group"; group: NavGroup };
+  | { kind: "item"; item: NavItem; }
+  | { kind: "group"; group: NavGroup; };
 
 const navEntries: NavEntry[] = [
   {
@@ -169,7 +169,7 @@ function useMenuVisibility() {
 }
 
 /** @visibleForTesting */
-export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) {
+export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean; }) {
   const { yearId, curriculumId, termId, setYearId, setCurriculumId, setTermId, hasNoActiveTerm, isResolving } = useAcademicScope();
   const yearsQuery = useAcademicYears();
   const years = yearsQuery.data ?? [];
@@ -304,7 +304,7 @@ export function SidebarLayout({
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <div className="flex min-h-screen flex-col lg:pl-64">
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border/80 bg-background/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border/80 bg-card/95 px-4 backdrop-blur sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <SheetTrigger asChild>
                 <Button
@@ -379,7 +379,7 @@ export function SidebarLayout({
             </div>
           </header>
 
-          <main className={`w-full flex-1 space-y-6 p-4 sm:space-y-8 sm:p-6 lg:p-8 ${className ?? ""}`}>
+          <main className={`w-full flex-1 ${className ?? ""}`}>
             {children}
           </main>
         </div>
@@ -487,11 +487,10 @@ export function SidebarContent({
                 key={entry.item.href}
                 asChild
                 variant="ghost"
-                className={`w-full justify-start gap-3 rounded-lg px-4 py-2.5 text-sm transition-all ${
-                  active
-                    ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
-                    : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
-                }`}
+                className={`w-full justify-start gap-3 rounded-lg px-4 py-2.5 text-sm transition-all ${active
+                  ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                  }`}
               >
                 <Link href={entry.item.href}>
                   <ItemIcon className="h-4 w-4" />
@@ -520,9 +519,8 @@ export function SidebarContent({
                   {group.label}
                 </span>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform ${
-                    isExpanded ? "rotate-0" : "-rotate-90"
-                  }`}
+                  className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"
+                    }`}
                 />
               </Button>
               {isExpanded && (
@@ -535,11 +533,10 @@ export function SidebarContent({
                         key={child.href}
                         asChild
                         variant="ghost"
-                        className={`w-full justify-start gap-3 rounded-lg px-4 py-2 text-sm transition-all ${
-                          active
-                            ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
-                            : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
-                        }`}
+                        className={`w-full justify-start gap-3 rounded-lg px-4 py-2 text-sm transition-all ${active
+                          ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
+                          : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                          }`}
                       >
                         <Link href={child.href}>
                           <ChildIcon className="h-4 w-4" />

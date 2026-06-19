@@ -22,7 +22,7 @@ const opsNav = [
   { href: "/teaching-assignments", label: "Penugasan" },
 ];
 
-export type OpsContext = { canManage: boolean; upgradeMessage: string };
+export type OpsContext = { canManage: boolean; upgradeMessage: string; };
 
 export function AcademicOpsPage({
   title,
@@ -43,12 +43,12 @@ export function AcademicOpsPage({
 }
 
 function OpsShell({
-  title,
-  description,
+  // title,
+  // description,
   children,
 }: {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   children: (ctx: OpsContext) => React.ReactNode;
 }) {
   const tenant = useTenantMe();
@@ -86,12 +86,12 @@ function OpsShell({
       }}
       className="mx-auto max-w-7xl"
     >
-      <div className="space-y-4">
-        <div>
+      <div className="space-y-4 px-6">
+        {/* <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-        <Tabs value={pathname} activationMode="manual">
+        </div> */}
+        <Tabs value={pathname} activationMode="manual" variant="underline">
           <TabsList>
             {opsNav.map((item) => (
               <TabsTrigger key={item.href} value={item.href} asChild>
@@ -121,7 +121,7 @@ export function OpsSkeleton() {
   );
 }
 
-export function TableSkeleton({ rows = 6 }: { rows?: number }) {
+export function TableSkeleton({ rows = 6 }: { rows?: number; }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: rows }).map((_, i) => (

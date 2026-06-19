@@ -66,7 +66,7 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="overflow-hidden rounded-lg border">
+    <div className="overflow-hidden rounded-md border">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -76,9 +76,9 @@ export function DataTable<TData, TValue>({
                   {header.isPlaceholder
                     ? null
                     : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
+                      header.column.columnDef.header,
+                      header.getContext(),
+                    )}
                 </TableHead>
               ))}
             </TableRow>

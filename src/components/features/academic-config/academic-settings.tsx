@@ -20,6 +20,7 @@ import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 
 const academicNav = [
   { href: "/settings/academic/years", label: "Tahun Ajaran" },
+  { href: "/settings/academic/terms", label: "Semester" },
   { href: "/settings/academic/subjects", label: "Mata Pelajaran" },
   { href: "/settings/academic/class-templates", label: "Template Kelas" },
 ];
@@ -48,12 +49,12 @@ export function AcademicSettingsPage({
 }
 
 function AcademicSettingsContent({
-  title,
-  description,
+  // title,
+  // description,
   children,
 }: {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   children: (context: AcademicSettingsContext) => React.ReactNode;
 }) {
   const tenant = useTenantMe();
@@ -111,14 +112,14 @@ function AcademicSettingsContent({
       }}
       className="mx-auto max-w-7xl"
     >
-      <div className="space-y-4">
-        <div>
+      <div className="space-y-4 px-6">
+        {/* <div>
           <h1 className="text-3xl font-extrabold font-display tracking-tight text-foreground">
             {title}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-        <Tabs value={pathname} activationMode="manual">
+        </div> */}
+        <Tabs value={pathname} activationMode="manual" variant="underline">
           <TabsList>
             {academicNav.map((item) => (
               <TabsTrigger key={item.href} value={item.href} asChild>

@@ -89,7 +89,7 @@ function ReportTypeList() {
           <Skeleton className="h-40 w-full" />
         ) : (reportTypes.data ?? []).length === 0 ? (
           <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
-            Belum ada jenis rapor untuk tahun ini. Tambahkan dari Pengaturan → Tahun Ajaran.
+            Belum ada jenis rapor untuk semester ini. Tambahkan dari Pengaturan → Semester (tab Jenis Rapor pada semester yang dipilih).
           </p>
         ) : (
           <div className="overflow-hidden rounded-lg border">

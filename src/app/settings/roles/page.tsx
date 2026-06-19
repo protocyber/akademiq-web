@@ -21,7 +21,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -132,26 +132,31 @@ function RolesContent() {
       }}
       className="mx-auto max-w-7xl"
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">Role & Izin</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Kelola role bawaan dan role custom tenant dari palet izin yang Anda miliki.</p>
-        </div>
-      </div>
-
-      {!canManageRoles ? (
-        <Alert variant="destructive">
-          <AlertTitle>Akses dibatasi</AlertTitle>
-          <AlertDescription>Anda belum memiliki izin role.manage untuk mengelola katalog role.</AlertDescription>
-        </Alert>
-      ) : null}
 
       <Card className="border border-border shadow-sm">
-        {/* <CardHeader className="border-b pb-4">
-          <CardTitle className="text-lg">Daftar Role</CardTitle>
-          <CardDescription>Role bawaan tidak dapat diubah; gunakan Clone untuk membuat versi custom.</CardDescription>
-        </CardHeader> */}
+        <CardHeader className="border-b pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Daftar Role</CardTitle>
+              <CardDescription>Kelola role bawaan dan role custom tenant dari palet izin yang Anda miliki.</CardDescription>
+            </div>
+            <div className="flex flex-col md:flex-row gap-2">
+              <Input
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Cari nama atau kode role"
+              />
+              <RoleDialog permissions={permissions.data ?? []} />
+            </div>
+          </div>
+        </CardHeader>
         <CardContent className="pt-6">
+          {!canManageRoles ? (
+            <Alert variant="destructive">
+              <AlertTitle>Akses dibatasi</AlertTitle>
+              <AlertDescription>Anda belum memiliki izin role.manage untuk mengelola katalog role.</AlertDescription>
+            </Alert>
+          ) : null}
           <RolesTableSection
             roles={roles.data?.data ?? []}
             meta={roles.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
@@ -196,8 +201,6 @@ function RolesTableSection(props: RolesTableSectionProps) {
     meta,
     permissions,
     params,
-    searchDraft,
-    onSearchDraftChange,
     onParamsChange,
   } = props;
   const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
@@ -352,12 +355,6 @@ function RolesTableSection(props: RolesTableSectionProps) {
   return (
     <div className="space-y-4">
       <div className="flex space-x-4">
-        <Input
-          value={searchDraft}
-          onChange={(event) => onSearchDraftChange(event.target.value)}
-          placeholder="Cari nama atau kode role"
-          className="w-[300px]"
-        />
         {selectedIds.length > 0 ? (
           <BulkActionBar
             selectedCount={selectedIds.length}
@@ -366,7 +363,6 @@ function RolesTableSection(props: RolesTableSectionProps) {
             onConfirm={() => setConfirmDelete(true)}
           />
         ) : null}
-        <RoleDialog permissions={permissions ?? []} />
       </div>
 
       <DataTable

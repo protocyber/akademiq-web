@@ -51,7 +51,7 @@ const TabsList = React.forwardRef<
       className={cn(
         "inline-flex h-12 items-center justify-center text-primary/80 transition-all duration-200 gap-1",
         variant === "underline"
-          ? "w-full h-10 justify-start rounded-none border-b border-primary/20 dark:border-primary/10 bg-transparent p-0 gap-6"
+          ? "w-full h-10 justify-start rounded-none border-b border-primary/20 dark:border-primary/10 bg-transparent p-0 mt-2 gap-6"
           : variant === "tinted"
             ? "rounded-md bg-primary/5 dark:bg-primary/5 border border-primary/10 p-1"
             : "rounded-md bg-primary/10 dark:bg-primary/5 border border-primary/20 dark:border-primary/10 p-1",

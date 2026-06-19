@@ -231,23 +231,18 @@ function UsersContent() {
       }}
       className="mx-auto max-w-7xl"
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">Pengguna</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <CreateUserDialog roles={roleList} />
-          <InviteDialog roles={roleList} />
-        </div>
-      </div>
-
       <Card className="border border-border shadow-sm">
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-lg">Akun</CardTitle>
-          <CardDescription>Perubahan role berlaku saat pengguna refresh token berikutnya.</CardDescription>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Pengguna</CardTitle>
+              <CardDescription>Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ.</CardDescription>
+            </div>
+            <div className="flex flex-col md:flex-row gap-2">
+              <CreateUserDialog roles={roleList} />
+              <InviteDialog roles={roleList} />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-6">
           <UsersTableSection
@@ -293,7 +288,7 @@ function replaceUsersParams(router: ReturnType<typeof useRouter>, params: Tenant
   router.replace(query ? `/settings/users?${query}` : "/settings/users", { scroll: false });
 }
 
-type Meta = { page: number; page_size: number; total: number };
+type Meta = { page: number; page_size: number; total: number; };
 
 type UsersTableSectionProps = {
   users: TenantUser[];
@@ -308,7 +303,7 @@ type UsersTableSectionProps = {
   onParamsChange: (params: TenantUsersParams) => void;
 };
 
-const SORT_FIELDS: Record<string, { asc: TenantUsersSort; desc: TenantUsersSort }> = {
+const SORT_FIELDS: Record<string, { asc: TenantUsersSort; desc: TenantUsersSort; }> = {
   name: { asc: "name", desc: "-name" },
   status: { asc: "status", desc: "-status" },
   role: { asc: "role", desc: "-role" },
@@ -592,7 +587,7 @@ function BulkActionMenu({
   );
 }
 
-type BulkResult = { user_id: string; success: boolean; reason: string | null };
+type BulkResult = { user_id: string; success: boolean; reason: string | null; };
 
 async function runBulk(action: () => Promise<BulkResult[]>, onDone: () => void) {
   try {
@@ -608,7 +603,7 @@ async function runBulk(action: () => Promise<BulkResult[]>, onDone: () => void) 
   }
 }
 
-function CreateUserDialog({ roles }: { roles: TenantRole[] }) {
+function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
   const [open, setOpen] = React.useState(false);
   const create = useCreateTenantUser();
   const form = useForm<CreateTenantUserForm>({
@@ -990,7 +985,7 @@ function EditUserDialog({
   );
 }
 
-function InviteDialog({ roles }: { roles: TenantRole[] }) {
+function InviteDialog({ roles }: { roles: TenantRole[]; }) {
   const [open, setOpen] = React.useState(false);
   const [activationLink, setActivationLink] = React.useState<string | null>(null);
   const invite = useInviteTenantUser();
@@ -1077,7 +1072,7 @@ function InviteDialog({ roles }: { roles: TenantRole[] }) {
   );
 }
 
-function InvitationCard({ invitation }: { invitation: TenantInvitation }) {
+function InvitationCard({ invitation }: { invitation: TenantInvitation; }) {
   const revoke = useRevokeInvitation(invitation.invitation_id);
   const invitationRoles = invitation.roles?.length
     ? invitation.roles

@@ -12,6 +12,10 @@ import {
   type AcademicSubjectsParams,
 } from "@/lib/schemas/academic-subjects-params";
 import {
+  academicTermsParamsKey,
+  type AcademicTermsParams,
+} from "@/lib/schemas/academic-terms-params";
+import {
   academicYearsParamsKey,
   type AcademicYearsParams,
 } from "@/lib/schemas/academic-years-params";
@@ -142,6 +146,24 @@ export function useTerms(yearId?: string) {
         authenticated: true,
       });
       return envelope.data;
+    },
+    enabled: Boolean(yearId),
+  });
+}
+
+/**
+ * Paginated, server-driven academic terms for the terms data table.
+ */
+export function useTermsTable(yearId: string, params: AcademicTermsParams) {
+  return useQuery({
+    queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId, ...academicTermsParamsKey(params)],
+    queryFn: async () => {
+      const envelope = await apiFetchEnvelope<AcademicTerm[]>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${yearId}/terms${buildQuery(listParamsQuery(params))}`,
+        authenticated: true,
+      });
+      return { data: envelope.data, meta: envelope.meta as PageMeta };
     },
     enabled: Boolean(yearId),
   });

@@ -76,6 +76,7 @@ export type ReportType = {
   report_type_id: string;
   tenant_id: string;
   academic_year_id: string;
+  term_id?: string;
   code: string;
   name: string;
   position: number;

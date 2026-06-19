@@ -51,6 +51,13 @@ export const reportFormulaSchema = z.object({
   weights: z.record(z.string().uuid(), z.number().min(0).max(100)),
 });
 
+export const copyReportTypesSchema = z.object({
+  academic_year_id: uuid,
+  source_term_id: uuid,
+  target_term_id: uuid,
+  overwrite: z.boolean().default(false),
+});
+
 export const reportCardTransitionSchema = z.object({
   note: z.string().max(500, "Catatan maksimal 500 karakter").optional(),
 });
@@ -62,4 +69,6 @@ export type ReportCardGenerateForm = z.infer<typeof reportCardGenerateSchema>;
 export type ReportTypeCreateForm = z.infer<typeof reportTypeCreateSchema>;
 export type ReportTypeUpdateForm = z.infer<typeof reportTypeUpdateSchema>;
 export type ReportFormulaForm = z.infer<typeof reportFormulaSchema>;
+export type CopyReportTypesForm = z.infer<typeof copyReportTypesSchema>;
+export type CopyReportTypesResult = { copied: number; skipped: number };
 export type ReportCardTransitionForm = z.infer<typeof reportCardTransitionSchema>;

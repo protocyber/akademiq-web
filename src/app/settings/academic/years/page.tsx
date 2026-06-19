@@ -4,11 +4,10 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil, Check } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil, Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { cn } from "@/lib/utils";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
@@ -52,35 +51,19 @@ import {
   useAddCurriculumVersion,
   useDeleteCurriculumVersion,
   useUpsertGradingPolicy,
-  useCreateAcademicTerm,
-  useUpdateAcademicTerm,
-  useTransitionAcademicTerm,
-  useDeleteAcademicTerm,
 } from "@/lib/query/mutations/use-academic-config";
 import {
-  useCreateReportType,
-  useDeleteReportType,
-  useUpdateReportType,
-} from "@/lib/query/mutations/use-grading";
-import {
   type AcademicYear,
-  type AcademicTerm,
   type CurriculumVersion,
   useAcademicYearsTable,
   useCurriculumVersions,
   useGradingPolicy,
-  useTerms,
 } from "@/lib/query/queries/use-academic-config";
 import {
   academicYearSchema,
   type AcademicYearForm,
   type AcademicYearStatus,
 } from "@/lib/schemas/academic-year";
-import {
-  academicTermSchema,
-  type AcademicTermForm,
-  type AcademicTermStatus,
-} from "@/lib/schemas/academic-term";
 import { StatusConfirmDialog } from "@/components/features/academic-config/status-confirm-dialog";
 import {
   parseAcademicYearsParams,
@@ -96,9 +79,6 @@ import {
   curriculumVersionSchema,
   type CurriculumVersionForm,
 } from "@/lib/schemas/subject";
-import { reportTypeCreateSchema, type ReportTypeCreateForm } from "@/lib/schemas/grading";
-import { useReportTypes, type ReportType } from "@/lib/query/queries/use-grading";
-import { useAcademicScope } from "@/hooks/use-academic-scope";
 
 const nextStatuses: Record<string, string[]> = {
   Draft: ["Active"],
@@ -499,7 +479,7 @@ function replaceParams(router: ReturnType<typeof useRouter>, params: AcademicYea
 // Tabbed create/edit modal: § Identitas (always) + tabs for settings sections
 // ---------------------------------------------------------------------------
 
-type SettingsTab = "kebijakan" | "kurikulum" | "semester" | "jenis-rapor";
+type SettingsTab = "info" | "kebijakan" | "kurikulum";
 
 function YearFormModal({
   open,
@@ -514,8 +494,9 @@ function YearFormModal({
   year?: AcademicYear;
   canManage: boolean;
 }) {
-  const [activeTab, setActiveTab] = React.useState<SettingsTab>("kebijakan");
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>("info");
   const yearId = year?.academic_year_id;
+  const isCreate = mode === "create" || !yearId;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -526,61 +507,33 @@ function YearFormModal({
           </DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "Mulai dari status Draft. Pengaturan nilai, kurikulum & jenis rapor tersedia setelah tahun dibuat."
-              : "Perbarui identitas, kebijakan nilai, kurikulum, dan jenis rapor."}
+              ? "Mulai dari status Draft. Kebijakan nilai & versi kurikulum tersedia setelah tahun dibuat."
+              : "Perbarui identitas, kebijakan nilai, dan versi kurikulum."}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Identity + status always visible */}
-        <IdentitySection mode={mode} year={year} canManage={canManage} onDone={() => onOpenChange(false)} />
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTab)}>
+          <TabsList>
+            <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="kebijakan" disabled={isCreate}>Kebijakan Nilai</TabsTrigger>
+            <TabsTrigger value="kurikulum" disabled={isCreate}>Versi Kurikulum</TabsTrigger>
+          </TabsList>
 
-        {/* Tab panel — gated on yearId for UX clarity */}
-        <div className="space-y-0 border-t pt-4">
-          {!yearId ? (
-            <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
-              Pengaturan nilai, kurikulum, dan jenis rapor tersedia setelah tahun ajaran disimpan.
-            </p>
-          ) : (
+          <TabsContent value="info">
+            <IdentitySection mode={mode} year={year} canManage={canManage} onDone={() => onOpenChange(false)} />
+          </TabsContent>
+
+          {yearId ? (
             <>
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTab)}>
-                <TabsList className="">
-                  {(
-                    [
-                      { id: "kebijakan", label: "Kebijakan Nilai" },
-                      { id: "kurikulum", label: "Versi Kurikulum" },
-                      { id: "semester", label: "Semester" },
-                      { id: "jenis-rapor", label: "Jenis Rapor" },
-                    ] as const
-                  ).map((tab) => (
-                    <TabsTrigger
-                      key={tab.id}
-                      value={tab.id}
-                      className="gap-1.5"
-                    >
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-
-                {/* Tab panels */}
-                <div className="pt-4">
-                  {activeTab === "kebijakan" && (
-                    <GradingPolicySection yearId={yearId} canManage={canManage} />
-                  )}
-                  {activeTab === "kurikulum" && (
-                    <CurriculumSection yearId={yearId} canManage={canManage} />
-                  )}
-                  {activeTab === "semester" && (
-                    <TermsSection yearId={yearId} yearStatus={year?.status} canManage={canManage} />
-                  )}
-                  {activeTab === "jenis-rapor" && (
-                    <ReportTypesSection yearId={yearId} canManage={canManage} />
-                  )}
-                </div>
-              </Tabs>
+              <TabsContent value="kebijakan">
+                <GradingPolicySection yearId={yearId} canManage={canManage} />
+              </TabsContent>
+              <TabsContent value="kurikulum">
+                <CurriculumSection yearId={yearId} canManage={canManage} />
+              </TabsContent>
             </>
-          )}
-        </div>
+          ) : null}
+        </Tabs>
       </DialogContent>
     </Dialog>
   );
@@ -699,6 +652,9 @@ function IdentitySection({
         form.reset();
         onDone();
       }
+      // Edit mode has no year-identity update endpoint; the Info tab Simpan
+      // is a create-flow affordance. Status transitions persist via the
+      // dedicated transition control below.
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length === 0) {
@@ -930,265 +886,6 @@ function GradingPolicySection({ yearId, canManage }: { yearId?: string; canManag
   );
 }
 
-function ReportTypesSection({ yearId, canManage }: { yearId: string; canManage: boolean; }) {
-  const { termId } = useAcademicScope();
-  const types = useReportTypes(yearId, termId ?? undefined);
-  const create = useCreateReportType(yearId);
-  const update = useUpdateReportType(yearId);
-  const remove = useDeleteReportType(yearId);
-  const [editingId, setEditingId] = React.useState<string | null>(null);
-
-  const emptyValues: ReportTypeCreateForm = { academic_year_id: yearId, term_id: termId ?? undefined, code: "", name: "" };
-
-  const form = useForm<ReportTypeCreateForm>({
-    resolver: zodResolver(reportTypeCreateSchema),
-    defaultValues: emptyValues,
-  });
-
-  React.useEffect(() => {
-    form.setValue("term_id", termId ?? undefined);
-  }, [termId, form]);
-
-  const sorted = React.useMemo(
-    () => [...(types.data ?? [])].sort((a, b) => a.position - b.position),
-    [types.data],
-  );
-
-  async function onAdd(values: ReportTypeCreateForm) {
-    try {
-      await create.mutateAsync({ ...values, term_id: termId ?? undefined });
-      form.reset({ ...emptyValues, term_id: termId ?? undefined });
-      toast.success("Jenis rapor ditambahkan.");
-    } catch (err) {
-      const applied = applyServerFieldErrors(form, err);
-      if (applied.length === 0) {
-        toast.error(getErrorMessage(err, { fallback: "Tidak bisa menambah jenis rapor." }));
-      }
-    }
-  }
-
-  async function onDelete(reportTypeId: string) {
-    try {
-      await remove.mutateAsync(reportTypeId);
-      toast.success("Jenis rapor dihapus.");
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus jenis rapor." }));
-    }
-  }
-
-  async function onReorder(item: ReportType, direction: "up" | "down") {
-    const idx = sorted.findIndex((t) => t.report_type_id === item.report_type_id);
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= sorted.length) return;
-    const swap = sorted[swapIdx];
-    try {
-      await Promise.all([
-        update.mutateAsync({ reportTypeId: item.report_type_id, position: swap.position }),
-        update.mutateAsync({ reportTypeId: swap.report_type_id, position: item.position }),
-      ]);
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah urutan." }));
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Jenis rapor dikelola di sini dan tersedia di semua kelas tahun ini. Kode dipakai sebagai judul kolom di grid nilai.
-      </p>
-
-      {!termId ? (
-        <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
-          Pilih semester di header untuk mengelola jenis rapor.
-        </p>
-      ) : types.isLoading ? (
-        <Skeleton className="h-20 w-full" />
-      ) : sorted.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
-          Belum ada jenis rapor. Tambahkan mis. &quot;Rapor UTS&quot; / &quot;Rapor UAS&quot;.
-        </p>
-      ) : (
-        <ul className="divide-y rounded-lg border">
-          {sorted.map((reportType, idx) => (
-            <ReportTypeRow
-              key={reportType.report_type_id}
-              reportType={reportType}
-              isFirst={idx === 0}
-              isLast={idx === sorted.length - 1}
-              isEditing={editingId === reportType.report_type_id}
-              canManage={canManage}
-              onEdit={() => setEditingId(reportType.report_type_id)}
-              onEditDone={() => setEditingId(null)}
-              onDelete={() => onDelete(reportType.report_type_id)}
-              onMoveUp={() => onReorder(reportType, "up")}
-              onMoveDown={() => onReorder(reportType, "down")}
-              updateMut={update}
-            />
-          ))}
-        </ul>
-      )}
-
-      <div className="border-t pt-3">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Tambah jenis rapor baru</p>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onAdd)} className="grid gap-3 sm:grid-cols-[1fr_2fr_auto] sm:items-start">
-            <FormField
-              control={form.control}
-              name="code"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Kode</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Rapor UTS" disabled={!canManage || !termId} {...field} />
-
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Nama</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Rapor Tengah Semester" disabled={!canManage || !termId} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="mt-5" loading={create.isPending} disabled={!canManage || !termId}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </form>
-        </Form>
-      </div>
-    </div>
-  );
-}
-
-function ReportTypeRow({
-  reportType,
-  isFirst,
-  isLast,
-  isEditing,
-  canManage,
-  onEdit,
-  onEditDone,
-  onDelete,
-  onMoveUp,
-  onMoveDown,
-  updateMut,
-}: {
-  reportType: ReportType;
-  isFirst: boolean;
-  isLast: boolean;
-  isEditing: boolean;
-  canManage: boolean;
-  onEdit: () => void;
-  onEditDone: () => void;
-  onDelete: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  updateMut: ReturnType<typeof useUpdateReportType>;
-}) {
-  const [editCode, setEditCode] = React.useState(reportType.code);
-  const [editName, setEditName] = React.useState(reportType.name);
-
-  React.useEffect(() => {
-    if (isEditing) {
-      setEditCode(reportType.code);
-      setEditName(reportType.name);
-    }
-  }, [isEditing, reportType.code, reportType.name]);
-
-  async function saveEdit() {
-    try {
-      await updateMut.mutateAsync({
-        reportTypeId: reportType.report_type_id,
-        code: editCode.trim() || undefined,
-        name: editName.trim() || undefined,
-      });
-      toast.success("Jenis rapor diperbarui.");
-      onEditDone();
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan perubahan." }));
-    }
-  }
-
-  if (isEditing) {
-    return (
-      <li className="flex items-center gap-2 p-3">
-        <Input
-          value={editCode}
-          onChange={(e) => setEditCode(e.target.value)}
-          className="h-8 w-28 text-sm"
-          placeholder="Kode"
-        />
-        <Input
-          value={editName}
-          onChange={(e) => setEditName(e.target.value)}
-          className="h-8 flex-1 text-sm"
-          placeholder="Nama"
-        />
-        <Button size="sm" className="h-8 px-2 text-xs" loading={updateMut.isPending} onClick={() => void saveEdit()}>
-          OK
-        </Button>
-        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={onEditDone}>
-          Batal
-        </Button>
-      </li>
-    );
-  }
-
-  return (
-    <li className="flex items-center gap-2 p-3 text-sm">
-      {/* Reorder buttons */}
-      <div className="flex flex-col">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={isFirst || !canManage || updateMut.isPending}
-          onClick={onMoveUp}
-          className="h-5 w-5 p-0"
-        >
-          <ChevronUp className="h-3.5 w-3.5" />
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={isLast || !canManage || updateMut.isPending}
-          onClick={onMoveDown}
-          className="h-5 w-5 p-0"
-        >
-          <ChevronDown className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      {/* Content */}
-      <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">
-          {reportType.code} <span className="text-muted-foreground">· {reportType.name}</span>
-        </p>
-      </div>
-
-      {/* Edit + Delete */}
-      <div className="flex items-center gap-1">
-        <Button size="sm" variant="ghost" disabled={!canManage} onClick={onEdit} className="h-7 w-7 p-0">
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button size="sm" variant="ghost" disabled={!canManage} onClick={onDelete} className="h-7 w-7 p-0 text-destructive hover:text-destructive">
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-    </li>
-  );
-}
-
 function CurriculumSection({ yearId, canManage }: { yearId?: string; canManage: boolean; }) {
   const versions = useCurriculumVersions(yearId);
   const add = useAddCurriculumVersion(yearId ?? "");
@@ -1274,274 +971,6 @@ function CurriculumSection({ yearId, canManage }: { yearId?: string; canManage: 
           </Button>
         </form>
       </Form>
-    </div>
-  );
-}
-
-const termNextStatuses: Record<string, string[]> = {
-  Draft: ["Active"],
-  Active: ["Draft", "Closed"],
-  Closed: ["Draft", "Active", "Archived"],
-  Archived: [],
-};
-
-function TermsSection({ yearId, yearStatus, canManage }: { yearId: string; yearStatus?: string; canManage: boolean; }) {
-  const terms = useTerms(yearId);
-  const create = useCreateAcademicTerm(yearId);
-  const remove = useDeleteAcademicTerm(yearId);
-
-  const termList = React.useMemo(() => terms.data ?? [], [terms.data]);
-  const showNoActiveTermWarning =
-    yearStatus === "Active" && termList.length > 0 && !termList.some((t) => t.status === "Active");
-
-  const form = useForm<AcademicTermForm>({
-    resolver: zodResolver(academicTermSchema),
-    defaultValues: { name: "", start_date: "", end_date: "" },
-  });
-
-  const sorted = React.useMemo(
-    () => [...termList].sort((a, b) => a.start_date.localeCompare(b.start_date)),
-    [termList],
-  );
-
-  async function onAdd(values: AcademicTermForm) {
-    try {
-      await create.mutateAsync(values);
-      form.reset({ name: "", start_date: "", end_date: "" });
-      toast.success("Semester ditambahkan.");
-    } catch (err) {
-      const applied = applyServerFieldErrors(form, err);
-      if (applied.length === 0) {
-        toast.error(getErrorMessage(err, { fallback: "Tidak bisa menambah semester." }));
-      }
-    }
-  }
-
-  async function onDelete(termId: string) {
-    try {
-      await remove.mutateAsync(termId);
-      toast.success("Semester dihapus.");
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus semester." }));
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-muted-foreground">
-        Kelola semester dalam tahun ajaran ini. Setiap tahun ajaran memiliki setidaknya satu semester.
-      </p>
-
-      {showNoActiveTermWarning && (
-        <Alert className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300">
-          <AlertDescription className="text-xs">
-            Tahun ajaran ini aktif tapi belum ada semester yang aktif. Aktifkan salah satu semester agar input nilai bisa dilakukan.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {terms.isLoading ? (
-        <Skeleton className="h-20 w-full" />
-      ) : sorted.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
-          Belum ada semester. Tambahkan mis. &quot;Semester 1&quot; / &quot;Semester 2&quot;.
-        </p>
-      ) : (
-        <div className="divide-y rounded-lg border">
-          {sorted.map((term) => (
-            <TermRow
-              key={term.term_id}
-              term={term}
-              yearId={yearId}
-              canManage={canManage}
-              onDelete={() => onDelete(term.term_id)}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="border-t pt-3">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Tambah semester baru</p>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onAdd)} className="flex flex-wrap items-end gap-3">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem className="w-40">
-                  <FormLabel className="text-xs">Nama</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Semester 1" disabled={!canManage} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Mulai</FormLabel>
-                  <FormControl>
-                    <DatePicker value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="end_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs">Selesai</FormLabel>
-                  <FormControl>
-                    <DatePicker value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" loading={create.isPending} disabled={!canManage}>
-              <Plus className="h-4 w-4" />
-            </Button>
-          </form>
-        </Form>
-      </div>
-    </div>
-  );
-}
-
-function TermRow({
-  term,
-  yearId,
-  canManage,
-  onDelete,
-}: {
-  term: AcademicTerm;
-  yearId: string;
-  canManage: boolean;
-  onDelete: () => void;
-}) {
-  const transition = useTransitionAcademicTerm(term.term_id, yearId);
-  const update = useUpdateAcademicTerm(term.term_id, yearId);
-  const [isEditing, setIsEditing] = React.useState(false);
-  const [editName, setEditName] = React.useState(term.name);
-  const [editStart, setEditStart] = React.useState(term.start_date);
-  const [editEnd, setEditEnd] = React.useState(term.end_date);
-  const [statusDialogOpen, setStatusDialogOpen] = React.useState(false);
-  const [targetStatus, setTargetStatus] = React.useState("");
-  const [statusError, setStatusError] = React.useState<string | null>(null);
-
-  const options = termNextStatuses[term.status] ?? [];
-
-  React.useEffect(() => {
-    if (isEditing) {
-      setEditName(term.name);
-      setEditStart(term.start_date);
-      setEditEnd(term.end_date);
-    }
-  }, [isEditing, term.name, term.start_date, term.end_date]);
-
-  async function saveEdit() {
-    try {
-      await update.mutateAsync({ name: editName, start_date: editStart, end_date: editEnd });
-      toast.success("Semester diperbarui.");
-      setIsEditing(false);
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan perubahan." }));
-    }
-  }
-
-  const handleStatusConfirm = async (reason: string) => {
-    if (!targetStatus) return;
-    try {
-      await transition.mutateAsync({ status: targetStatus as AcademicTermStatus, reason });
-      toast.success("Status semester diperbarui.");
-      setStatusDialogOpen(false);
-    } catch (err: unknown) {
-      setStatusError(getErrorMessage(err, { fallback: "Tidak bisa mengubah status." }));
-      throw err;
-    }
-  };
-
-  if (isEditing) {
-    return (
-      <div className="flex flex-wrap items-end gap-2 p-3">
-        <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8 w-36 text-sm" placeholder="Nama" />
-        <DatePicker value={editStart} onChange={setEditStart} />
-        <DatePicker value={editEnd} onChange={setEditEnd} />
-        <Button size="sm" className="h-8 px-2 text-xs" loading={update.isPending} onClick={() => void saveEdit()}>
-          OK
-        </Button>
-        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setIsEditing(false)}>
-          Batal
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-3 p-3 text-sm">
-      <div className="min-w-0 flex-1">
-        <p className="font-medium">
-          {term.name}
-          <Badge variant={term.status === "Active" ? "default" : term.status === "Archived" ? "destructive" : "secondary"} className="ml-2">
-            {STATUS_LABELS[term.status] ?? term.status}
-          </Badge>
-        </p>
-        <p className="text-xs text-muted-foreground">{term.start_date} — {term.end_date}</p>
-      </div>
-
-      <div className="flex items-center gap-1">
-        {options.length > 0 && (
-          <>
-            <Select value={targetStatus} onValueChange={setTargetStatus}>
-              <SelectTrigger className="h-8 w-[130px] text-xs">
-                <SelectValue placeholder="Ubah status" />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((opt) => (
-                  <SelectItem key={opt} value={opt}>
-                    {STATUS_LABELS[opt] ?? opt}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              disabled={!canManage || !targetStatus}
-              onClick={() => {
-                setStatusError(null);
-                setStatusDialogOpen(true);
-              }}
-            >
-              Ubah
-            </Button>
-          </>
-        )}
-
-        <Button size="sm" variant="ghost" disabled={!canManage} onClick={() => setIsEditing(true)} className="h-7 w-7 p-0">
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button size="sm" variant="ghost" disabled={!canManage} onClick={onDelete} className="h-7 w-7 p-0 text-destructive hover:text-destructive">
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-
-      <StatusConfirmDialog
-        open={statusDialogOpen}
-        onOpenChange={setStatusDialogOpen}
-        currentStatus={term.status}
-        targetStatus={targetStatus}
-        onConfirm={handleStatusConfirm}
-        loading={transition.isPending}
-        error={statusError}
-        setError={setStatusError}
-      />
     </div>
   );
 }

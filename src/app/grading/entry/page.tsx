@@ -271,7 +271,7 @@ function EvaluationGrid({
 
   return (
     <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm bg-background">
         <thead>
           <tr className="bg-muted/60">
             <th className="sticky left-0 z-10 bg-muted/60 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -773,7 +773,7 @@ export function WeightMatrix({
   if (types.length === 0) {
     return (
       <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-        Belum ada jenis rapor untuk tahun ini. Tambahkan dari Pengaturan → Tahun Ajaran.
+        Belum ada jenis rapor untuk semester ini. Tambahkan dari Pengaturan → Semester (tab Jenis Rapor pada semester yang dipilih).
       </p>
     );
   }
