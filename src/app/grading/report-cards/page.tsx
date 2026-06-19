@@ -310,7 +310,7 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
           setSelection({});
         }}
       >
-        <TabsList scrollable showScrollFade>
+        <TabsList scrollable>
           {STATUSES.map((status) => (
             <TabsTrigger key={status} value={status} className="gap-1.5">
               {LABELS[status]}

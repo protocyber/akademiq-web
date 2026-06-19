@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -44,10 +45,62 @@ const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> & {
     scrollable?: boolean;
-    showScrollFade?: boolean;
   }
->(({ className, scrollable = false, showScrollFade = false, ...props }, ref) => {
+>(({ className, scrollable = false, ...props }, ref) => {
   const { variant } = React.useContext(TabsContext);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = React.useState(false);
+  const [showRightArrow, setShowRightArrow] = React.useState(false);
+
+  const checkScroll = React.useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setShowLeftArrow(scrollLeft > 0);
+    setShowRightArrow(scrollLeft + clientWidth < scrollWidth - 1);
+  }, []);
+
+  React.useEffect(() => {
+    if (!scrollable) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    checkScroll();
+
+    const resizeObserver = new ResizeObserver(checkScroll);
+    resizeObserver.observe(container);
+    container.addEventListener("scroll", checkScroll, { passive: true });
+
+    return () => {
+      resizeObserver.disconnect();
+      container.removeEventListener("scroll", checkScroll);
+    };
+  }, [scrollable, checkScroll]);
+
+  const scrollByOneTab = React.useCallback((direction: "left" | "right") => {
+    const container = containerRef.current;
+    if (!container) return;
+    const tabs = container.querySelectorAll('[role="tab"]');
+    const { scrollLeft, clientWidth } = container;
+
+    if (direction === "right") {
+      for (const tab of Array.from(tabs)) {
+        const tabRight = (tab as HTMLElement).offsetLeft + (tab as HTMLElement).offsetWidth;
+        if (tabRight > scrollLeft + clientWidth) {
+          (tab as HTMLElement).scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+          break;
+        }
+      }
+    } else {
+      for (const tab of Array.from(tabs).reverse()) {
+        if ((tab as HTMLElement).offsetLeft < scrollLeft) {
+          (tab as HTMLElement).scrollIntoView({ behavior: "smooth", inline: "end", block: "nearest" });
+          break;
+        }
+      }
+    }
+  }, []);
+
   const list = (
     <TabsPrimitive.List
       ref={ref}
@@ -70,14 +123,31 @@ const TabsList = React.forwardRef<
   }
 
   return (
-    <div className="relative w-full overflow-x-auto overflow-y-hidden">
-      {showScrollFade && (
-        <>
-          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent" />
-          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
-        </>
+    <div className="relative w-full">
+      {showLeftArrow && (
+        <button
+          type="button"
+          onClick={() => scrollByOneTab("left")}
+          className="absolute left-0 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-background border border-primary/20 shadow-md hover:bg-primary/5 transition-colors"
+          aria-label="Scroll ke kiri"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
       )}
-      {list}
+      {showRightArrow && (
+        <button
+          type="button"
+          onClick={() => scrollByOneTab("right")}
+          className="absolute right-0 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-background border border-primary/20 shadow-md hover:bg-primary/5 transition-colors"
+          aria-label="Scroll ke kanan"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      )}
+      {/* TODO: tambahkan `scrollbar-thin` atau `scrollbar-none` setelah upgrade ke Tailwind v4.3+ */}
+      <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden">
+        {list}
+      </div>
     </div>
   );
 });
