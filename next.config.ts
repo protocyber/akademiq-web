@@ -7,6 +7,15 @@ const devOrigins = process.env.WEB_DEV_ORIGIN
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "akademiq.dev.sby.test",
+        pathname: "/api/v1/iam/media/**",
+      },
+    ],
+  },
   ...(devOrigins.length > 0 ? { allowedDevOrigins: devOrigins } : {}),
   experimental: {
     optimizePackageImports: [

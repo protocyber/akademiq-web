@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -292,6 +293,7 @@ export function SidebarLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const me = useMe();
   const emailVerified = me.data?.email_verified;
+  const avatarUrl = me.data?.avatar_url;
 
   React.useEffect(() => {
     setMobileMenuOpen(false);
@@ -340,9 +342,19 @@ export function SidebarLayout({
                     variant="ghost"
                     className="relative h-8 w-8 rounded-full p-0 overflow-hidden focus-visible:ring-1 focus-visible:ring-ring"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
-                      {userName.charAt(0).toUpperCase()}
-                    </div>
+                    {avatarUrl ? (
+                      <Image
+                        src={avatarUrl}
+                        alt={userName}
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
+                        {userName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56" forceMount>
@@ -380,7 +392,7 @@ export function SidebarLayout({
             </div>
           </header>
 
-          <main className={`w-full flex-1 ${className ?? ""}`}>
+          <main className={`w-full flex-1 p-6 ${className ?? ""}`}>
             {children}
           </main>
         </div>
