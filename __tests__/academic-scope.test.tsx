@@ -7,7 +7,7 @@ import { AcademicScopeProvider } from "@/components/providers/academic-scope-pro
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { getAccessToken } from "@/lib/api/client";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
-import { useAcademicYears, useCurriculumVersions } from "@/lib/query/queries/use-academic-config";
+import { useAcademicYears, useCurriculumVersions, useTerms } from "@/lib/query/queries/use-academic-config";
 import { QueryProvider } from "@/lib/query/provider";
 
 import GradeEntryPage from "@/app/grading/entry/page";
@@ -36,6 +36,7 @@ vi.mock("@/lib/query/queries/use-tenant-roles", () => ({
 vi.mock("@/lib/query/queries/use-academic-config", () => ({
   useAcademicYears: vi.fn(),
   useCurriculumVersions: vi.fn(),
+  useTerms: vi.fn(() => ({ data: [], isLoading: false })),
   useSubjects: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 
@@ -102,6 +103,10 @@ describe("AcademicScopeProvider", () => {
       },
       isLoading: false,
     } as unknown as never);
+    vi.mocked(useTerms).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as never);
   });
 
   afterEach(() => {
@@ -111,8 +116,8 @@ describe("AcademicScopeProvider", () => {
   it("defaults to Active year and newest curriculum version", async () => {
     vi.mocked(useAcademicYears).mockReturnValue({
       data: [
-        { academic_year_id: "year-1", name: "Year 1", status: "Active" },
-        { academic_year_id: "year-2", name: "Year 2", status: "Draft" },
+        { academic_year_id: "year-1", name: "Year 1", status: "Active", start_date: "2024-01-01", end_date: "2024-12-31" },
+        { academic_year_id: "year-2", name: "Year 2", status: "Draft", start_date: "2025-01-01", end_date: "2025-12-31" },
       ],
       isLoading: false,
     } as unknown as never);
@@ -122,6 +127,11 @@ describe("AcademicScopeProvider", () => {
         { curriculum_version_id: "cur-1", name: "v1.0" },
         { curriculum_version_id: "cur-2", name: "v2.0" },
       ],
+      isLoading: false,
+    } as unknown as never);
+
+    vi.mocked(useTerms).mockReturnValue({
+      data: [{ term_id: "t-1", name: "Semester 1", status: "Active", start_date: "2024-01-01", end_date: "2024-06-30" }],
       isLoading: false,
     } as unknown as never);
 
@@ -131,25 +141,23 @@ describe("AcademicScopeProvider", () => {
       </AcademicScopeProvider>
     );
 
-    // Wait for resolution
     await waitFor(() => {
       expect(screen.getByTestId("is-resolving").textContent).toBe("false");
     });
 
     expect(screen.getByTestId("year-id").textContent).toBe("year-1");
-    // Should select newest curriculum (last in list)
     expect(screen.getByTestId("curriculum-id").textContent).toBe("cur-2");
   });
 
-  it("restores from localStorage if valid", async () => {
+  it("overrides localStorage with auto-resolve on mount", async () => {
     vi.mocked(localStorage.getItem).mockReturnValue(
       JSON.stringify({ academic_year_id: "year-2", curriculum_version_id: "cur-1" })
     );
 
     vi.mocked(useAcademicYears).mockReturnValue({
       data: [
-        { academic_year_id: "year-1", name: "Year 1", status: "Active" },
-        { academic_year_id: "year-2", name: "Year 2", status: "Draft" },
+        { academic_year_id: "year-1", name: "Year 1", status: "Active", start_date: "2024-01-01", end_date: "2024-12-31" },
+        { academic_year_id: "year-2", name: "Year 2", status: "Draft", start_date: "2025-01-01", end_date: "2025-12-31" },
       ],
       isLoading: false,
     } as unknown as never);
@@ -159,6 +167,50 @@ describe("AcademicScopeProvider", () => {
         { curriculum_version_id: "cur-1", name: "v1.0" },
         { curriculum_version_id: "cur-2", name: "v2.0" },
       ],
+      isLoading: false,
+    } as unknown as never);
+
+    vi.mocked(useTerms).mockReturnValue({
+      data: [{ term_id: "t-1", name: "Semester 1", status: "Active", start_date: "2024-01-01", end_date: "2024-06-30" }],
+      isLoading: false,
+    } as unknown as never);
+
+    render(
+      <AcademicScopeProvider>
+        <ConsumerComponent />
+      </AcademicScopeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("is-resolving").textContent).toBe("false");
+    });
+
+    // Despite localStorage having year-2, auto-resolve picks active year year-1
+    expect(screen.getByTestId("year-id").textContent).toBe("year-1");
+    expect(screen.getByTestId("curriculum-id").textContent).toBe("cur-2");
+    // localStorage was written with auto-resolved values
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      expect.stringContaining("akademiq.academic_scope"),
+      expect.stringContaining("year-1")
+    );
+  });
+
+  it("falls back to newest year by start_date when no active year", async () => {
+    vi.mocked(useAcademicYears).mockReturnValue({
+      data: [
+        { academic_year_id: "year-1", name: "Year 1", status: "Inactive", start_date: "2024-01-01", end_date: "2024-12-31" },
+        { academic_year_id: "year-2", name: "Year 2", status: "Draft", start_date: "2025-01-01", end_date: "2025-12-31" },
+      ],
+      isLoading: false,
+    } as unknown as never);
+
+    vi.mocked(useCurriculumVersions).mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as never);
+
+    vi.mocked(useTerms).mockReturnValue({
+      data: [{ term_id: "t-1", name: "Semester 1", status: "Inactive", start_date: "2025-01-01", end_date: "2025-06-30" }],
       isLoading: false,
     } as unknown as never);
 
@@ -173,50 +225,23 @@ describe("AcademicScopeProvider", () => {
     });
 
     expect(screen.getByTestId("year-id").textContent).toBe("year-2");
-    expect(screen.getByTestId("curriculum-id").textContent).toBe("cur-1");
+    expect(screen.getByTestId("curriculum-id").textContent).toBe("null");
   });
 
-  it("resets to Active if stored year is deleted/gone", async () => {
-    vi.mocked(localStorage.getItem).mockReturnValue(
-      JSON.stringify({ academic_year_id: "deleted-year", curriculum_version_id: "cur-1" })
-    );
-
+  it("sets year to newest when no active year exists", async () => {
     vi.mocked(useAcademicYears).mockReturnValue({
       data: [
-        { academic_year_id: "year-1", name: "Year 1", status: "Active" },
+        { academic_year_id: "year-2", name: "Year 2", status: "Draft", start_date: "2025-01-01", end_date: "2025-12-31" },
       ],
       isLoading: false,
     } as unknown as never);
 
     vi.mocked(useCurriculumVersions).mockReturnValue({
-      data: [
-        { curriculum_version_id: "cur-1", name: "v1.0" },
-      ],
+      data: [],
       isLoading: false,
     } as unknown as never);
 
-    render(
-      <AcademicScopeProvider>
-        <ConsumerComponent />
-      </AcademicScopeProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("is-resolving").textContent).toBe("false");
-    });
-
-    expect(screen.getByTestId("year-id").textContent).toBe("year-1");
-  });
-
-  it("sets resolving to empty if no active year and no stored state", async () => {
-    vi.mocked(useAcademicYears).mockReturnValue({
-      data: [
-        { academic_year_id: "year-2", name: "Year 2", status: "Draft" },
-      ],
-      isLoading: false,
-    } as unknown as never);
-
-    vi.mocked(useCurriculumVersions).mockReturnValue({
+    vi.mocked(useTerms).mockReturnValue({
       data: [],
       isLoading: false,
     } as unknown as never);
@@ -231,15 +256,14 @@ describe("AcademicScopeProvider", () => {
       expect(screen.getByTestId("is-resolving").textContent).toBe("false");
     });
 
-    expect(screen.getByTestId("year-id").textContent).toBe("null");
+    expect(screen.getByTestId("year-id").textContent).toBe("year-2");
     expect(screen.getByTestId("curriculum-id").textContent).toBe("null");
   });
 
-  it("persists the scope across a simulated reload", async () => {
+  it("writes auto-resolved scope to localStorage", async () => {
     vi.mocked(useAcademicYears).mockReturnValue({
       data: [
-        { academic_year_id: "year-1", name: "Year 1", status: "Active" },
-        { academic_year_id: "year-2", name: "Year 2", status: "Draft" },
+        { academic_year_id: "year-1", name: "Year 1", status: "Active", start_date: "2024-01-01", end_date: "2024-12-31" },
       ],
       isLoading: false,
     } as unknown as never);
@@ -247,36 +271,14 @@ describe("AcademicScopeProvider", () => {
     vi.mocked(useCurriculumVersions).mockReturnValue({
       data: [
         { curriculum_version_id: "cur-1", name: "v1.0" },
-        { curriculum_version_id: "cur-2", name: "v2.0" },
       ],
       isLoading: false,
     } as unknown as never);
 
-    const store: Record<string, string> = {};
-    vi.mocked(localStorage.getItem).mockImplementation((key) => store[key] || null);
-    vi.mocked(localStorage.setItem).mockImplementation((key, val) => {
-      store[key] = val;
-    });
-
-    const { unmount } = render(
-      <AcademicScopeProvider>
-        <ConsumerComponent />
-      </AcademicScopeProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("is-resolving").textContent).toBe("false");
-    });
-
-    screen.getByText("Set Year 2").click();
-    screen.getByText("Set Curriculum 2").click();
-
-    await waitFor(() => {
-      expect(screen.getByTestId("year-id").textContent).toBe("year-2");
-      expect(screen.getByTestId("curriculum-id").textContent).toBe("cur-2");
-    });
-
-    unmount();
+    vi.mocked(useTerms).mockReturnValue({
+      data: [{ term_id: "t-1", name: "Semester 1", status: "Active", start_date: "2024-01-01", end_date: "2024-06-30" }],
+      isLoading: false,
+    } as unknown as never);
 
     render(
       <AcademicScopeProvider>
@@ -288,8 +290,10 @@ describe("AcademicScopeProvider", () => {
       expect(screen.getByTestId("is-resolving").textContent).toBe("false");
     });
 
-    expect(screen.getByTestId("year-id").textContent).toBe("year-2");
-    expect(screen.getByTestId("curriculum-id").textContent).toBe("cur-2");
+    expect(localStorage.setItem).toHaveBeenCalledWith(
+      expect.stringContaining("akademiq.academic_scope"),
+      expect.any(String)
+    );
   });
 });
 

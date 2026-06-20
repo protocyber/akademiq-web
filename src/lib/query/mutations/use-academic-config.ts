@@ -15,12 +15,14 @@ import {
   GradingPolicy,
   Subject,
   SUBJECTS_QUERY_KEY,
+  SubjectGroup,
+  SUBJECT_GROUPS_QUERY_KEY,
 } from "@/lib/query/queries/use-academic-config";
 import type { AcademicYearForm, TransitionRequestForm } from "@/lib/schemas/academic-year";
 import type { AcademicTermForm, TermTransitionRequestForm } from "@/lib/schemas/academic-term";
 import type { ClassTemplateForm } from "@/lib/schemas/class-template";
 import type { GradingPolicyForm } from "@/lib/schemas/grading-policy";
-import type { CurriculumVersionForm, SubjectForm } from "@/lib/schemas/subject";
+import type { CurriculumVersionForm, SubjectForm, SubjectGroupForm } from "@/lib/schemas/subject";
 
 // ---------------------------------------------------------------------------
 // Academic years
@@ -274,6 +276,69 @@ export function useBulkDeleteSubjects() {
         body: { ids },
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECTS_QUERY_KEY }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Subject groups (kelompok)
+// ---------------------------------------------------------------------------
+
+export function useAddSubjectGroup(curriculumVersionId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SubjectGroupForm) =>
+      apiFetch<SubjectGroup>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/curriculum-versions/${curriculumVersionId}/subject-groups`,
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECT_GROUPS_QUERY_KEY }),
+  });
+}
+
+export function useUpdateSubjectGroup(subjectGroupId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SubjectGroupForm) =>
+      apiFetch<SubjectGroup>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/subject-groups/${subjectGroupId}`,
+        method: "PATCH",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECT_GROUPS_QUERY_KEY }),
+  });
+}
+
+export function useDeleteSubjectGroup() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationFn: (subjectGroupId) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/subject-groups/${subjectGroupId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECT_GROUPS_QUERY_KEY }),
+  });
+}
+
+export function useBulkDeleteSubjectGroups() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string[]>({
+    mutationFn: (ids) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: "/api/v1/academic-config/subject-groups/bulk/delete",
+        method: "POST",
+        authenticated: true,
+        body: { ids },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: SUBJECT_GROUPS_QUERY_KEY }),
   });
 }
 

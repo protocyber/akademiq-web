@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -96,34 +96,45 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Input
-          value={searchDraft}
-          onChange={(event) => setSearchDraft(event.target.value)}
-          placeholder="Cari nama atau tingkat"
-          className="max-w-xs"
-        />
-        <HomeroomDialog
-          canManage={canManage}
-          upgradeMessage={upgradeMessage}
-          trigger={<Button size="sm">+ Tambah</Button>}
-        />
-      </div>
-
-      {homerooms.isLoading ? (
-        <TableSkeleton />
-      ) : homerooms.error ? (
-        <p className="text-sm text-destructive">{getErrorMessage(homerooms.error)}</p>
-      ) : (
-        <HomeroomsTable
-          homerooms={homerooms.data?.data ?? []}
-          meta={homerooms.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-          params={params}
-          canManage={canManage}
-          upgradeMessage={upgradeMessage}
-          onParamsChange={(next) => replaceParams(router, next)}
-        />
-      )}
+      <Card className="border border-border shadow-sm">
+        <CardHeader className="border-b pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Daftar Kelas</CardTitle>
+              <CardDescription>Buat homeroom, lihat roster, dan enroll siswa.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Cari nama atau tingkat"
+                className="md:w-72"
+              />
+              <HomeroomDialog
+                canManage={canManage}
+                upgradeMessage={upgradeMessage}
+                trigger={<Button size="sm">+ Tambah</Button>}
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {homerooms.isLoading ? (
+            <TableSkeleton />
+          ) : homerooms.error ? (
+            <p className="text-sm text-destructive">{getErrorMessage(homerooms.error)}</p>
+          ) : (
+            <HomeroomsTable
+              homerooms={homerooms.data?.data ?? []}
+              meta={homerooms.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
+              params={params}
+              canManage={canManage}
+              upgradeMessage={upgradeMessage}
+              onParamsChange={(next) => replaceParams(router, next)}
+            />
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -282,59 +293,55 @@ function HomeroomsTable({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          {selectedIds.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-              <span>{selectedIds.length} dipilih</span>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="gap-1"
-                disabled={!canManage}
-                onClick={() => {
-                  setPendingId(null);
-                  setConfirmDelete(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </Button>
-            </div>
-          ) : null}
+      {selectedIds.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+          <span>{selectedIds.length} dipilih</span>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="gap-1"
+            disabled={!canManage}
+            onClick={() => {
+              setPendingId(null);
+              setConfirmDelete(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4" /> Hapus
+          </Button>
+        </div>
+      ) : null}
 
-          <DataTable
-            columns={columns}
-            data={homerooms}
-            getRowId={(row) => row.homeroom_id}
-            rowSelection={rowSelection}
-            emptyText="Tidak ada kelas yang cocok."
-          />
+      <DataTable
+        columns={columns}
+        data={homerooms}
+        getRowId={(row) => row.homeroom_id}
+        rowSelection={rowSelection}
+        emptyText="Tidak ada kelas yang cocok."
+      />
 
-          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>
-              Halaman {meta.page} dari {pageCount} · {meta.total} kelas
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={meta.page <= 1}
-                onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={meta.page >= pageCount}
-                onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-              >
-                Berikutnya
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>
+          Halaman {meta.page} dari {pageCount} · {meta.total} kelas
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page <= 1}
+            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
+          >
+            Sebelumnya
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page >= pageCount}
+            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
+          >
+            Berikutnya
+          </Button>
+        </div>
+      </div>
 
       {editing ? (
         <HomeroomDialog

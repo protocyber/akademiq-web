@@ -54,6 +54,7 @@ import { toast } from "@/components/ui/toaster";
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { ApiHttpError } from "@/lib/api/types";
+import { formatDate } from "@/lib/date-utils";
 import { ErrorView } from "@/components/ui/error-view";
 import {
   CREATE_USER_ALREADY_EXISTS_MESSAGE,
@@ -129,7 +130,7 @@ export default function SettingsUsersPage() {
 
 function UsersSkeleton() {
   return (
-    <main className="container mx-auto max-w-7xl space-y-6 px-4 py-10">
+    <main className="container mx-auto w-full space-y-6 px-4 py-10">
       <Skeleton className="h-9 w-56" />
       <Card>
         <CardContent className="space-y-3 pt-6">
@@ -200,7 +201,7 @@ function UsersContent() {
           await logout.mutateAsync();
           router.push("/login");
         }}
-        className="mx-auto max-w-7xl"
+        className="mx-auto w-full"
       >
         <ErrorView
           status={status}
@@ -229,25 +230,20 @@ function UsersContent() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground">Pengguna</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <CreateUserDialog roles={roleList} />
-          <InviteDialog roles={roleList} />
-        </div>
-      </div>
-
       <Card className="border border-border shadow-sm">
         <CardHeader className="border-b pb-4">
-          <CardTitle className="text-lg">Akun</CardTitle>
-          <CardDescription>Perubahan role berlaku saat pengguna refresh token berikutnya.</CardDescription>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Pengguna</CardTitle>
+              <CardDescription>Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ.</CardDescription>
+            </div>
+            <div className="flex flex-col md:flex-row gap-2">
+              <CreateUserDialog roles={roleList} />
+              <InviteDialog roles={roleList} />
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="pt-6">
           <UsersTableSection
@@ -293,7 +289,7 @@ function replaceUsersParams(router: ReturnType<typeof useRouter>, params: Tenant
   router.replace(query ? `/settings/users?${query}` : "/settings/users", { scroll: false });
 }
 
-type Meta = { page: number; page_size: number; total: number };
+type Meta = { page: number; page_size: number; total: number; };
 
 type UsersTableSectionProps = {
   users: TenantUser[];
@@ -308,7 +304,7 @@ type UsersTableSectionProps = {
   onParamsChange: (params: TenantUsersParams) => void;
 };
 
-const SORT_FIELDS: Record<string, { asc: TenantUsersSort; desc: TenantUsersSort }> = {
+const SORT_FIELDS: Record<string, { asc: TenantUsersSort; desc: TenantUsersSort; }> = {
   name: { asc: "name", desc: "-name" },
   status: { asc: "status", desc: "-status" },
   role: { asc: "role", desc: "-role" },
@@ -592,7 +588,7 @@ function BulkActionMenu({
   );
 }
 
-type BulkResult = { user_id: string; success: boolean; reason: string | null };
+type BulkResult = { user_id: string; success: boolean; reason: string | null; };
 
 async function runBulk(action: () => Promise<BulkResult[]>, onDone: () => void) {
   try {
@@ -608,7 +604,7 @@ async function runBulk(action: () => Promise<BulkResult[]>, onDone: () => void) 
   }
 }
 
-function CreateUserDialog({ roles }: { roles: TenantRole[] }) {
+function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
   const [open, setOpen] = React.useState(false);
   const create = useCreateTenantUser();
   const form = useForm<CreateTenantUserForm>({
@@ -839,7 +835,7 @@ function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit pengguna</DialogTitle>
           <DialogDescription className="flex items-center gap-2 mt-1">
@@ -990,7 +986,7 @@ function EditUserDialog({
   );
 }
 
-function InviteDialog({ roles }: { roles: TenantRole[] }) {
+function InviteDialog({ roles }: { roles: TenantRole[]; }) {
   const [open, setOpen] = React.useState(false);
   const [activationLink, setActivationLink] = React.useState<string | null>(null);
   const invite = useInviteTenantUser();
@@ -1077,7 +1073,7 @@ function InviteDialog({ roles }: { roles: TenantRole[] }) {
   );
 }
 
-function InvitationCard({ invitation }: { invitation: TenantInvitation }) {
+function InvitationCard({ invitation }: { invitation: TenantInvitation; }) {
   const revoke = useRevokeInvitation(invitation.invitation_id);
   const invitationRoles = invitation.roles?.length
     ? invitation.roles
@@ -1100,7 +1096,7 @@ function InvitationCard({ invitation }: { invitation: TenantInvitation }) {
         <p className="break-all text-sm font-semibold text-foreground">{invitation.email}</p>
         <p className="text-xs text-muted-foreground">
           {invitationRoles.map((role) => roleLabels[role] ?? role).join(", ") || "Tanpa role"} · kedaluwarsa{" "}
-          {new Date(invitation.expires_at).toLocaleDateString("id-ID")}
+          {formatDate(invitation.expires_at)}
         </p>
       </div>
       <div className="flex gap-2">

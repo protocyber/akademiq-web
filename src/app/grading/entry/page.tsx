@@ -69,19 +69,15 @@ function GradeEntryShell() {
       userEmail={me.data.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => { await logout.mutateAsync(); router.push("/login"); }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
-      <div className="space-y-2">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight">Entri Nilai</h1>
-        <p className="text-sm text-muted-foreground">Pilih kelas dan mapel, lalu isi nilai per evaluasi. Setiap sel menyimpan otomatis saat pindah fokus.</p>
-      </div>
       {!canWrite ? <Alert><AlertTitle>Kontrol dibatasi</AlertTitle><AlertDescription>{lockedMessage}</AlertDescription></Alert> : null}
       <GradeEntryPanel canWrite={canWrite} />
     </SidebarLayout>
   );
 }
 
-function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
+function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
   const { yearId, curriculumId, termId } = useAcademicScope();
   const homerooms = useHomerooms();
   const [homeroomId, setHomeroomId] = React.useState("");
@@ -149,21 +145,21 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="border-b pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <CardTitle>Grid Nilai Kelas</CardTitle>
-            <CardDescription className="mt-1">Nilai per evaluasi. Sel menyimpan otomatis saat kehilangan fokus.</CardDescription>
+            <CardTitle>Entri Nilai</CardTitle>
+            <CardDescription className="mt-1">Pilih kelas dan mapel, lalu isi nilai per evaluasi. Setiap sel menyimpan otomatis saat pindah fokus.</CardDescription>
           </div>
           {canManageEvaluations && (
-            <Button variant="outline" size="sm" onClick={() => setKelolOpen(true)}>
+            <Button size="sm" onClick={() => setKelolOpen(true)}>
               <Plus className="mr-1.5 h-4 w-4" />
               Kelola Evaluasi
             </Button>
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="pt-6 space-y-4">
         <div className="grid gap-3 md:grid-cols-2">
           <QuerySelect
             items={filteredHomerooms}
@@ -230,7 +226,7 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean }) {
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
 
-type Student = { student_id: string; full_name: string; nis: string };
+type Student = { student_id: string; full_name: string; nis: string; };
 
 function EvaluationGrid({
   students,
@@ -247,7 +243,7 @@ function EvaluationGrid({
   students: Student[];
   evaluations: Evaluation[];
   gradeIndex: Map<string, Grade>;
-  reportTypes: Array<{ report_type_id: string; code: string }>;
+  reportTypes: Array<{ report_type_id: string; code: string; }>;
   reportScoreIndex: Map<string, number>;
   homeroomId: string;
   subjectId: string;
@@ -260,7 +256,7 @@ function EvaluationGrid({
       <div className="rounded-lg border border-dashed p-8 text-center">
         <p className="text-sm font-medium text-muted-foreground">Belum ada evaluasi untuk kelas+mapel ini.</p>
         {canWrite && (
-          <Button variant="outline" size="sm" className="mt-3" onClick={onOpenKelola}>
+          <Button size="sm" className="mt-3" onClick={onOpenKelola}>
             <Plus className="mr-1.5 h-4 w-4" />
             Tambah Evaluasi
           </Button>
@@ -275,7 +271,7 @@ function EvaluationGrid({
 
   return (
     <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm bg-background">
         <thead>
           <tr className="bg-muted/60">
             <th className="sticky left-0 z-10 bg-muted/60 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -466,9 +462,9 @@ function KelolEvaluasiModal({
   const [deleteTarget, setDeleteTarget] = React.useState<Evaluation | null>(null);
   const [showAddForm, setShowAddForm] = React.useState(false);
 
-  const createMut = useCreateEvaluation(homeroomId, subjectId, yearId);
-  const updateMut = useUpdateEvaluation(homeroomId, subjectId, yearId);
-  const deleteMut = useDeleteEvaluation(homeroomId, subjectId, yearId);
+  const createMut = useCreateEvaluation(homeroomId, subjectId, yearId, termId ?? undefined);
+  const updateMut = useUpdateEvaluation(homeroomId, subjectId, yearId, termId ?? undefined);
+  const deleteMut = useDeleteEvaluation(homeroomId, subjectId, yearId, termId ?? undefined);
 
   // ── Add form state ──────────────────────────────────────────────────────────
   const [newCode, setNewCode] = React.useState("");
@@ -531,42 +527,40 @@ function KelolEvaluasiModal({
             <DialogTitle>Kelola Evaluasi</DialogTitle>
           </DialogHeader>
 
-          <div className="max-h-80 overflow-y-auto">
-            {sorted.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">Belum ada evaluasi. Tambah di bawah.</p>
-            ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="pb-2 text-left font-medium text-muted-foreground">Kode</th>
-                    <th className="pb-2 text-left font-medium text-muted-foreground">Nama</th>
-                    <th className="pb-2 text-center font-medium text-muted-foreground">Urutan</th>
-                    <th className="pb-2" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {sorted.map((ev, idx) => (
-                    <EvaluationRow
-                      key={ev.evaluation_id}
-                      evaluation={ev}
-                      isFirst={idx === 0}
-                      isLast={idx === sorted.length - 1}
-                      isEditing={editingId === ev.evaluation_id}
-                      onEdit={() => setEditingId(ev.evaluation_id)}
-                      onEditDone={() => setEditingId(null)}
-                      onDelete={() => setDeleteTarget(ev)}
-                      onMoveUp={() => void handleReorder(ev, "up")}
-                      onMoveDown={() => void handleReorder(ev, "down")}
-                      updateMut={updateMut}
-                      homeroomId={homeroomId}
-                      subjectId={subjectId}
-                      yearId={yearId}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          {sorted.length === 0 ? (
+            <p className="py-4 text-center text-sm text-muted-foreground">Belum ada evaluasi. Tambah di bawah.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="pb-2 text-left font-medium text-muted-foreground">Kode</th>
+                  <th className="pb-2 text-left font-medium text-muted-foreground">Nama</th>
+                  <th className="pb-2 text-center font-medium text-muted-foreground">Urutan</th>
+                  <th className="pb-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((ev, idx) => (
+                  <EvaluationRow
+                    key={ev.evaluation_id}
+                    evaluation={ev}
+                    isFirst={idx === 0}
+                    isLast={idx === sorted.length - 1}
+                    isEditing={editingId === ev.evaluation_id}
+                    onEdit={() => setEditingId(ev.evaluation_id)}
+                    onEditDone={() => setEditingId(null)}
+                    onDelete={() => setDeleteTarget(ev)}
+                    onMoveUp={() => void handleReorder(ev, "up")}
+                    onMoveDown={() => void handleReorder(ev, "down")}
+                    updateMut={updateMut}
+                    homeroomId={homeroomId}
+                    subjectId={subjectId}
+                    yearId={yearId}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
 
           {showAddForm ? (
             <div className="space-y-3 rounded-lg border p-3">
@@ -602,7 +596,7 @@ function KelolEvaluasiModal({
             </div>
           ) : (
             <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setShowAddForm(true)}>
+              <Button size="sm" onClick={() => setShowAddForm(true)}>
                 <Plus className="mr-1.5 h-4 w-4" />
                 Tambah Evaluasi
               </Button>
@@ -779,7 +773,7 @@ export function WeightMatrix({
   if (types.length === 0) {
     return (
       <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
-        Belum ada jenis rapor untuk tahun ini. Tambahkan dari Pengaturan → Tahun Ajaran.
+        Belum ada jenis rapor untuk semester ini. Tambahkan dari Pengaturan → Semester (tab Jenis Rapor pada semester yang dipilih).
       </p>
     );
   }

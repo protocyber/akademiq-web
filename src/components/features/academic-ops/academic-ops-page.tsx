@@ -9,6 +9,7 @@ import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { useMe } from "@/lib/query/queries/use-me";
@@ -21,7 +22,7 @@ const opsNav = [
   { href: "/teaching-assignments", label: "Penugasan" },
 ];
 
-export type OpsContext = { canManage: boolean; upgradeMessage: string };
+export type OpsContext = { canManage: boolean; upgradeMessage: string; };
 
 export function AcademicOpsPage({
   title,
@@ -42,12 +43,12 @@ export function AcademicOpsPage({
 }
 
 function OpsShell({
-  title,
-  description,
+  // title,
+  // description,
   children,
 }: {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   children: (ctx: OpsContext) => React.ReactNode;
 }) {
   const tenant = useTenantMe();
@@ -83,25 +84,22 @@ function OpsShell({
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
-      <div className="space-y-4">
-        <div>
+      <div className="space-y-4 px-6">
+        {/* <div>
           <h1 className="font-display text-3xl font-extrabold tracking-tight">{title}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {opsNav.map((item) => (
-            <Button
-              key={item.href}
-              asChild
-              size="sm"
-              variant={pathname === item.href ? "default" : "outline"}
-            >
-              <Link href={item.href}>{item.label}</Link>
-            </Button>
-          ))}
-        </div>
+        </div> */}
+        <Tabs value={pathname} activationMode="manual" variant="underline">
+          <TabsList>
+            {opsNav.map((item) => (
+              <TabsTrigger key={item.href} value={item.href} asChild>
+                <Link href={item.href}>{item.label}</Link>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
       {!canManage ? (
         <Alert>
@@ -123,7 +121,7 @@ export function OpsSkeleton() {
   );
 }
 
-export function TableSkeleton({ rows = 6 }: { rows?: number }) {
+export function TableSkeleton({ rows = 6 }: { rows?: number; }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: rows }).map((_, i) => (

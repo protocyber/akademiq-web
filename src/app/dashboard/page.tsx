@@ -2,16 +2,21 @@
 
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
-import { useMe } from "@/lib/query/queries/use-me";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLogout } from "@/lib/query/mutations/use-logout";
+import { useMe } from "@/lib/query/queries/use-me";
+import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { useDashboardStats } from "@/lib/query/queries/use-dashboard-stats";
+import { useSubjectsForYear } from "@/lib/query/queries/use-academic-config";
+import { useAcademicScope } from "@/hooks/use-academic-scope";
+
+import { DashboardWelcome } from "./_components/dashboard-welcome";
+import { DashboardKpiCards } from "./_components/dashboard-kpi-cards";
+import { DashboardCharts } from "./_components/dashboard-charts";
 
 export default function DashboardPage() {
   return (
@@ -23,18 +28,18 @@ export default function DashboardPage() {
 
 function DashboardSkeleton() {
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-      <Skeleton className="h-10 w-1/2" />
-      <Skeleton className="h-6 w-1/3" />
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-48" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-24 w-full" />
-        </CardContent>
-      </Card>
+    <main className="container mx-auto max-w-7xl space-y-6 px-4 py-10">
+      <Skeleton className="h-10 w-72" />
+      <Skeleton className="h-5 w-48" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-[120px] w-full rounded-xl" />
+        ))}
+      </div>
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Skeleton className="h-[350px] lg:col-span-3 rounded-xl" />
+        <Skeleton className="h-[350px] lg:col-span-2 rounded-xl" />
+      </div>
     </main>
   );
 }
@@ -44,6 +49,10 @@ function DashboardContent() {
   const tenant = useTenantMe();
   const logout = useLogout();
   const router = useRouter();
+  const { yearId } = useAcademicScope();
+
+  const stats = useDashboardStats();
+  const subjects = useSubjectsForYear(yearId || undefined);
 
   if (tenant.isLoading || me.isLoading) {
     return <DashboardSkeleton />;
@@ -53,7 +62,7 @@ function DashboardContent() {
     return (
       <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
         <Alert variant="destructive">
-          <AlertTitle>Tidak bisa memuat dashboard</AlertTitle>
+          <AlertTitle>Tidak bisa memuat dasbor</AlertTitle>
           <AlertDescription className="space-y-3">
             <p>Periksa koneksi dan coba lagi.</p>
             <div className="flex gap-2">
@@ -98,86 +107,50 @@ function DashboardContent() {
         router.push("/login");
       }}
     >
-      <div>
-        <h1 className="text-3xl font-extrabold font-display tracking-tight text-foreground">Dasbor Sekolah</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Pantau status langganan dan atur modul aktif sekolah Anda.
-        </p>
-      </div>
+      <div className="mx-auto w-full max-w-7xl space-y-6">
+        <DashboardWelcome userName={u.full_name} />
 
-      {!u.password_set ? (
-        <Alert className="border-primary/30 bg-primary/5">
-          <AlertTitle className="text-primary">Set password Anda</AlertTitle>
-          <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              Akun Anda belum punya password. Set password sekarang untuk mengaktifkan login dengan email.
-            </span>
-            <Button size="sm" onClick={() => router.push("/set-password")}>
-              Set Password
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="border border-border shadow-sm">
-          <CardHeader className="pb-4 border-b">
-            <CardTitle className="text-lg flex items-center gap-2">
-              Status Langganan
-            </CardTitle>
-            <CardDescription>
-              Detail paket langganan aktif saat ini.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Paket Aktif:</span>
-              <span className="text-sm font-bold text-foreground bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
-                {t.current_plan?.name ?? "—"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Status Pembayaran:</span>
-              <Badge variant={t.status === "active" ? "default" : "secondary"} className="uppercase tracking-wide text-xs">
-                {t.status}
-              </Badge>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border border-border shadow-sm">
-          <CardHeader className="pb-4 border-b">
-            <CardTitle className="text-lg">Modul Aktif</CardTitle>
-            <CardDescription>
-              Atur modul yang aktif di halaman Modul.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <ul className="grid gap-3">
-              {t.modules.map((m) => (
-                <li
-                  key={m.feature_code}
-                  className="flex items-center justify-between rounded-lg border p-3 text-sm bg-muted/20"
-                >
-                  <span className={`font-medium ${m.plan_entitled ? "" : "text-muted-foreground"}`}>
-                    {m.feature_code}
-                  </span>
-                  <Badge
-                    variant={!m.plan_entitled ? "destructive" : m.enabled ? "default" : "secondary"}
-                    className="text-xs"
-                  >
-                    {!m.plan_entitled
-                      ? "Tidak Termasuk"
-                      : m.enabled
-                        ? "Aktif"
-                        : "Nonaktif"}
-                  </Badge>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        {/* No academic year selected — empty state */}
+        {!yearId ? (
+          <EmptyStateNoYear />
+        ) : stats.isLoading || !stats.data ? (
+          <DashboardSkeleton />
+        ) : stats.error ? (
+          <Alert variant="destructive">
+            <AlertTitle>Gagal memuat statistik</AlertTitle>
+            <AlertDescription>
+              Tidak bisa memuat data dasbor. Coba muat ulang halaman.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <>
+            <DashboardKpiCards
+              stats={stats.data}
+              subjectCount={subjects.data?.length ?? 0}
+            />
+            <DashboardCharts stats={stats.data} />
+          </>
+        )}
       </div>
     </SidebarLayout>
+  );
+}
+
+function EmptyStateNoYear() {
+  const router = useRouter();
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed p-12 text-center">
+      <div className="mb-4 text-4xl">📅</div>
+      <h3 className="text-lg font-semibold">
+        Mulai Siapkan Tahun Ajaran Anda
+      </h3>
+      <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+        Belum ada tahun ajaran aktif. Buat dan konfigurasikan tahun ajaran
+        terlebih dahulu untuk melihat statistik sekolah.
+      </p>
+      <Button className="mt-4" onClick={() => router.push("/settings/academic/years")}>
+        Konfigurasi Tahun Ajaran
+      </Button>
+    </div>
   );
 }

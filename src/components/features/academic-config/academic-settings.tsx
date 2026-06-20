@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { QuerySelect } from "@/components/ui/query-select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
@@ -19,6 +20,7 @@ import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 
 const academicNav = [
   { href: "/settings/academic/years", label: "Tahun Ajaran" },
+  { href: "/settings/academic/terms", label: "Semester" },
   { href: "/settings/academic/subjects", label: "Mata Pelajaran" },
   { href: "/settings/academic/class-templates", label: "Template Kelas" },
 ];
@@ -47,12 +49,12 @@ export function AcademicSettingsPage({
 }
 
 function AcademicSettingsContent({
-  title,
-  description,
+  // title,
+  // description,
   children,
 }: {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   children: (context: AcademicSettingsContext) => React.ReactNode;
 }) {
   const tenant = useTenantMe();
@@ -108,30 +110,24 @@ function AcademicSettingsContent({
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
-      <div className="space-y-4">
-        <div>
+      <div className="space-y-4 px-6">
+        {/* <div>
           <h1 className="text-3xl font-extrabold font-display tracking-tight text-foreground">
             {title}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {academicNav.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Button
-                key={item.href}
-                asChild
-                size="sm"
-                variant={active ? "default" : "outline"}
-              >
+        </div> */}
+        <Tabs value={pathname} activationMode="manual" variant="underline">
+          <TabsList>
+            {academicNav.map((item) => (
+              <TabsTrigger key={item.href} value={item.href} asChild>
                 <Link href={item.href}>{item.label}</Link>
-              </Button>
-            );
-          })}
-        </div>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {!canManageAcademicConfig ? (

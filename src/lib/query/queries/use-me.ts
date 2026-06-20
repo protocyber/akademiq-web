@@ -6,6 +6,7 @@ import { apiFetch, getAccessToken } from "@/lib/api/client";
 
 export type Membership = {
   tenant_id: string;
+  tenant_name: string;
   roles: string[];
 };
 
@@ -17,6 +18,9 @@ export type MeView = {
   full_name: string;
   status: string;
   password_set: boolean;
+  google_linked: boolean;
+  avatar_url: string | null;
+  pending_email: string | null;
   memberships: Membership[];
 };
 

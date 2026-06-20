@@ -8,6 +8,7 @@ import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import {
   ArrowDown,
   ArrowUp,
+  Archive,
   ChevronsUpDown,
   LinkIcon,
   MoreHorizontal,
@@ -18,10 +19,11 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -54,7 +56,9 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
+import { formatDate } from "@/lib/date-utils";
 import {
+  useArchiveStudent,
   useBulkDeleteStudents,
   useCreateStudent,
   useDeleteStudent,
@@ -75,6 +79,21 @@ import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-
 import { QuerySelect } from "@/components/ui/query-select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const STUDENT_ARCHIVE_REASONS = [
+  { value: "nonaktif_sementara", label: "Nonaktif Sementara" },
+  { value: "lulus", label: "Lulus" },
+  { value: "pindah", label: "Pindah Sekolah" },
+  { value: "keluar", label: "Keluar" },
+  { value: "meninggal", label: "Meninggal" },
+  { value: "lainnya", label: "Lainnya" },
+];
+
+const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  aktif: { label: "Aktif", variant: "default" },
+  nonaktif: { label: "Nonaktif", variant: "secondary" },
+  arsip: { label: "Arsip", variant: "outline" },
+};
 
 const SORT_FIELDS: Record<string, { asc: StudentsSort; desc: StudentsSort }> = {
   name: { asc: "name", desc: "-name" },
@@ -113,42 +132,51 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <Input
-          value={searchDraft}
-          onChange={(event) => setSearchDraft(event.target.value)}
-          placeholder="Cari nama atau NIS"
-          className="max-w-xs"
-        />
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4" /> Impor
-          </Button>
-          <StudentDialog
-            canManage={canManage}
-            upgradeMessage={upgradeMessage}
-            trigger={<Button size="sm">+ Tambah</Button>}
-          />
-        </div>
-      </div>
-
-      {students.isLoading ? (
-        <TableSkeleton />
-      ) : students.error ? (
-        <p className="text-sm text-destructive">{getErrorMessage(students.error)}</p>
-      ) : (
-        <StudentsTable
-          students={students.data?.data ?? []}
-          meta={students.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-          params={params}
-          canManage={canManage}
-          upgradeMessage={upgradeMessage}
-          studentUsers={studentUsers}
-          usersList={users.data?.data ?? []}
-          usersLoading={users.isLoading}
-          onParamsChange={(next) => replaceParams(router, next)}
-        />
-      )}
+      <Card className="border border-border shadow-sm">
+        <CardHeader className="border-b pb-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <CardTitle className="text-lg">Daftar Siswa</CardTitle>
+              <CardDescription>Kelola master data siswa dan identitas NIS.</CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Cari nama atau NIS"
+                className="md:w-72"
+              />
+              <Button variant="outline" size="sm" className="gap-1" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4" /> Impor
+              </Button>
+              <StudentDialog
+                canManage={canManage}
+                upgradeMessage={upgradeMessage}
+                trigger={<Button size="sm">+ Tambah</Button>}
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {students.isLoading ? (
+            <TableSkeleton />
+          ) : students.error ? (
+            <p className="text-sm text-destructive">{getErrorMessage(students.error)}</p>
+          ) : (
+            <StudentsTable
+              students={students.data?.data ?? []}
+              meta={students.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
+              params={params}
+              canManage={canManage}
+              upgradeMessage={upgradeMessage}
+              studentUsers={studentUsers}
+              usersList={users.data?.data ?? []}
+              usersLoading={users.isLoading}
+              onParamsChange={(next) => replaceParams(router, next)}
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <ImportDialog
         open={importOpen}
@@ -194,6 +222,7 @@ function StudentsTable({
   const [editing, setEditing] = React.useState<Student | null>(null);
   const [linking, setLinking] = React.useState<Student | null>(null);
   const [managingGuardians, setManagingGuardians] = React.useState<Student | null>(null);
+  const [archiveTarget, setArchiveTarget] = React.useState<Student | null>(null);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
 
@@ -280,7 +309,16 @@ function StudentsTable({
     {
       id: "birth_date",
       header: () => <span>Tgl Lahir</span>,
-      cell: ({ row }) => <span className="text-muted-foreground">{row.original.birth_date}</span>,
+      cell: ({ row }) => <span className="text-muted-foreground">{formatDate(row.original.birth_date)}</span>,
+    },
+    {
+      id: "status",
+      header: () => <span>Status</span>,
+      cell: ({ row }) => {
+        const status = row.original.status;
+        const config = STATUS_LABELS[status] ?? { label: status, variant: "outline" };
+        return <Badge variant={config.variant}>{config.label}</Badge>;
+      },
     },
     {
       id: "account",
@@ -317,6 +355,11 @@ function StudentsTable({
               <DropdownMenuItem disabled={!canManage} onClick={() => setManagingGuardians(student)}>
                 <Users className="h-4 w-4" /> Wali murid
               </DropdownMenuItem>
+              {student.status !== "arsip" && (
+                <DropdownMenuItem disabled={!canManage} onClick={() => setArchiveTarget(student)}>
+                  <Archive className="h-4 w-4" /> Arsipkan
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 disabled={!canManage}
                 className="text-destructive focus:text-destructive"
@@ -333,59 +376,55 @@ function StudentsTable({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="space-y-4 pt-6">
-          {selectedIds.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-              <span>{selectedIds.length} dipilih</span>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="gap-1"
-                disabled={!canManage}
-                onClick={() => {
-                  setPendingId(null);
-                  setConfirmDelete(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </Button>
-            </div>
-          ) : null}
+      {selectedIds.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+          <span>{selectedIds.length} dipilih</span>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="gap-1"
+            disabled={!canManage}
+            onClick={() => {
+              setPendingId(null);
+              setConfirmDelete(true);
+            }}
+          >
+            <Trash2 className="h-4 w-4" /> Hapus
+          </Button>
+        </div>
+      ) : null}
 
-          <DataTable
-            columns={columns}
-            data={students}
-            getRowId={(row) => row.student_id}
-            rowSelection={rowSelection}
-            emptyText="Tidak ada siswa yang cocok."
-          />
+      <DataTable
+        columns={columns}
+        data={students}
+        getRowId={(row) => row.student_id}
+        rowSelection={rowSelection}
+        emptyText="Tidak ada siswa yang cocok."
+      />
 
-          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-            <span>
-              Halaman {meta.page} dari {pageCount} · {meta.total} siswa
-            </span>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={meta.page <= 1}
-                onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-              >
-                Sebelumnya
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={meta.page >= pageCount}
-                onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-              >
-                Berikutnya
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+        <span>
+          Halaman {meta.page} dari {pageCount} · {meta.total} siswa
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page <= 1}
+            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
+          >
+            Sebelumnya
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={meta.page >= pageCount}
+            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
+          >
+            Berikutnya
+          </Button>
+        </div>
+      </div>
 
       {editing ? (
         <StudentDialog
@@ -421,6 +460,17 @@ function StudentsTable({
           open={Boolean(managingGuardians)}
           onOpenChange={(open) => {
             if (!open) setManagingGuardians(null);
+          }}
+        />
+      ) : null}
+
+      {archiveTarget ? (
+        <ArchiveStudentDialog
+          student={archiveTarget}
+          canManage={canManage}
+          open={Boolean(archiveTarget)}
+          onOpenChange={(open) => {
+            if (!open) setArchiveTarget(null);
           }}
         />
       ) : null}
@@ -507,9 +557,18 @@ function StudentDialog({
   const defaultValues = React.useMemo<StudentForm>(
     () => ({
       nis: student?.nis ?? "",
+      nisn: student?.nisn ?? "",
+      nik: student?.nik ?? "",
       full_name: student?.full_name ?? "",
-      gender: (student?.gender as StudentForm["gender"]) ?? "female",
+      gender: (student?.gender as StudentForm["gender"]) ?? "male",
       birth_date: student?.birth_date ?? "",
+      birth_place: student?.birth_place ?? "",
+      religion: student?.religion ?? "",
+      nationality: student?.nationality ?? "Indonesia",
+      address_line: student?.address_line ?? "",
+      phone_number: student?.phone_number ?? "",
+      origin_school: student?.origin_school ?? "",
+      entry_date: student?.entry_date ?? "",
     }),
     [student],
   );
@@ -543,21 +602,49 @@ function StudentDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
         <DialogHeader>
           <DialogTitle>{student ? "Edit siswa" : "Tambah siswa"}</DialogTitle>
-          <DialogDescription>NIS unik per tenant. Gender harus salah satu dari opsi.</DialogDescription>
+          <DialogDescription>NIS unik per sekolah. Gender harus salah satu dari opsi.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" noValidate>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="nis"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NIS *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="S-001" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nisn"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NISN</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="1234567890" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
-              name="nis"
+              name="nik"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>NIS</FormLabel>
+                  <FormLabel>NIK</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="S-001" />
+                    <Input {...field} placeholder="3201012345678901" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -568,7 +655,7 @@ function StudentDialog({
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama lengkap</FormLabel>
+                  <FormLabel>Nama lengkap *</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="Budi Santoso" />
                   </FormControl>
@@ -576,41 +663,151 @@ function StudentDialog({
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="gender"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Gender</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender *</FormLabel>
+                    <Select value={field.value ?? ""} onValueChange={(value) => field.onChange(value as "male" | "female" | "other")}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="male">Laki-laki</SelectItem>
+                        <SelectItem value="female">Perempuan</SelectItem>
+                        <SelectItem value="other">Lainnya</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="birth_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tanggal lahir *</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Pilih gender" />
-                      </SelectTrigger>
+                      <DatePicker value={field.value} onChange={field.onChange} />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="male">Laki-laki</SelectItem>
-                      <SelectItem value="female">Perempuan</SelectItem>
-                      <SelectItem value="other">Lainnya</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="birth_place"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tempat lahir</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Jakarta" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="religion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Agama</FormLabel>
+                    <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih agama" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="islam">Islam</SelectItem>
+                        <SelectItem value="kristen">Kristen</SelectItem>
+                        <SelectItem value="katolik">Katolik</SelectItem>
+                        <SelectItem value="hindu">Hindu</SelectItem>
+                        <SelectItem value="buddha">Buddha</SelectItem>
+                        <SelectItem value="konghucu">Konghucu</SelectItem>
+                        <SelectItem value="lainnya">Lainnya</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
-              name="birth_date"
+              name="address_line"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tanggal lahir</FormLabel>
+                  <FormLabel>Alamat</FormLabel>
                   <FormControl>
-                    <DatePicker value={field.value} onChange={field.onChange} />
+                    <Textarea {...field} placeholder="Jl. Pendidikan No. 1" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="phone_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nomor telepon</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="081234567890" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="nationality"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kewarganegaraan</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Indonesia" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="entry_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tanggal masuk</FormLabel>
+                    <FormControl>
+                      <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="2023-07-01" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="origin_school"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Asal sekolah</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="SD Negeri 1" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <DialogFooter>
               <GuardedButton enabled={canManage} message={upgradeMessage} loading={loading}>
                 Simpan
@@ -618,6 +815,79 @@ function StudentDialog({
             </DialogFooter>
           </form>
         </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ArchiveStudentDialog({
+  student,
+  canManage,
+  open,
+  onOpenChange,
+}: {
+  student: Student;
+  canManage: boolean;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const archive = useArchiveStudent();
+  const [reason, setReason] = React.useState("");
+
+  async function onArchive() {
+    try {
+      await archive.mutateAsync({ studentId: student.student_id, reason });
+      toast.success("Siswa berhasil diarsipkan");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Gagal mengarsipkan siswa" }));
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Arsipkan Siswa</DialogTitle>
+          <DialogDescription>
+            Arsipkan {student.full_name}? Data siswa akan disembunyikan dari daftar aktif tetapi tetap tersimpan untuk keperluan historis.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <FormField
+            control={{} as any}
+            name="reason"
+            render={() => (
+              <FormItem>
+                <FormLabel>Alasan arsip *</FormLabel>
+                <Select value={reason} onValueChange={(value) => setReason(value as string)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih alasan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STUDENT_ARCHIVE_REASONS.map((r) => (
+                      <SelectItem key={r.value} value={r.value}>
+                        {r.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormItem>
+            )}
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Batal
+          </Button>
+          <Button
+            variant="destructive"
+            disabled={!reason || archive.isPending}
+            onClick={onArchive}
+          >
+            {archive.isPending ? "Mengarsipkan..." : "Arsipkan"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

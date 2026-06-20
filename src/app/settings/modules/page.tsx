@@ -103,21 +103,17 @@ function ModulesContent() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto max-w-7xl"
+      className="mx-auto w-full"
     >
-      <div>
-        <h1 className="text-3xl font-extrabold font-display tracking-tight text-foreground">Modul Aktif</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Plan saat ini: <span className="font-semibold text-foreground">{data.current_plan?.name ?? "—"}</span>
-        </p>
-      </div>
-
       <Card className="border border-border shadow-sm">
         <CardHeader className="pb-4 border-b">
           <CardTitle className="text-lg">Konfigurasi Fitur</CardTitle>
           <CardDescription>
             Aktifkan modul yang termasuk dalam plan Anda. Modul yang tidak
             termasuk butuh upgrade plan.
+            <div className="text-muted-foreground text-sm mt-1">
+              Plan saat ini: <span className="font-semibold text-foreground">{data.current_plan?.name ?? "—"}</span>
+            </div>
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">

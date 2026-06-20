@@ -172,7 +172,14 @@ async function mockApis(page: Page) {
     }
 
     if (path === `/api/v1/academic-config/academic-years/${academicYearId}/terms` && method === "GET") {
-      await ok(terms);
+      await route.fulfill({
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: terms,
+          meta: { page: 1, page_size: 10, total: terms.length },
+        }),
+      });
       return;
     }
 
@@ -239,10 +246,12 @@ test("tenant admin walks academic config pages end to end", async ({ page }) => 
   await page.goto("/settings/academic/years");
   await page.getByRole("button", { name: /buat tahun ajaran/i }).click();
   await page.getByLabel("Nama").fill("2026/2027");
-  await expect(page.getByText("Pengaturan nilai, kurikulum, dan jenis rapor tersedia setelah tahun ajaran disimpan.")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Kebijakan Nilai" })).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Versi Kurikulum" })).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "Jenis Rapor" })).not.toBeVisible();
+  await expect(page.getByText("Kebijakan nilai & versi kurikulum tersedia setelah tahun dibuat.")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Info" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Kebijakan Nilai" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Versi Kurikulum" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Semester" })).toHaveCount(0);
+  await expect(page.getByRole("tab", { name: "Jenis Rapor" })).toHaveCount(0);
   await page.getByLabel(/tanggal mulai/i).click();
   await pickFirstCalendarDate(page);
   await page.getByLabel(/tanggal selesai/i).click();
@@ -272,7 +281,7 @@ test("tenant admin walks academic config pages end to end", async ({ page }) => 
 
   // We are currently in the edit year modal.
   // Click "Versi Kurikulum" tab
-  await page.getByRole("button", { name: /versi kurikulum/i }).click();
+  await page.getByRole("tab", { name: /versi kurikulum/i }).click();
 
   // Add a curriculum version
   await page.getByPlaceholder("Nama versi kurikulum").fill("Kurikulum Merdeka");
@@ -306,7 +315,7 @@ test("tenant admin walks academic config pages end to end", async ({ page }) => 
   await page.getByRole("menuitem", { name: /edit/i }).click();
 
   // Click "Kebijakan Nilai" tab
-  await page.getByRole("button", { name: /kebijakan nilai/i }).click();
+  await page.getByRole("tab", { name: /kebijakan nilai/i }).click();
 
   // Update policies
   await page.getByLabel(/min. kelulusan/i).fill("76");
@@ -329,11 +338,23 @@ test("tenant admin walks academic config pages end to end", async ({ page }) => 
   await expect(page.getByRole("cell", { name: "32" })).toBeVisible();
 });
 
+test("academic settings nav exposes a Semester tab linking to the terms page", async ({ page }) => {
+  await seedAuth(page);
+  await mockApis(page);
+
+  await page.goto("/settings/academic/years");
+
+  const semesterTab = page.getByRole("tab", { name: /^semester$/i });
+  await expect(semesterTab).toBeVisible();
+  await semesterTab.click();
+  await expect(page).toHaveURL(/\/settings\/academic\/terms$/);
+});
+
 test("term CRUD and status transition flow", async ({ page }) => {
   await seedAuth(page);
   await mockApis(page);
 
-  // Create a year first
+  // Create a year first and transition it to Active so it becomes the academic scope.
   await page.goto("/settings/academic/years");
   await page.getByRole("button", { name: /buat tahun ajaran/i }).click();
   await page.getByLabel("Nama").fill("2026/2027");
@@ -344,42 +365,53 @@ test("term CRUD and status transition flow", async ({ page }) => {
   await page.getByRole("button", { name: /^simpan$/i }).click();
   await expect(page.getByText("2026/2027")).toBeVisible();
 
-  // Open edit modal and go to Semester tab
   await page.getByRole("button", { name: /aksi/i }).click();
   await page.getByRole("menuitem", { name: /edit/i }).click();
-  await page.getByRole("button", { name: /semester/i }).click();
+  await page.getByRole("button", { name: /ubah status/i }).click();
+  await page.getByLabel(/alasan perubahan status/i).fill("Alasan transisi ke aktif yang sah");
+  await page.getByRole("button", { name: /^konfirmasi$/i }).click();
+  await expect(page.getByText("Aktif", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: /tutup/i }).click();
 
-  // Add Semester 1
-  await page.getByPlaceholder("Semester 1").fill("Semester 1");
-  await page.getByLabel(/mulai/i).first().click();
-  await pickFirstCalendarDate(page);
-  await page.getByLabel(/selesai/i).first().click();
-  await pickFirstCalendarDate(page);
-  await page.getByRole("button", { name: /^\+$|^<svg/i }).last().click();
-  await expect(page.getByText("Semester 1")).toBeVisible();
+  // Navigate to the standalone Semester page.
+  await page.goto("/settings/academic/terms");
 
-  // Add Semester 2
-  await page.getByPlaceholder("Semester 1").fill("Semester 2");
-  await page.getByLabel(/mulai/i).first().click();
+  // Add Semester 1 via create modal
+  await page.getByRole("button", { name: /buat semester/i }).click();
+  await page.getByLabel("Nama").fill("Semester 1");
+  await page.getByLabel(/tanggal mulai/i).click();
   await pickFirstCalendarDate(page);
-  await page.getByLabel(/selesai/i).first().click();
+  await page.getByLabel(/tanggal selesai/i).click();
   await pickFirstCalendarDate(page);
-  await page.getByRole("button", { name: /^\+$|^<svg/i }).last().click();
-  await expect(page.getByText("Semester 2")).toBeVisible();
+  await page.getByRole("button", { name: /^simpan$/i }).click();
+  await expect(page.getByText("Semester 1").first()).toBeVisible();
 
-  // Transition Semester 1 to Active using status dialog
-  const sem1Row = page.locator("div").filter({ hasText: /^Semester 1/ }).first();
-  await sem1Row.getByRole("combobox").selectOption({ label: /aktif/i });
-  await sem1Row.getByRole("button", { name: /ubah/i }).click();
+  // Add Semester 2 via create modal
+  await page.getByRole("button", { name: /buat semester/i }).click();
+  await page.getByLabel("Nama").fill("Semester 2");
+  await page.getByLabel(/tanggal mulai/i).click();
+  await pickFirstCalendarDate(page);
+  await page.getByLabel(/tanggal selesai/i).click();
+  await pickFirstCalendarDate(page);
+  await page.getByRole("button", { name: /^simpan$/i }).click();
+  await expect(page.getByText("Semester 2").first()).toBeVisible();
+
+  // Transition Semester 1 to Active via the edit modal Info tab
+  const sem1Row = page.locator("tr").filter({ hasText: /Semester 1/ });
+  await sem1Row.getByRole("button", { name: /^edit$/i }).click();
+  await page.getByRole("combobox", { name: /ubah status ke/i }).selectOption({ label: /aktif/i });
+  await page.getByRole("button", { name: /ubah status/i }).click();
   await page.getByLabel(/alasan perubahan status/i).fill("Semester 1 resmi dimulai hari ini");
   await page.getByRole("button", { name: /^konfirmasi$/i }).click();
   await expect(page.getByText("Status semester diperbarui.")).toBeVisible();
 
-  // Delete Semester 2
-  const sem2Row = page.locator("div").filter({ hasText: /^Semester 2/ }).first();
-  await sem2Row.getByRole("button", { name: /hapus/i }).click();
+  // Delete Semester 2 via the row icon dropdown
+  const sem2Row = page.locator("tr").filter({ hasText: /Semester 2/ });
+  await sem2Row.getByRole("button", { name: /aksi lainnya/i }).click();
+  await page.getByRole("menuitem", { name: /hapus/i }).click();
+  await page.getByRole("button", { name: /^hapus$/i }).click();
   await expect(page.getByText("Semester dihapus.")).toBeVisible();
-  await expect(page.getByText("Semester 2")).not.toBeVisible();
+  await expect(page.getByText("Semester 2")).toHaveCount(0);
 });
 
 test("header shows no-active-term warning when year is Active but no term is Active", async ({ page }) => {
@@ -546,7 +578,7 @@ test("term backward and Archived status transitions with type-to-confirm and coo
   await seedAuth(page);
   await mockApis(page);
 
-  // Create a year and navigate to Semester tab
+  // Create a year and transition it to Active so it becomes the academic scope.
   await page.goto("/settings/academic/years");
   await page.getByRole("button", { name: /buat tahun ajaran/i }).click();
   await page.getByLabel("Nama").fill("2026/2027");
@@ -559,7 +591,14 @@ test("term backward and Archived status transitions with type-to-confirm and coo
 
   await page.getByRole("button", { name: /aksi/i }).click();
   await page.getByRole("menuitem", { name: /edit/i }).click();
-  await page.getByRole("button", { name: /semester/i }).click();
+  await page.getByRole("button", { name: /ubah status/i }).click();
+  await page.getByLabel(/alasan perubahan status/i).fill("Alasan transisi ke aktif yang sah");
+  await page.getByRole("button", { name: /^konfirmasi$/i }).click();
+  await expect(page.getByText("Aktif", { exact: true }).first()).toBeVisible();
+  await page.getByRole("button", { name: /tutup/i }).click();
+
+  // Navigate to the standalone Semester page.
+  await page.goto("/settings/academic/terms");
 
   // Add Semester 1 (auto-seeded as Draft via mock)
   await page.getByPlaceholder("Semester 1").fill("Semester 1");
@@ -567,7 +606,7 @@ test("term backward and Archived status transitions with type-to-confirm and coo
   await pickFirstCalendarDate(page);
   await page.getByLabel(/selesai/i).first().click();
   await pickFirstCalendarDate(page);
-  await page.getByRole("button", { name: /^\+$|^<svg/i }).last().click();
+  await page.getByRole("button", { name: /tambah/i }).click();
   await expect(page.getByText("Semester 1")).toBeVisible();
 
   // Forward: Draft → Active

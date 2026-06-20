@@ -4,6 +4,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
 import type {
+  CopyReportTypesForm,
+  CopyReportTypesResult,
   EvaluationForm,
   EvaluationUpdateForm,
   GradeEntryForm,
@@ -25,7 +27,7 @@ import {
 
 // ── Evaluation mutations ─────────────────────────────────────────────────────
 
-export function useCreateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+export function useCreateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: EvaluationForm) =>
@@ -36,11 +38,11 @@ export function useCreateEvaluation(homeroomId?: string, subjectId?: string, aca
         authenticated: true,
         body: input,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId, termId) }),
   });
 }
 
-export function useUpdateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+export function useUpdateEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ evaluationId, ...body }: EvaluationUpdateForm & { evaluationId: string }) =>
@@ -51,11 +53,11 @@ export function useUpdateEvaluation(homeroomId?: string, subjectId?: string, aca
         authenticated: true,
         body,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId, termId) }),
   });
 }
 
-export function useDeleteEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string) {
+export function useDeleteEvaluation(homeroomId?: string, subjectId?: string, academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (evaluationId: string) =>
@@ -66,7 +68,7 @@ export function useDeleteEvaluation(homeroomId?: string, subjectId?: string, aca
         authenticated: true,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId) });
+      qc.invalidateQueries({ queryKey: evaluationsQueryKey(homeroomId, subjectId, academicYearId, termId) });
       qc.invalidateQueries({ queryKey: classGradesQueryKey(homeroomId, subjectId, academicYearId) });
     },
   });
@@ -95,7 +97,7 @@ export function useUpsertGrade(homeroomId?: string, subjectId?: string, academic
 
 // ── Report type mutations ────────────────────────────────────────────────────
 
-export function useCreateReportType(academicYearId?: string) {
+export function useCreateReportType(academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ReportTypeCreateForm) =>
@@ -106,11 +108,11 @@ export function useCreateReportType(academicYearId?: string) {
         authenticated: true,
         body: input,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId, termId) }),
   });
 }
 
-export function useUpdateReportType(academicYearId?: string) {
+export function useUpdateReportType(academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ reportTypeId, ...body }: ReportTypeUpdateForm & { reportTypeId: string }) =>
@@ -121,11 +123,11 @@ export function useUpdateReportType(academicYearId?: string) {
         authenticated: true,
         body,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId, termId) }),
   });
 }
 
-export function useDeleteReportType(academicYearId?: string) {
+export function useDeleteReportType(academicYearId?: string, termId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (reportTypeId: string) =>
@@ -135,11 +137,26 @@ export function useDeleteReportType(academicYearId?: string) {
         method: "DELETE",
         authenticated: true,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId, termId) }),
   });
 }
 
 // ── Report formula mutations ─────────────────────────────────────────────────
+
+export function useCopyReportTypes(academicYearId?: string, targetTermId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CopyReportTypesForm) =>
+      apiFetch<CopyReportTypesResult>({
+        service: "grading",
+        path: "/api/v1/grading/report-types/copy",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportTypesQueryKey(academicYearId, targetTermId) }),
+  });
+}
 
 export function useUpsertReportFormula(reportTypeId?: string) {
   const qc = useQueryClient();
@@ -190,6 +207,45 @@ export function useTransitionReportCard(reportCardId: string, reportTypeId?: str
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["grading", "report-card", reportCardId] });
+      qc.invalidateQueries({ queryKey: reportCardsQueryKey(reportTypeId, homeroomId) });
+    },
+  });
+}
+
+/**
+ * Transition many report cards by calling the single-card PATCH endpoint per
+ * card (the grading service exposes no bulk endpoint). `action` is fixed per
+ * run so the caller picks the right advance for the selected statuses. Returns
+ * a per-card result list so the UI can report partial failures.
+ */
+export function useBulkTransitionReportCards(reportTypeId?: string, homeroomId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      reportCardIds,
+      action,
+    }: {
+      reportCardIds: string[];
+      action: "submit" | "homeroom-approve" | "return" | "principal-approve" | "reject";
+    }) => {
+      const results = await Promise.allSettled(
+        reportCardIds.map((reportCardId) =>
+          apiFetch<ReportCard>({
+            service: "grading",
+            path: `/api/v1/grading/report-cards/${reportCardId}/${action}`,
+            method: "PATCH",
+            authenticated: true,
+            body: {},
+          }),
+        ),
+      );
+      return results.map((result, index) => ({
+        report_card_id: reportCardIds[index],
+        ok: result.status === "fulfilled",
+      }));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["grading", "report-card"] });
       qc.invalidateQueries({ queryKey: reportCardsQueryKey(reportTypeId, homeroomId) });
     },
   });

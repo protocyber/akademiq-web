@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -32,10 +33,10 @@ import {
 } from "@/components/ui/sheet";
 
 type VisibilityRule =
-  | { kind: "always" }
-  | { kind: "permission"; code: string }
-  | { kind: "module"; featureCode: string }
-  | { kind: "moduleAndPermission"; featureCode: string; permissionCode: string };
+  | { kind: "always"; }
+  | { kind: "permission"; code: string; }
+  | { kind: "module"; featureCode: string; }
+  | { kind: "moduleAndPermission"; featureCode: string; permissionCode: string; };
 
 interface NavItem {
   href: string;
@@ -53,8 +54,8 @@ interface NavGroup {
 }
 
 type NavEntry =
-  | { kind: "item"; item: NavItem }
-  | { kind: "group"; group: NavGroup };
+  | { kind: "item"; item: NavItem; }
+  | { kind: "group"; group: NavGroup; };
 
 const navEntries: NavEntry[] = [
   {
@@ -68,6 +69,7 @@ const navEntries: NavEntry[] = [
       icon: Settings,
       visibility: { kind: "always" },
       children: [
+        { href: "/settings/school-profile", label: "Profil Sekolah", icon: School, visibility: { kind: "permission", code: "billing.view" } },
         { href: "/settings/modules", label: "Modul Aktif", icon: Boxes, visibility: { kind: "permission", code: "billing.view" } },
         { href: "/settings/users", label: "Pengguna", icon: Users, visibility: { kind: "permission", code: "user.read" } },
         { href: "/settings/roles", label: "Role & Izin", icon: ShieldCheck, visibility: { kind: "permission", code: "role.read" } },
@@ -168,7 +170,8 @@ function useMenuVisibility() {
   return { enabledModules, heldPermissions, isLoading };
 }
 
-function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) {
+/** @visibleForTesting */
+export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean; }) {
   const { yearId, curriculumId, termId, setYearId, setCurriculumId, setTermId, hasNoActiveTerm, isResolving } = useAcademicScope();
   const yearsQuery = useAcademicYears();
   const years = yearsQuery.data ?? [];
@@ -177,16 +180,17 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
 
   const curriculumsQuery = useCurriculumVersions(yearId ?? undefined);
   const curriculums = curriculumsQuery.data ?? [];
+  const showCurriculum = curriculums.length > 1;
 
   const termsQuery = useTerms(yearId ?? undefined);
   const terms = termsQuery.data ?? [];
 
   if (isResolving) {
     return (
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
-        <div className="h-10 w-[180px] animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+      <div className={isSidebar ? "flex w-full flex-col gap-2" : "flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"}>
+        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
+        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
+        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
       </div>
     );
   }
@@ -194,11 +198,15 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
   const triggerClass = isSidebar
     ? "bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-slate-700 focus:ring-offset-slate-900 hover:bg-slate-800/80 hover:text-white"
     : "";
+  const wrapperClass = isSidebar
+    ? "flex w-full flex-col gap-2"
+    : "flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3";
+  const selectWidthClass = isSidebar ? "w-full" : "w-[180px]";
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+    <div className={wrapperClass}>
       <div className="flex flex-col gap-1">
-        <div className="w-[180px]">
+        <div className={selectWidthClass}>
           <QuerySelect
             items={years}
             isLoading={yearsQuery.isLoading}
@@ -219,7 +227,7 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
       </div>
 
       <div className="flex flex-col gap-1">
-        <div className="w-[180px]">
+        <div className={selectWidthClass}>
           <QuerySelect
             items={terms}
             isLoading={termsQuery.isLoading}
@@ -242,20 +250,22 @@ function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: boolean }) 
         )}
       </div>
 
-      <div className="w-[180px]">
-        <QuerySelect
-          items={curriculums}
-          isLoading={curriculumsQuery.isLoading}
-          value={curriculumId ?? undefined}
-          onValueChange={(val) => setCurriculumId(val)}
-          getValue={(c) => c.curriculum_version_id}
-          getLabel={(c) => c.name}
-          placeholder="Pilih Kurikulum"
-          emptyText="Belum ada kurikulum"
-          disabled={!yearId}
-          className={triggerClass}
-        />
-      </div>
+      {showCurriculum ? (
+        <div className={selectWidthClass}>
+          <QuerySelect
+            items={curriculums}
+            isLoading={curriculumsQuery.isLoading}
+            value={curriculumId ?? undefined}
+            onValueChange={(val) => setCurriculumId(val)}
+            getValue={(c) => c.curriculum_version_id}
+            getLabel={(c) => c.name}
+            placeholder="Pilih Kurikulum"
+            emptyText="Belum ada kurikulum"
+            disabled={!yearId}
+            className={triggerClass}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -283,6 +293,7 @@ export function SidebarLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const me = useMe();
   const emailVerified = me.data?.email_verified;
+  const avatarUrl = me.data?.avatar_url;
 
   React.useEffect(() => {
     setMobileMenuOpen(false);
@@ -296,7 +307,7 @@ export function SidebarLayout({
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <div className="flex min-h-screen flex-col lg:pl-64">
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border/80 bg-background/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border/80 bg-card/95 px-4 backdrop-blur sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <SheetTrigger asChild>
                 <Button
@@ -331,9 +342,19 @@ export function SidebarLayout({
                     variant="ghost"
                     className="relative h-8 w-8 rounded-full p-0 overflow-hidden focus-visible:ring-1 focus-visible:ring-ring"
                   >
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                      {userName.charAt(0).toUpperCase()}
-                    </div>
+                    {avatarUrl ? (
+                      <Image
+                        src={avatarUrl}
+                        alt={userName}
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
+                        {userName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56" forceMount>
@@ -371,7 +392,7 @@ export function SidebarLayout({
             </div>
           </header>
 
-          <main className={`w-full flex-1 space-y-6 p-4 sm:space-y-8 sm:p-6 lg:p-8 ${className ?? ""}`}>
+          <main className={`w-full flex-1 p-6 ${className ?? ""}`}>
             {children}
           </main>
         </div>
@@ -479,11 +500,10 @@ export function SidebarContent({
                 key={entry.item.href}
                 asChild
                 variant="ghost"
-                className={`w-full justify-start gap-3 rounded-lg px-4 py-2.5 text-sm transition-all ${
-                  active
-                    ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
-                    : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
-                }`}
+                className={`w-full justify-start gap-3 rounded-lg px-4 py-2.5 text-sm transition-all ${active
+                  ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
+                  : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                  }`}
               >
                 <Link href={entry.item.href}>
                   <ItemIcon className="h-4 w-4" />
@@ -512,9 +532,8 @@ export function SidebarContent({
                   {group.label}
                 </span>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform ${
-                    isExpanded ? "rotate-0" : "-rotate-90"
-                  }`}
+                  className={`h-3.5 w-3.5 transition-transform ${isExpanded ? "rotate-0" : "-rotate-90"
+                    }`}
                 />
               </Button>
               {isExpanded && (
@@ -527,11 +546,10 @@ export function SidebarContent({
                         key={child.href}
                         asChild
                         variant="ghost"
-                        className={`w-full justify-start gap-3 rounded-lg px-4 py-2 text-sm transition-all ${
-                          active
-                            ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
-                            : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
-                        }`}
+                        className={`w-full justify-start gap-3 rounded-md px-4 py-2 text-sm transition-all ${active
+                          ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
+                          : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                          }`}
                       >
                         <Link href={child.href}>
                           <ChildIcon className="h-4 w-4" />

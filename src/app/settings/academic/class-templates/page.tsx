@@ -8,7 +8,7 @@ import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Pencil, Plus, Trash
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
@@ -59,7 +59,7 @@ import {
 } from "@/lib/schemas/academic-class-templates-params";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 
-const SORT_FIELDS: Record<string, { asc: AcademicClassTemplatesSort; desc: AcademicClassTemplatesSort }> = {
+const SORT_FIELDS: Record<string, { asc: AcademicClassTemplatesSort; desc: AcademicClassTemplatesSort; }> = {
   grade_level: { asc: "grade_level", desc: "-grade_level" },
   default_capacity: { asc: "default_capacity", desc: "-default_capacity" },
 };
@@ -77,7 +77,7 @@ export default function ClassTemplatesPage() {
   );
 }
 
-function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessage: string }) {
+function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessage: string; }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseAcademicClassTemplatesParams(searchParams), [searchParams]);
@@ -168,7 +168,7 @@ function ClassTemplatesTableSection({
   academicYearId,
 }: {
   templates: ClassTemplate[];
-  meta: { page: number; page_size: number; total: number };
+  meta: { page: number; page_size: number; total: number; };
   params: AcademicClassTemplatesParams;
   canManage: boolean;
   searchDraft: string;
@@ -294,18 +294,6 @@ function ClassTemplatesTableSection({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <Input
-          value={searchDraft}
-          onChange={(event) => onSearchDraftChange(event.target.value)}
-          placeholder="Cari tingkat"
-          className="md:w-72"
-        />
-        <Button disabled={!canManage} onClick={() => setCreating(true)} className="gap-1">
-          <Plus className="h-4 w-4" /> Tambah Template
-        </Button>
-      </div>
-
       {selectedIds.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
           <span>{selectedIds.length} dipilih</span>
@@ -315,17 +303,32 @@ function ClassTemplatesTableSection({
         </div>
       ) : null}
 
-      {isLoading ? (
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            {Array.from({ length: 4 }).map((_, i) => (
+      <Card className="border border-border shadow-sm">
+        <CardHeader className="border-b pb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-lg">Template Kelas</CardTitle>
+              <CardDescription>Template kapasitas kelas per tahun ajaran</CardDescription>
+            </div>
+            <div className="flex items-center gap-3">
+              <Input
+                value={searchDraft}
+                onChange={(event) => onSearchDraftChange(event.target.value)}
+                placeholder="Cari tingkat"
+                className="md:w-72"
+              />
+              <Button disabled={!canManage} onClick={() => setCreating(true)} className="gap-1">
+                <Plus className="h-4 w-4" /> Tambah Template
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className={isLoading ? "space-y-3 pt-6" : "p-6"}>
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="border border-border shadow-sm">
-          <CardContent className="p-0">
+            ))
+          ) : (
             <DataTable
               columns={columns}
               data={templates}
@@ -334,9 +337,9 @@ function ClassTemplatesTableSection({
               onRowSelectionChange={setRowSelection}
               emptyText="Belum ada template kelas."
             />
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>
