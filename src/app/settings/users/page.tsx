@@ -100,9 +100,11 @@ import {
 import {
   parseTenantUsersParams,
   serializeTenantUsersParams,
+  tenantUsersParamsKey,
   type TenantUsersParams,
   type TenantUsersSort,
 } from "@/lib/schemas/tenant-users-params";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
 const roleLabels: Record<string, string> = {
   teacher: "Guru Mapel",
@@ -133,7 +135,7 @@ function UsersSkeleton() {
     <main className="container mx-auto w-full space-y-6 px-4 py-10">
       <Skeleton className="h-9 w-56" />
       <Card>
-        <CardContent className="space-y-3 pt-6">
+        <CardContent className="space-y-3 pt-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-12 w-full" />
           ))}
@@ -169,6 +171,19 @@ function UsersContent() {
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
+  const pageRows = users.data?.data ?? [];
+  const selectWithinPage = useSelectWithinPage({
+    rows: pageRows,
+    rowSelection: selected,
+    getRowId: (u) => u.user_id,
+    onRowSelectionChange: setSelected,
+    toggleMode: "some",
+  });
+
+  const paramsKey = tenantUsersParamsKey(params).join("\u0000");
+  React.useEffect(() => {
+    setSelected({});
+  }, [paramsKey]);
   if (tenant.isLoading || me.isLoading || users.isLoading || roles.isLoading || invitations.isLoading) {
     return <UsersSkeleton />;
   }
@@ -220,6 +235,10 @@ function UsersContent() {
   const meta = users.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
   const selectedIds = Object.keys(selected).filter((id) => selected[id]);
 
+  function applyParams(next: TenantUsersParams) {
+    replaceUsersParams(router, next);
+  }
+
   return (
     <SidebarLayout
       schoolName={tenant.data.school_name}
@@ -230,7 +249,7 @@ function UsersContent() {
         await logout.mutateAsync();
         router.push("/login");
       }}
-      className="mx-auto w-full"
+      className="mx-auto w-full space-y-4"
     >
       <Card className="border border-border shadow-sm">
         <CardHeader className="border-b pb-4">
@@ -245,28 +264,82 @@ function UsersContent() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-6">
-          <UsersTableSection
-            users={userList}
-            meta={meta}
-            roles={roleList}
-            params={params}
-            searchDraft={searchDraft}
-            rowSelection={selected}
-            selectedIds={selectedIds}
-            onSearchDraftChange={setSearchDraft}
-            onRowSelectionChange={setSelected}
-            onParamsChange={(next) => replaceUsersParams(router, next)}
-          />
+        <CardContent className="pt-4">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:flex-1">
+              <Checkbox
+                checked={selectWithinPage.checked}
+                disabled={selectWithinPage.disabled}
+                onCheckedChange={() => selectWithinPage.toggleAll()}
+                aria-label="Pilih semua di halaman ini"
+                className="size-4"
+              />
+              <BulkActionMenu
+                selectedIds={selectedIds}
+                roles={roleList}
+                onDone={() => setSelected({})}
+              />
+              <Input
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                placeholder="Cari nama, email, username"
+                className="min-w-[160px] sm:flex-1 lg:flex-1"
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <Select
+                value={params.role ?? "all"}
+                onValueChange={(role) => applyParams({ ...params, role: role === "all" ? undefined : role, page: 1 })}
+              >
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua role</SelectItem>
+                  {roleList.map((role) => (
+                    <SelectItem key={role.role_id} value={role.code}>
+                      {roleLabel(role.code, roleList)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={params.status ?? "all"}
+                onValueChange={(status) => applyParams({ ...params, status: status === "all" ? undefined : status, page: 1 })}
+              >
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua status</SelectItem>
+                  <SelectItem value="active">Aktif</SelectItem>
+                  <SelectItem value="disabled">Nonaktif</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button variant="outline" onClick={() => exportTenantUsers(params)}>
+                <Download className="h-4 w-4" /> Export
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      <UsersTableSection
+        users={userList}
+        meta={meta}
+        roles={roleList}
+        params={params}
+        rowSelection={selected}
+        onRowSelectionChange={setSelected}
+        onParamsChange={(next) => replaceUsersParams(router, next)}
+      />
 
       <Card className="border border-border shadow-sm">
         <CardHeader className="border-b pb-4">
           <CardTitle className="text-lg">Undangan</CardTitle>
           <CardDescription>Token hanya tampil saat undangan dibuat; gunakan revoke untuk membatalkan.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 pt-6">
+        <CardContent className="space-y-3 pt-4">
           {invitations.data?.filter((i) => i.status === "pending").length ? (
             invitations.data
               .filter((i) => i.status === "pending")
@@ -296,10 +369,7 @@ type UsersTableSectionProps = {
   meta: Meta;
   roles: TenantRole[];
   params: TenantUsersParams;
-  searchDraft: string;
   rowSelection: RowSelectionState;
-  selectedIds: string[];
-  onSearchDraftChange: (value: string) => void;
   onRowSelectionChange: (value: RowSelectionState) => void;
   onParamsChange: (params: TenantUsersParams) => void;
 };
@@ -316,10 +386,7 @@ function UsersTableSection(props: UsersTableSectionProps) {
     meta,
     roles,
     params,
-    searchDraft,
     rowSelection,
-    selectedIds,
-    onSearchDraftChange,
     onRowSelectionChange,
     onParamsChange,
   } = props;
@@ -339,27 +406,11 @@ function UsersTableSection(props: UsersTableSectionProps) {
     return <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />;
   }
 
-  const allSelected = users.length > 0 && users.every((u) => rowSelection[u.user_id]);
-  const someSelected = users.some((u) => rowSelection[u.user_id]);
-
   const columns: ColumnDef<TenantUser>[] = [
     {
       id: "select",
       size: 40,
-      header: () => (
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(checked) => {
-            const next: RowSelectionState = { ...rowSelection };
-            users.forEach((u) => {
-              if (checked) next[u.user_id] = true;
-              else delete next[u.user_id];
-            });
-            onRowSelectionChange(next);
-          }}
-          aria-label="Pilih semua"
-        />
-      ),
+      header: () => null,
       cell: ({ row }) => (
         <Checkbox
           checked={Boolean(rowSelection[row.original.user_id])}
@@ -438,53 +489,7 @@ function UsersTableSection(props: UsersTableSectionProps) {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-[1fr_10rem_10rem_auto]">
-        <Input
-          value={searchDraft}
-          onChange={(event) => onSearchDraftChange(event.target.value)}
-          placeholder="Cari nama, email, username"
-        />
-        <Select
-          value={params.role ?? "all"}
-          onValueChange={(role) => onParamsChange({ ...params, role: role === "all" ? undefined : role, page: 1 })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua role</SelectItem>
-            {roles.map((role) => (
-              <SelectItem key={role.role_id} value={role.code}>
-                {roleLabel(role.code, roles)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={params.status ?? "all"}
-          onValueChange={(status) => onParamsChange({ ...params, status: status === "all" ? undefined : status, page: 1 })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua status</SelectItem>
-            <SelectItem value="active">Aktif</SelectItem>
-            <SelectItem value="disabled">Nonaktif</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={() => exportTenantUsers(params)}>
-          <Download className="h-4 w-4" /> Export
-        </Button>
-      </div>
-
-      <BulkActionMenu
-        selectedIds={selectedIds}
-        roles={roles}
-        onDone={() => onRowSelectionChange({})}
-      />
-
+    <div className="space-y-2">
       <DataTable
         columns={columns}
         data={users}
@@ -559,7 +564,7 @@ function BulkActionMenu({
   const pending = enable.isPending || disable.isPending || addRole.isPending;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
       <span>{selectedIds.length} dipilih</span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

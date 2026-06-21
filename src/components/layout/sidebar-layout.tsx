@@ -307,7 +307,7 @@ export function SidebarLayout({
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
         <div className="flex min-h-screen flex-col lg:pl-64">
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border/80 bg-card/95 px-4 backdrop-blur sm:px-6 lg:px-8">
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border/80 bg-card/95 px-4 backdrop-blur">
             <div className="flex min-w-0 items-center gap-3">
               <SheetTrigger asChild>
                 <Button
@@ -392,7 +392,7 @@ export function SidebarLayout({
             </div>
           </header>
 
-          <main className={`w-full flex-1 p-6 ${className ?? ""}`}>
+          <main className={`w-full flex-1 p-4 ${className ?? ""}`}>
             {children}
           </main>
         </div>
@@ -500,7 +500,7 @@ export function SidebarContent({
                 key={entry.item.href}
                 asChild
                 variant="ghost"
-                className={`w-full justify-start gap-3 rounded-lg px-4 py-2.5 text-sm transition-all ${active
+                className={`w-full justify-start gap-3 rounded-md px-4 py-2.5 text-sm transition-all ${active
                   ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
                   : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
                   }`}
@@ -525,7 +525,7 @@ export function SidebarContent({
               <Button
                 variant="ghost"
                 onClick={() => toggleGroup(group.label)}
-                className="flex w-full justify-between rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-300"
+                className="flex w-full justify-between rounded-md px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-300"
               >
                 <span className="flex items-center gap-3">
                   <GroupIcon className="h-4 w-4" />
@@ -537,7 +537,7 @@ export function SidebarContent({
                 />
               </Button>
               {isExpanded && (
-                <div className="space-y-0.5 pl-3">
+                <div className="space-y-0.5 pl-4">
                   {visibleChildren.map((child) => {
                     const active = isItemActive(pathname, child);
                     const ChildIcon = child.icon;
