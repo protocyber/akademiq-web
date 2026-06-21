@@ -307,46 +307,45 @@ function RolesTableSection(props: RolesTableSectionProps) {
         <span className="tabular-nums text-foreground">{row.original.user_count}</span>
       ),
     },
-    {
+      {
       id: "actions",
-      size: 64,
+      size: 180,
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => {
         const role = row.original;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1">
-                <MoreHorizontal className="h-4 w-4" /> Aksi
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{role.name}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setViewing(role)}>
-                <Eye className="h-4 w-4" /> Lihat
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={role.is_builtin}
-                onClick={() => setEditing(role)}
-              >
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setCloning(role)}>
-                <Copy className="h-4 w-4" /> Clone
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={role.is_builtin}
-                className="text-destructive focus:text-destructive"
-                onClick={() => {
-                  setRowSelection({ [role.role_id]: true });
-                  setConfirmDelete(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Lihat" onClick={() => setViewing(role)}>
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Edit" disabled={role.is_builtin} onClick={() => setEditing(role)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Aksi lainnya">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{role.name}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setCloning(role)}>
+                  <Copy className="h-4 w-4" /> Clone
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={role.is_builtin}
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setRowSelection({ [role.role_id]: true });
+                    setConfirmDelete(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" /> Hapus
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },

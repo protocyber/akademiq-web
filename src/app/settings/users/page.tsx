@@ -478,11 +478,12 @@ function UsersTableSection(props: UsersTableSectionProps) {
       cell: ({ row }) => (
         <Button
           size="sm"
-          variant="outline"
-          className="gap-1"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          aria-label="Edit"
           onClick={() => setEditing(row.original)}
         >
-          <Pencil className="h-3.5 w-3.5" /> Edit
+          <Pencil className="h-4 w-4" />
         </Button>
       ),
     },

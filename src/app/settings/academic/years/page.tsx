@@ -49,6 +49,7 @@ import {
   useCreateAcademicYear,
   useDeleteAcademicYear,
   useTransitionAcademicYear,
+  useUpdateAcademicYear,
   useAddCurriculumVersion,
   useDeleteCurriculumVersion,
   useUpsertGradingPolicy,
@@ -56,6 +57,7 @@ import {
 import {
   type AcademicYear,
   type CurriculumVersion,
+  useAcademicYears,
   useAcademicYearsTable,
   useCurriculumVersions,
   useGradingPolicy,
@@ -308,35 +310,37 @@ function YearsTableSection({
     },
     {
       id: "actions",
-      size: 80,
+      size: 120,
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => {
         const year = row.original;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1">
-                <MoreHorizontal className="h-4 w-4" /> Aksi
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{year.name}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onEdit(year)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canManage}
-                className="text-destructive focus:text-destructive"
-                onClick={() => {
-                  setTargetId(year.academic_year_id);
-                  setConfirmDelete(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Edit" onClick={() => onEdit(year)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canManage} aria-label="Aksi lainnya">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{year.name}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={!canManage}
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setTargetId(year.academic_year_id);
+                    setConfirmDelete(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" /> Hapus
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },
@@ -480,7 +484,7 @@ function replaceParams(router: ReturnType<typeof useRouter>, params: AcademicYea
 // Tabbed create/edit modal: § Identitas (always) + tabs for settings sections
 // ---------------------------------------------------------------------------
 
-type SettingsTab = "info" | "kebijakan" | "kurikulum";
+type SettingsTab = "info" | "status" | "kebijakan" | "kurikulum";
 
 function YearFormModal({
   open,
@@ -516,6 +520,7 @@ function YearFormModal({
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTab)}>
           <TabsList>
             <TabsTrigger value="info">Info</TabsTrigger>
+            <TabsTrigger value="status" disabled={isCreate}>Status</TabsTrigger>
             <TabsTrigger value="kebijakan" disabled={isCreate}>Kebijakan Nilai</TabsTrigger>
             <TabsTrigger value="kurikulum" disabled={isCreate}>Versi Kurikulum</TabsTrigger>
           </TabsList>
@@ -526,6 +531,9 @@ function YearFormModal({
 
           {yearId ? (
             <>
+              <TabsContent value="status">
+                <YearStatusSection year={year} canManage={canManage} />
+              </TabsContent>
               <TabsContent value="kebijakan">
                 <GradingPolicySection yearId={yearId} canManage={canManage} />
               </TabsContent>
@@ -616,7 +624,7 @@ function StatusTimeline({ currentStatus }: { currentStatus: string; }) {
 
 function IdentitySection({
   mode,
-  year,
+  year: initialYear,
   canManage,
   onDone,
 }: {
@@ -625,25 +633,19 @@ function IdentitySection({
   canManage: boolean;
   onDone: () => void;
 }) {
+  const yearsQuery = useAcademicYears({ enabled: mode === "edit" });
+  const liveYear = yearsQuery.data?.find((y) => y.academic_year_id === initialYear?.academic_year_id) ?? initialYear;
+
   const create = useCreateAcademicYear();
-  const transition = useTransitionAcademicYear(year?.academic_year_id ?? "");
+  const update = useUpdateAcademicYear(liveYear?.academic_year_id ?? "");
   const form = useForm<AcademicYearForm>({
     resolver: zodResolver(academicYearSchema),
     defaultValues: {
-      name: year?.name ?? "",
-      start_date: year?.start_date ?? "",
-      end_date: year?.end_date ?? "",
+      name: liveYear?.name ?? "",
+      start_date: liveYear?.start_date ?? "",
+      end_date: liveYear?.end_date ?? "",
     },
   });
-
-  const options = React.useMemo(() => (year ? nextStatuses[year.status] ?? [] : []), [year]);
-  const [nextStatus, setNextStatus] = React.useState(options[0] ?? "");
-  const [statusConfirmOpen, setStatusConfirmOpen] = React.useState(false);
-  const [statusError, setStatusError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setNextStatus(options[0] ?? "");
-  }, [options]);
 
   async function onSubmit(values: AcademicYearForm) {
     try {
@@ -652,11 +654,19 @@ function IdentitySection({
         toast.success("Tahun ajaran dibuat.");
         form.reset();
         onDone();
+      } else if (mode === "edit" && liveYear) {
+        await update.mutateAsync(values);
+        toast.success("Tahun ajaran disimpan.");
+        onDone();
       }
-      // Edit mode has no year-identity update endpoint; the Info tab Simpan
-      // is a create-flow affordance. Status transitions persist via the
-      // dedicated transition control below.
     } catch (err) {
+      const code =
+        (err as { error?: { code?: string } })?.error?.code ||
+        (err as { code?: string })?.code;
+      if (code === "YEAR_NAME_EXISTS") {
+        form.setError("name", { message: "Nama tahun ajaran sudah digunakan." });
+        return;
+      }
       const applied = applyServerFieldErrors(form, err);
       if (applied.length === 0) {
         toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan tahun ajaran." }));
@@ -664,12 +674,95 @@ function IdentitySection({
     }
   }
 
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" id="academic-year-identity">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nama</FormLabel>
+              <FormControl>
+                <Input placeholder="contoh: 2026/2027" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="start_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tanggal mulai</FormLabel>
+                <FormControl>
+                  <DatePicker value={field.value} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="end_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tanggal selesai</FormLabel>
+                <FormControl>
+                  <DatePicker value={field.value} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        {mode === "create" ? (
+          <DialogFooter>
+            <Button type="submit" loading={create.isPending}>
+              Simpan
+            </Button>
+          </DialogFooter>
+        ) : (
+          <DialogFooter>
+            <Button type="submit" loading={update.isPending} disabled={!canManage}>
+              Simpan
+            </Button>
+          </DialogFooter>
+        )}
+      </form>
+    </Form>
+  );
+}
+
+function YearStatusSection({
+  year: initialYear,
+  canManage,
+}: {
+  year?: AcademicYear;
+  canManage: boolean;
+}) {
+  const yearsQuery = useAcademicYears({ enabled: true });
+  const liveYear = yearsQuery.data?.find((y) => y.academic_year_id === initialYear?.academic_year_id) ?? initialYear;
+  const transition = useTransitionAcademicYear(liveYear?.academic_year_id ?? "");
+
+  const options = React.useMemo(() => (liveYear ? nextStatuses[liveYear.status] ?? [] : []), [liveYear]);
+  const [nextStatus, setNextStatus] = React.useState(options[0] ?? "");
+  const [statusConfirmOpen, setStatusConfirmOpen] = React.useState(false);
+  const [statusError, setStatusError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setNextStatus(options[0] ?? "");
+  }, [options]);
+
   const handleStatusConfirm = async (reason: string) => {
-    if (!year || !nextStatus) return;
+    if (!liveYear || !nextStatus) return;
     try {
+      const trimmed = reason.trim();
       await transition.mutateAsync({
         status: nextStatus as AcademicYearStatus,
-        reason,
+        reason: trimmed.length > 0 ? trimmed : undefined,
       });
       toast.success("Status tahun ajaran diperbarui.");
       setStatusConfirmOpen(false);
@@ -680,6 +773,8 @@ function IdentitySection({
         (err as { code?: string; })?.code;
       if (code === "ACTIVE_YEAR_EXISTS") {
         msg = "Tahun ajaran aktif sudah ada untuk penyewa ini. Silakan tutup tahun ajaran aktif terlebih dahulu.";
+      } else if (code === "TERM_STILL_ACTIVE") {
+        msg = "Masih ada semester yang aktif. Tutup semua semester aktif terlebih dahulu sebelum menutup tahun ajaran.";
       } else if (code === "INVALID_STATE_TRANSITION") {
         msg = "Transisi status ini tidak diperbolehkan.";
       } else if (code === "VALIDATION_ERROR") {
@@ -690,110 +785,68 @@ function IdentitySection({
     }
   };
 
+  if (!liveYear) return null;
+
   return (
-    <div className="space-y-4">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" id="academic-year-identity">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nama</FormLabel>
-                <FormControl>
-                  <Input placeholder="2026/2027" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tanggal mulai</FormLabel>
-                  <FormControl>
-                    <DatePicker value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="end_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tanggal selesai</FormLabel>
-                  <FormControl>
-                    <DatePicker value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          {mode === "create" ? (
-            <DialogFooter>
-              <Button type="submit" loading={create.isPending}>
-                Simpan
-              </Button>
-            </DialogFooter>
-          ) : null}
-        </form>
-      </Form>
+    <div className="rounded-lg border p-4 space-y-4">
+      <div>
+        <p className="text-sm font-semibold text-foreground">Status saat ini: <span className="text-primary font-bold">{STATUS_LABELS[liveYear.status] ?? liveYear.status}</span></p>
+        <p className="text-xs text-muted-foreground">Tahun ajaran mengikuti alur siklus hidup berikut.</p>
+      </div>
 
-      {mode === "edit" && year ? (
-        <div className="rounded-lg border p-4 space-y-4">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Status saat ini: <span className="text-primary font-bold">{STATUS_LABELS[year.status] ?? year.status}</span></p>
-            <p className="text-xs text-muted-foreground">Tahun ajaran mengikuti alur siklus hidup berikut.</p>
-          </div>
+      <StatusTimeline currentStatus={liveYear.status} />
 
-          <StatusTimeline currentStatus={year.status} />
-
-          {options.length > 0 ? (
-            <div className="flex items-center justify-end gap-3 border-t pt-4">
-              <span className="text-xs text-muted-foreground">Ubah status ke:</span>
-              <Select value={nextStatus} onValueChange={setNextStatus}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Pilih status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {STATUS_LABELS[opt] ?? opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant={nextStatus === "Archived" ? "destructive" : "default"}
-                disabled={!canManage || !nextStatus}
-                onClick={() => {
-                  setStatusError(null);
-                  setStatusConfirmOpen(true);
-                }}
-              >
-                Ubah Status
-              </Button>
-            </div>
-          ) : null}
-
-          <StatusConfirmDialog
-            open={statusConfirmOpen}
-            onOpenChange={setStatusConfirmOpen}
-            currentStatus={year.status}
-            targetStatus={nextStatus}
-            onConfirm={handleStatusConfirm}
-            loading={transition.isPending}
-            error={statusError}
-            setError={setStatusError}
-          />
+      {options.length > 0 ? (
+        <div className="flex items-center justify-end gap-3 border-t pt-4">
+          <span className="text-xs text-muted-foreground">Ubah status ke:</span>
+          <Select value={nextStatus} onValueChange={setNextStatus}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Pilih status" />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {STATUS_LABELS[opt] ?? opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant={nextStatus === "Archived" ? "destructive" : "default"}
+            disabled={!canManage || !nextStatus || transition.isPending}
+            loading={transition.isPending && STATUS_ORDER.indexOf(nextStatus) > STATUS_ORDER.indexOf(liveYear.status) && nextStatus !== "Archived"}
+            onClick={() => {
+              setStatusError(null);
+              const currentIdx = STATUS_ORDER.indexOf(liveYear.status);
+              const targetIdx = STATUS_ORDER.indexOf(nextStatus);
+              const isForward = targetIdx > currentIdx && nextStatus !== "Archived";
+              if (isForward) {
+                void handleStatusConfirm("");
+              } else {
+                setStatusConfirmOpen(true);
+              }
+            }}
+          >
+            Ubah Status
+          </Button>
         </div>
       ) : null}
+
+      {statusError && !statusConfirmOpen && (
+        <p className="text-sm text-destructive">{statusError}</p>
+      )}
+
+      <StatusConfirmDialog
+        open={statusConfirmOpen}
+        onOpenChange={setStatusConfirmOpen}
+        currentStatus={liveYear.status}
+        targetStatus={nextStatus}
+        onConfirm={handleStatusConfirm}
+        loading={transition.isPending}
+        error={statusError}
+        setError={setStatusError}
+      />
     </div>
   );
 }

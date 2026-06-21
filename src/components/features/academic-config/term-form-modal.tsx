@@ -2,10 +2,9 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown, ChevronUp, Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Copy, Pencil, Plus, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -24,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toaster";
 import { StatusConfirmDialog } from "@/components/features/academic-config/status-confirm-dialog";
+import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { formatDate } from "@/lib/date-utils";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
@@ -61,7 +61,7 @@ const termNextStatuses: Record<string, string[]> = {
   Archived: [],
 };
 
-type TermTab = "info" | "rapor";
+type TermTab = "info" | "status" | "rapor";
 
 export type TermFormModalProps = {
   open: boolean;
@@ -118,6 +118,7 @@ export function TermFormModal({
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TermTab)}>
             <TabsList>
               <TabsTrigger value="info">Info</TabsTrigger>
+              <TabsTrigger value="status">Status</TabsTrigger>
               <TabsTrigger value="rapor">Rapor</TabsTrigger>
             </TabsList>
 
@@ -129,6 +130,12 @@ export function TermFormModal({
                   canManage={canManage}
                   onDone={() => onOpenChange(false)}
                 />
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="status">
+              {term ? (
+                <TermStatusSection term={term} yearId={yearId} canManage={canManage} />
               ) : null}
             </TabsContent>
 
@@ -214,7 +221,7 @@ function TermCreateSection({
             <FormItem>
               <FormLabel>Nama</FormLabel>
               <FormControl>
-                <Input placeholder="Semester 1" disabled={!canManage} {...field} />
+                <Input placeholder="contoh: Semester 1" disabled={!canManage} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -294,8 +301,64 @@ function TermCreateSection({
 
 // ── Edit: Info tab ───────────────────────────────────────────────────────────
 
+const TERM_STATUS_ORDER = ["Draft", "Active", "Closed", "Archived"];
+
+function TermStatusTimeline({ currentStatus }: { currentStatus: string; }) {
+  const currentIndex = TERM_STATUS_ORDER.indexOf(currentStatus);
+  return (
+    <div className="w-full py-4 overflow-x-auto">
+      <div className="flex items-center justify-between min-w-[400px] px-2">
+        {TERM_STATUS_ORDER.map((status, index) => {
+          const isCompleted = index < currentIndex;
+          const isActive = index === currentIndex;
+          const isUpcoming = index > currentIndex;
+          return (
+            <React.Fragment key={status}>
+              <div className="flex flex-col items-center relative group">
+                <div
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold transition-all duration-300 z-10",
+                    isCompleted && "bg-primary border-primary text-primary-foreground shadow-sm",
+                    isActive && "bg-background border-primary text-primary ring-4 ring-primary/10 scale-110 shadow-md",
+                    isUpcoming && "bg-background border-muted text-muted-foreground",
+                  )}
+                >
+                  {isCompleted ? <Check className="h-4 w-4 stroke-[3]" /> : <span>{index + 1}</span>}
+                </div>
+                <span
+                  className={cn(
+                    "mt-2 text-xs font-semibold whitespace-nowrap transition-colors duration-300",
+                    isCompleted && "text-muted-foreground/80",
+                    isActive && "text-primary font-bold scale-105",
+                    isUpcoming && "text-muted-foreground/50",
+                  )}
+                >
+                  {STATUS_LABELS[status]}
+                </span>
+                <span className="sr-only">
+                  Status {status}: {isCompleted ? "Selesai" : isActive ? "Aktif saat ini" : "Akan datang"}
+                </span>
+              </div>
+              {index < TERM_STATUS_ORDER.length - 1 && (
+                <div className="flex-1 h-0.5 min-w-[12px] bg-muted mx-2 -mt-6 z-0">
+                  <div
+                    className={cn(
+                      "h-full bg-primary transition-all duration-500",
+                      index < currentIndex ? "w-full" : "w-0",
+                    )}
+                  />
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TermInfoSection({
-  term,
+  term: initialTerm,
   yearId,
   canManage,
   onDone,
@@ -305,29 +368,22 @@ function TermInfoSection({
   canManage: boolean;
   onDone: () => void;
 }) {
-  const update = useUpdateAcademicTerm(term.term_id, yearId);
-  const transition = useTransitionAcademicTerm(term.term_id, yearId);
+  const termsQuery = useTerms(yearId);
+  const liveTerm = termsQuery.data?.find((t) => t.term_id === initialTerm.term_id) ?? initialTerm;
+
+  const update = useUpdateAcademicTerm(liveTerm.term_id, yearId);
   const form = useForm<AcademicTermForm>({
     resolver: zodResolver(academicTermSchema),
     defaultValues: {
-      name: term.name,
-      start_date: term.start_date,
-      end_date: term.end_date,
+      name: liveTerm.name,
+      start_date: liveTerm.start_date,
+      end_date: liveTerm.end_date,
     },
   });
 
   React.useEffect(() => {
-    form.reset({ name: term.name, start_date: term.start_date, end_date: term.end_date });
-  }, [form, term.name, term.start_date, term.end_date]);
-
-  const options = termNextStatuses[term.status] ?? [];
-  const [nextStatus, setNextStatus] = React.useState(options[0] ?? "");
-  const [statusConfirmOpen, setStatusConfirmOpen] = React.useState(false);
-  const [statusError, setStatusError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setNextStatus(options[0] ?? "");
-  }, [options]);
+    form.reset({ name: liveTerm.name, start_date: liveTerm.start_date, end_date: liveTerm.end_date });
+  }, [form, liveTerm.name, liveTerm.start_date, liveTerm.end_date]);
 
   async function onSubmit(values: AcademicTermForm) {
     try {
@@ -336,14 +392,6 @@ function TermInfoSection({
         start_date: values.start_date,
         end_date: values.end_date,
       });
-      if (nextStatus && nextStatus !== term.status) {
-        try {
-          await transition.mutateAsync({ status: nextStatus as AcademicTermStatus, reason: "Perubahan dari formulir semester" });
-        } catch (transitionErr) {
-          toast.error(getErrorMessage(transitionErr, { fallback: "Identitas tersimpan, namun gagal mengubah status." }));
-          return;
-        }
-      }
       toast.success("Semester disimpan.");
       onDone();
     } catch (err) {
@@ -354,10 +402,90 @@ function TermInfoSection({
     }
   }
 
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" id="term-info">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nama</FormLabel>
+              <FormControl>
+                <Input placeholder="contoh: Semester 1" disabled={!canManage} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="start_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tanggal mulai</FormLabel>
+                <FormControl>
+                  <DatePicker value={field.value} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="end_date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tanggal selesai</FormLabel>
+                <FormControl>
+                  <DatePicker value={field.value} onChange={field.onChange} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <DialogFooter>
+          <Button type="submit" loading={update.isPending} disabled={!canManage}>
+            Simpan
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  );
+}
+
+// ── Edit: Status tab ─────────────────────────────────────────────────────────
+
+function TermStatusSection({
+  term: initialTerm,
+  yearId,
+  canManage,
+}: {
+  term: AcademicTerm;
+  yearId: string;
+  canManage: boolean;
+}) {
+  const termsQuery = useTerms(yearId);
+  const liveTerm = termsQuery.data?.find((t) => t.term_id === initialTerm.term_id) ?? initialTerm;
+  const transition = useTransitionAcademicTerm(liveTerm.term_id, yearId);
+
+  const options = termNextStatuses[liveTerm.status] ?? [];
+  const [nextStatus, setNextStatus] = React.useState(options[0] ?? "");
+  const [statusConfirmOpen, setStatusConfirmOpen] = React.useState(false);
+  const [statusError, setStatusError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setNextStatus(options[0] ?? "");
+  }, [options]);
+
   const handleStatusConfirm = async (reason: string) => {
     if (!nextStatus) return;
     try {
-      await transition.mutateAsync({ status: nextStatus as AcademicTermStatus, reason });
+      const trimmed = reason.trim();
+      await transition.mutateAsync({ status: nextStatus as AcademicTermStatus, reason: trimmed.length > 0 ? trimmed : undefined });
       toast.success("Status semester diperbarui.");
       setStatusConfirmOpen(false);
     } catch (err: unknown) {
@@ -366,101 +494,65 @@ function TermInfoSection({
     }
   };
 
+  const currentIdx = TERM_STATUS_ORDER.indexOf(liveTerm.status);
+  const targetIdx = TERM_STATUS_ORDER.indexOf(nextStatus);
+  const isForward = targetIdx > currentIdx && nextStatus !== "Archived";
+
+  const handleUbahStatus = () => {
+    setStatusError(null);
+    if (isForward) {
+      void handleStatusConfirm("");
+    } else {
+      setStatusConfirmOpen(true);
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" id="term-info">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Nama</FormLabel>
-                <FormControl>
-                  <Input placeholder="Semester 1" disabled={!canManage} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="start_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tanggal mulai</FormLabel>
-                  <FormControl>
-                    <DatePicker value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="end_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tanggal selesai</FormLabel>
-                  <FormControl>
-                    <DatePicker value={field.value} onChange={field.onChange} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+    <div className="rounded-lg border p-4 space-y-4">
+      <div>
+        <p className="text-sm font-semibold text-foreground">
+          Status saat ini: <span className="text-primary font-bold">{STATUS_LABELS[liveTerm.status] ?? liveTerm.status}</span>
+        </p>
+        <p className="text-xs text-muted-foreground">Semester mengikuti alur siklus hidup berikut.</p>
+      </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
-            <span className="text-muted-foreground">Status saat ini</span>
-            <Badge variant={term.status === "Active" ? "default" : term.status === "Archived" ? "destructive" : "secondary"}>
-              {STATUS_LABELS[term.status] ?? term.status}
-            </Badge>
-          </div>
+      <TermStatusTimeline currentStatus={liveTerm.status} />
 
-          {options.length > 0 ? (
-            <div className="flex items-center justify-end gap-3 border-t pt-4">
-              <span className="text-xs text-muted-foreground">Ubah status ke:</span>
-              <Select value={nextStatus} onValueChange={setNextStatus} disabled={!canManage}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Pilih status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {options.map((opt) => (
-                    <SelectItem key={opt} value={opt}>
-                      {STATUS_LABELS[opt] ?? opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                variant={nextStatus === "Archived" ? "destructive" : "default"}
-                disabled={!canManage || !nextStatus}
-                onClick={() => {
-                  setStatusError(null);
-                  setStatusConfirmOpen(true);
-                }}
-              >
-                Ubah Status
-              </Button>
-            </div>
-          ) : null}
+      {options.length > 0 ? (
+        <div className="flex items-center justify-end gap-3 border-t pt-4">
+          <span className="text-xs text-muted-foreground">Ubah status ke:</span>
+          <Select value={nextStatus} onValueChange={setNextStatus} disabled={!canManage}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Pilih status" />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {STATUS_LABELS[opt] ?? opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            variant={nextStatus === "Archived" ? "destructive" : "default"}
+            disabled={!canManage || !nextStatus || transition.isPending}
+            loading={transition.isPending && isForward}
+            onClick={handleUbahStatus}
+          >
+            Ubah Status
+          </Button>
+        </div>
+      ) : null}
 
-          {canManage ? (
-            <DialogFooter>
-              <Button type="submit" loading={update.isPending || transition.isPending}>
-                Simpan
-              </Button>
-            </DialogFooter>
-          ) : null}
-        </form>
-      </Form>
+      {statusError && (
+        <p className="text-sm text-destructive">{statusError}</p>
+      )}
 
       <StatusConfirmDialog
         open={statusConfirmOpen}
         onOpenChange={setStatusConfirmOpen}
-        currentStatus={term.status}
+        currentStatus={liveTerm.status}
         targetStatus={nextStatus}
         onConfirm={handleStatusConfirm}
         loading={transition.isPending}

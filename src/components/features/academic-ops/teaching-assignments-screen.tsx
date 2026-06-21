@@ -258,8 +258,8 @@ function AssignmentTable({
       cell: ({ row }) => (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="outline" className="gap-1">
-              <MoreHorizontal className="h-4 w-4" /> Aksi
+            <Button size="sm" variant="ghost" className="gap-1">
+              <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

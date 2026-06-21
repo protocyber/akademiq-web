@@ -259,8 +259,8 @@ function TermsTableSection({
         const term = row.original;
         return (
           <div className="flex items-center justify-end gap-2">
-            <Button size="sm" variant="outline" className="gap-1" disabled={!canManage} onClick={() => onEdit(term)}>
-              <Pencil className="h-4 w-4" /> Edit
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Edit" disabled={!canManage} onClick={() => onEdit(term)}>
+              <Pencil className="h-4 w-4" />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

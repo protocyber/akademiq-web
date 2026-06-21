@@ -273,28 +273,29 @@ function SubjectGroupsBoard({
                           </span>
                           <span className="text-xs text-muted-foreground">Posisi {group.position}</span>
                         </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Aksi kelompok</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>{group.name}</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => setEditingGroup(group)}>
-                              <Pencil className="h-4 w-4" /> Edit Kelompok
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={!canManage}
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setGroupDeleteTarget(group.subject_group_id)}
-                            >
-                              <Trash2 className="h-4 w-4" /> Hapus Kelompok
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Edit Kelompok" onClick={() => setEditingGroup(group)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canManage} aria-label="Aksi kelompok lainnya">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>{group.name}</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                disabled={!canManage}
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setGroupDeleteTarget(group.subject_group_id)}
+                              >
+                                <Trash2 className="h-4 w-4" /> Hapus Kelompok
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                     </CardHeader>
                     {!isCollapsed ? (
@@ -455,32 +456,34 @@ function GroupSubjectTable({
     },
     {
       id: "actions",
-      size: 80,
+      size: 120,
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => {
         const subject = row.original;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1">
-                <MoreHorizontal className="h-4 w-4" /> Aksi
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{subject.name}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => onEdit(subject)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canManage}
-                className="text-destructive focus:text-destructive"
-                onClick={() => onDelete(subject.subject_id)}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Edit" onClick={() => onEdit(subject)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canManage} aria-label="Aksi lainnya">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{subject.name}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={!canManage}
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => onDelete(subject.subject_id)}
+                >
+                  <Trash2 className="h-4 w-4" /> Hapus
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },

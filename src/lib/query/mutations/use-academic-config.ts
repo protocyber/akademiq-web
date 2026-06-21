@@ -18,7 +18,7 @@ import {
   SubjectGroup,
   SUBJECT_GROUPS_QUERY_KEY,
 } from "@/lib/query/queries/use-academic-config";
-import type { AcademicYearForm, TransitionRequestForm } from "@/lib/schemas/academic-year";
+import type { AcademicYearForm, TransitionRequestForm, UpdateAcademicYearForm } from "@/lib/schemas/academic-year";
 import type { AcademicTermForm, TermTransitionRequestForm } from "@/lib/schemas/academic-term";
 import type { ClassTemplateForm } from "@/lib/schemas/class-template";
 import type { GradingPolicyForm } from "@/lib/schemas/grading-policy";
@@ -43,6 +43,21 @@ export function useCreateAcademicYear() {
   });
 }
 
+export function useUpdateAcademicYear(academicYearId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateAcademicYearForm) =>
+      apiFetch<AcademicYear>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${academicYearId}`,
+        method: "PATCH",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY }),
+  });
+}
+
 export function useTransitionAcademicYear(academicYearId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -54,7 +69,10 @@ export function useTransitionAcademicYear(academicYearId: string) {
         authenticated: true,
         body: input,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: ACADEMIC_TERMS_QUERY_KEY });
+    },
   });
 }
 
@@ -133,7 +151,7 @@ export function useTransitionAcademicTerm(termId: string, yearId: string) {
         body: input,
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId] });
+      qc.invalidateQueries({ queryKey: ACADEMIC_TERMS_QUERY_KEY });
       qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY });
     },
   });

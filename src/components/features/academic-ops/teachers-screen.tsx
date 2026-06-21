@@ -309,40 +309,42 @@ function TeachersTable({
     },
     {
       id: "actions",
-      size: 72,
+      size: 140,
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => {
         const teacher = row.original;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1">
-                <MoreHorizontal className="h-4 w-4" /> Aksi
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{teacher.full_name}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled={!canManage} onClick={() => setEditing(teacher)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem disabled={!canManage} onClick={() => setLinking(teacher)}>
-                <LinkIcon className="h-4 w-4" /> Hubungkan akun
-              </DropdownMenuItem>
-              {teacher.status !== "arsip" && (
-                <DropdownMenuItem disabled={!canManage} onClick={() => setArchiveTarget(teacher)}>
-                  <Archive className="h-4 w-4" /> Arsipkan
+          <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Edit" disabled={!canManage} onClick={() => setEditing(teacher)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canManage} aria-label="Aksi lainnya">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{teacher.full_name}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem disabled={!canManage} onClick={() => setLinking(teacher)}>
+                  <LinkIcon className="h-4 w-4" /> Hubungkan akun
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem
-                disabled={!canManage}
-                className="text-destructive focus:text-destructive"
-                onClick={() => startDelete(teacher.teacher_id)}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {teacher.status !== "arsip" && (
+                  <DropdownMenuItem disabled={!canManage} onClick={() => setArchiveTarget(teacher)}>
+                    <Archive className="h-4 w-4" /> Arsipkan
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  disabled={!canManage}
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => startDelete(teacher.teacher_id)}
+                >
+                  <Trash2 className="h-4 w-4" /> Hapus
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },

@@ -258,35 +258,37 @@ function ClassTemplatesTableSection({
     },
     {
       id: "actions",
-      size: 80,
+      size: 120,
       header: () => <span className="sr-only">Aksi</span>,
       cell: ({ row }) => {
         const template = row.original;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="gap-1">
-                <MoreHorizontal className="h-4 w-4" /> Aksi
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>{template.grade_level}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setEditing(template)}>
-                <Pencil className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                disabled={!canManage}
-                className="text-destructive focus:text-destructive"
-                onClick={() => {
-                  setTargetId(template.template_id);
-                  setConfirmDelete(true);
-                }}
-              >
-                <Trash2 className="h-4 w-4" /> Hapus
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center justify-end gap-2">
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Edit" onClick={() => setEditing(template)}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" disabled={!canManage} aria-label="Aksi lainnya">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{template.grade_level}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={!canManage}
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => {
+                    setTargetId(template.template_id);
+                    setConfirmDelete(true);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" /> Hapus
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         );
       },
     },

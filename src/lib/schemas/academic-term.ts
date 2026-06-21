@@ -8,7 +8,7 @@ export const academicTermSchema = z.object({
 
 export const termTransitionRequestSchema = z.object({
   status: z.enum(["Draft", "Active", "Closed", "Archived"]),
-  reason: z.string().min(10, "Alasan minimal harus 10 karakter"),
+  reason: z.string().min(10, "Alasan minimal harus 10 karakter").optional(),
 });
 
 export type AcademicTermStatus = z.infer<typeof termTransitionRequestSchema>["status"];

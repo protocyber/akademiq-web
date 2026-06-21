@@ -79,7 +79,8 @@ export function StatusConfirmDialog({
   const expectedConfirmText = tier === "archived" ? "ARCHIVED" : STATUS_LABELS[targetStatus] ?? targetStatus;
   const isConfirmationTyped = tier === "forward" || confirmText.trim() === expectedConfirmText;
   const isReasonValid = reason.trim().length >= 10;
-  const canSubmit = isConfirmationTyped && isReasonValid && cooldown === 0 && !loading;
+  const isReasonSatisfied = tier === "forward" ? (reason.trim().length === 0 || isReasonValid) : isReasonValid;
+  const canSubmit = isConfirmationTyped && isReasonSatisfied && cooldown === 0 && !loading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,15 +139,16 @@ export function StatusConfirmDialog({
 
           <div className="space-y-1.5">
             <Label htmlFor="status-reason" className="text-sm font-medium">
-              Alasan Perubahan Status <span className="text-destructive">*</span>
+              Alasan Perubahan Status{tier !== "forward" && <span className="text-destructive"> *</span>}
+              {tier === "forward" && <span className="text-muted-foreground font-normal"> (opsional)</span>}
             </Label>
             <Input
               id="status-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Masukkan alasan minimal 10 karakter"
-              required
-              minLength={10}
+              placeholder={tier === "forward" ? "Alasan (opsional)" : "Masukkan alasan minimal 10 karakter"}
+              required={tier !== "forward"}
+              minLength={tier !== "forward" ? 10 : undefined}
               autoComplete="off"
             />
             {reason.trim().length > 0 && reason.trim().length < 10 && (

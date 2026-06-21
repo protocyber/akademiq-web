@@ -120,7 +120,7 @@ function AcademicSettingsContent({
           <p className="mt-1 text-sm text-muted-foreground">{description}</p>
         </div> */}
         <Tabs value={pathname} activationMode="manual" variant="underline">
-          <TabsList>
+          <TabsList scrollable>
             {academicNav.map((item) => (
               <TabsTrigger key={item.href} value={item.href} asChild>
                 <Link href={item.href}>{item.label}</Link>
