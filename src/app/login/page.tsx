@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/google-icon";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -237,7 +237,7 @@ function LoginForm() {
                     name="identifier"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email atau username</FormLabel>
+                        <FormLabelRequired>Email atau username</FormLabelRequired>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <FormControl>
@@ -260,7 +260,7 @@ function LoginForm() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex justify-between items-center">
-                          <FormLabel>Password</FormLabel>
+                          <FormLabelRequired>Password</FormLabelRequired>
                           <Link className="text-xs text-primary hover:underline" href="#">
                             Lupa Password?
                           </Link>

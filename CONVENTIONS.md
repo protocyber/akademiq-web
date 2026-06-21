@@ -82,6 +82,16 @@ Rules:
   `/register` jumps the user back to the step that owns the offending
   field on submit failure.
 
+## 4a. Required field markers
+
+- Required fields (Zod schema: non-optional, `min(1)` or equivalent) MUST use
+  `<FormLabelRequired>` from `@/components/ui/form` instead of `<FormLabel>`.
+  This renders a red asterisk (`*` in `text-destructive`) after the label text.
+- Optional fields use plain `<FormLabel>` and MAY include "(opsional)" in the
+  label text.
+- `FormLabelRequired` is defined in `src/components/ui/form.tsx` and re-exported
+  alongside `FormLabel`.
+
 ## 5. API client + auth
 
 - `lib/api/client.ts` exposes `apiFetch<T>({ service, path, ... })` and
@@ -141,9 +151,43 @@ Rules:
   the standards in `docs/internal/13_engineering_standards/12_makefile_standards.md`
   in the parent repo.
 
-## 10. When the rules disagree with a feature requirement
+## 10. DataTable page layout — canonical pattern
+
+All DataTable-based pages MUST use `DataTableCard` from
+`@/components/ui/data-table-card` instead of hand-rolling Card + CardHeader +
+CardContent + toolbar each time.
+
+```
+┌─ DataTableCard ───────────────────────────────────────────────────┐
+│ CardHeader  title + description   [primaryActions: Create, Invite] │
+│ CardContent                                                         │
+│   ┌─ DataTableToolbar ────────────────────────────────────────────┐ │
+│   │ [☑ selectAll] [BulkActionMenu]  [Search]  [Filter] [Filter]  │ │
+│   └───────────────────────────────────────────────────────────────┘ │
+│   ┌─ DataTable ──────────────────────────────────────────────────┐  │
+│   │ checkbox │ col │ col │ ...│ actions                          │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+│   ┌─ DataTablePagination (optional) ────────────────────────────┐  │
+│   │ Halaman X dari Y · prev / next                               │  │
+│   └──────────────────────────────────────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+Rules:
+- `CardHeader` contains **only** title, description, and primary action buttons.
+- Search input and all filter controls live in `DataTableToolbar` inside `CardContent`.
+- Bulk selection MUST use `useSelectWithinPage` from `@/lib/data-table/use-select-within-page`.
+  Never re-implement manual checkbox-column selection logic.
+- Bulk action UI MUST be a dropdown menu (not a bar/banner). Render it via the
+  `bulkActions` slot of `DataTableToolbar`.
+- Pagination is a slot inside `DataTableCard` via `DataTablePaginationProps`.
+  It is optional — pages with small, fully-displayed lists omit it.
+- Pages that legitimately don't need a feature (e.g. no bulk actions) simply
+  omit that slot; do not render empty placeholders.
+
+## 11. When the rules disagree with a feature requirement
 
 Open the openspec change file (`openspec/changes/<name>/`) and update
-the relevant capability spec (`web-auth-onboarding`) before changing
-this document or the code. The spec is the contract; conventions are
-how we keep the code free of contradictions while we honour it.
+the relevant capability spec before changing this document or the code.
+The spec is the contract; conventions are how we keep the code free of
+contradictions while we honour it.

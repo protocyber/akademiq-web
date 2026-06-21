@@ -8,22 +8,21 @@ import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import {
   ArrowDown,
   ArrowUp,
-  Camera,
+  Archive,
   ChevronsUpDown,
   LinkIcon,
   MoreHorizontal,
   Pencil,
   Trash2,
   Upload,
-  Archive,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Dialog,
@@ -42,7 +41,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { QuerySelect } from "@/components/ui/query-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -59,9 +58,8 @@ import {
   useDeleteTeacher,
   useLinkTeacherAccount,
   useUpdateTeacher,
-  useUploadMedia,
 } from "@/lib/query/mutations/use-academic-ops";
-import { useMediaAssets, useTeachersTable, type MediaAsset, type Teacher } from "@/lib/query/queries/use-academic-ops";
+import { useTeachersTable, type Teacher } from "@/lib/query/queries/use-academic-ops";
 import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-users";
 import { teacherSchema, type TeacherForm } from "@/lib/schemas/academic-ops";
 import {
@@ -70,6 +68,7 @@ import {
   type TeachersParams,
   type TeachersSort,
 } from "@/lib/schemas/teachers-params";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
 const TEACHER_ARCHIVE_REASONS = [
   { value: "nonaktif_sementara", label: "Nonaktif Sementara" },
@@ -99,6 +98,9 @@ export function TeachersScreen({ canManage, upgradeMessage }: OpsContext) {
   const teachers = useTeachersTable(params);
   const users = useTenantUsers();
   const [importOpen, setImportOpen] = React.useState(false);
+  const [selected, setSelected] = React.useState<RowSelectionState>({});
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [pendingId, setPendingId] = React.useState<string | null>(null);
 
   const teacherUsers = React.useMemo(
     () =>
@@ -121,52 +123,113 @@ export function TeachersScreen({ canManage, upgradeMessage }: OpsContext) {
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
+  React.useEffect(() => {
+    setSelected({});
+  }, [params.page, params.search, params.sort]);
+
+  const pageRows = teachers.data?.data ?? [];
+  const selectWithinPage = useSelectWithinPage({
+    rows: pageRows,
+    rowSelection: selected,
+    getRowId: (t) => t.teacher_id,
+    onRowSelectionChange: setSelected,
+    toggleMode: "some",
+  });
+
+  const meta = teachers.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
+  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
+  const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+
   return (
     <div className="space-y-4">
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-lg">Daftar Guru</CardTitle>
-              <CardDescription>Kelola master data guru, NIP, dan akun login.</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Cari nama atau NIP"
-                className="md:w-72"
-              />
-              <Button variant="outline" size="sm" className="gap-1" onClick={() => setImportOpen(true)}>
-                <Upload className="h-4 w-4" /> Impor
-              </Button>
-              <TeacherDialog
-                canManage={canManage}
-                upgradeMessage={upgradeMessage}
-                trigger={<Button size="sm">+ Tambah</Button>}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {teachers.isLoading ? (
-            <TableSkeleton />
-          ) : teachers.error ? (
-            <p className="text-sm text-destructive">{getErrorMessage(teachers.error)}</p>
-          ) : (
-            <TeachersTable
-              teachers={teachers.data?.data ?? []}
-              meta={teachers.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-              params={params}
+      <DataTableCard
+        title="Daftar Guru"
+        description="Kelola master data guru, NIP, dan akun login."
+        primaryActions={
+          <>
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" /> Impor
+            </Button>
+            <TeacherDialog
               canManage={canManage}
               upgradeMessage={upgradeMessage}
-              teacherUsers={teacherUsers}
-              usersLoading={users.isLoading}
-              onParamsChange={(next) => replaceParams(router, next)}
+              trigger={<Button size="sm">+ Tambah</Button>}
             />
-          )}
-        </CardContent>
-      </Card>
+          </>
+        }
+        toolbar={{
+          selectAll: {
+            checked: selectWithinPage.checked,
+            disabled: selectWithinPage.disabled,
+            onToggle: () => selectWithinPage.toggleAll(),
+          },
+          bulkActions: selectedIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>{selectedIds.length} dipilih</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    Aksi massal <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Aksi untuk {selectedIds.length} guru</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!canManage}
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => { setPendingId(null); setConfirmDelete(true); }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Hapus
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : null,
+          search: (
+            <Input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="Cari nama atau NIP"
+              className="min-w-[160px] sm:flex-1 lg:flex-1"
+            />
+          ),
+        }}
+        pagination={{
+          page: meta.page,
+          pageCount,
+          total: meta.total,
+          label: "guru",
+          onPrev: () => replaceParams(router, { ...params, page: meta.page - 1 }),
+          onNext: () => replaceParams(router, { ...params, page: meta.page + 1 }),
+        }}
+      >
+        {teachers.isLoading ? (
+          <div className="px-4"><TableSkeleton /></div>
+        ) : teachers.error ? (
+          <p className="px-4 text-sm text-destructive">{getErrorMessage(teachers.error)}</p>
+        ) : (
+          <TeachersTable
+            teachers={pageRows}
+            params={params}
+            canManage={canManage}
+            upgradeMessage={upgradeMessage}
+            teacherUsers={teacherUsers}
+            usersLoading={users.isLoading}
+            rowSelection={selected}
+            onRowSelectionChange={setSelected}
+            onStartDelete={(id) => { setPendingId(id); setSelected({ [id]: true }); setConfirmDelete(true); }}
+            onParamsChange={(next) => replaceParams(router, next)}
+          />
+        )}
+      </DataTableCard>
+
+      <DeleteConfirm
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        ids={pendingId ? [pendingId] : selectedIds}
+        onDone={() => { setSelected({}); setPendingId(null); }}
+      />
 
       <ImportDialog
         open={importOpen}
@@ -184,38 +247,32 @@ function replaceParams(router: ReturnType<typeof useRouter>, params: TeachersPar
   router.replace(query ? `/teachers?${query}` : "/teachers", { scroll: false });
 }
 
-type Meta = { page: number; page_size: number; total: number };
-
 function TeachersTable({
   teachers,
-  meta,
   params,
   canManage,
   upgradeMessage,
   teacherUsers,
   usersLoading,
+  rowSelection,
+  onRowSelectionChange,
+  onStartDelete,
   onParamsChange,
 }: {
   teachers: Teacher[];
-  meta: Meta;
   params: TeachersParams;
   canManage: boolean;
   upgradeMessage: string;
   teacherUsers: TenantUser[];
   usersLoading: boolean;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: (value: RowSelectionState) => void;
+  onStartDelete: (id: string) => void;
   onParamsChange: (params: TeachersParams) => void;
 }) {
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [editing, setEditing] = React.useState<Teacher | null>(null);
   const [linking, setLinking] = React.useState<Teacher | null>(null);
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const [pendingId, setPendingId] = React.useState<string | null>(null);
   const [archiveTarget, setArchiveTarget] = React.useState<Teacher | null>(null);
-
-  React.useEffect(() => {
-    setRowSelection({});
-  }, [params.page, params.search, params.sort]);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
@@ -229,34 +286,11 @@ function TeachersTable({
     return <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />;
   }
 
-  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
-  const allSelected = teachers.length > 0 && teachers.every((t) => rowSelection[t.teacher_id]);
-  const someSelected = teachers.some((t) => rowSelection[t.teacher_id]);
-
-  function startDelete(id: string) {
-    setPendingId(id);
-    setRowSelection({ [id]: true });
-    setConfirmDelete(true);
-  }
-
   const columns: ColumnDef<Teacher>[] = [
     {
       id: "select",
       size: 40,
-      header: () => (
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(checked) => {
-            const next: RowSelectionState = { ...rowSelection };
-            teachers.forEach((t) => {
-              if (checked) next[t.teacher_id] = true;
-              else delete next[t.teacher_id];
-            });
-            setRowSelection(next);
-          }}
-          aria-label="Pilih semua"
-        />
-      ),
+      header: () => null,
       cell: ({ row }) => (
         <Checkbox
           checked={Boolean(rowSelection[row.original.teacher_id])}
@@ -264,7 +298,7 @@ function TeachersTable({
             const next: RowSelectionState = { ...rowSelection };
             if (checked) next[row.original.teacher_id] = true;
             else delete next[row.original.teacher_id];
-            setRowSelection(next);
+            onRowSelectionChange(next);
           }}
           aria-label={`Pilih ${row.original.full_name}`}
         />
@@ -338,7 +372,7 @@ function TeachersTable({
                 <DropdownMenuItem
                   disabled={!canManage}
                   className="text-destructive focus:text-destructive"
-                  onClick={() => startDelete(teacher.teacher_id)}
+                  onClick={() => onStartDelete(teacher.teacher_id)}
                 >
                   <Trash2 className="h-4 w-4" /> Hapus
                 </DropdownMenuItem>
@@ -351,56 +385,15 @@ function TeachersTable({
   ];
 
   return (
-    <div className="space-y-4">
-      {selectedIds.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-          <span>{selectedIds.length} dipilih</span>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="gap-1"
-            disabled={!canManage}
-            onClick={() => {
-              setPendingId(null);
-              setConfirmDelete(true);
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Hapus
-          </Button>
-        </div>
-      ) : null}
-
+    <div>
       <DataTable
         columns={columns}
         data={teachers}
         getRowId={(row) => row.teacher_id}
         rowSelection={rowSelection}
         emptyText="Tidak ada guru yang cocok."
+        classNames={{ wrapper: "rounded-none !border-x-0" }}
       />
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} guru
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page <= 1}
-            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page >= pageCount}
-            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      </div>
 
       {editing ? (
         <TeacherDialog
@@ -408,9 +401,7 @@ function TeachersTable({
           canManage={canManage}
           upgradeMessage={upgradeMessage}
           open={Boolean(editing)}
-          onOpenChange={(open) => {
-            if (!open) setEditing(null);
-          }}
+          onOpenChange={(open) => { if (!open) setEditing(null); }}
         />
       ) : null}
 
@@ -421,9 +412,7 @@ function TeachersTable({
           usersLoading={usersLoading}
           canManage={canManage}
           open={Boolean(linking)}
-          onOpenChange={(open) => {
-            if (!open) setLinking(null);
-          }}
+          onOpenChange={(open) => { if (!open) setLinking(null); }}
         />
       ) : null}
 
@@ -432,21 +421,9 @@ function TeachersTable({
           teacher={archiveTarget}
           canManage={canManage}
           open={Boolean(archiveTarget)}
-          onOpenChange={(open) => {
-            if (!open) setArchiveTarget(null);
-          }}
+          onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}
         />
       ) : null}
-
-      <DeleteConfirm
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        ids={pendingId ? [pendingId] : selectedIds}
-        onDone={() => {
-          setRowSelection({});
-          setPendingId(null);
-        }}
-      />
     </div>
   );
 }
@@ -588,7 +565,7 @@ function TeacherDialog({
       full_name: teacher?.full_name ?? "",
       nik: teacher?.nik ?? "",
       education_level: teacher?.education_level ?? "",
-      gender: teacher?.gender as "male" | "female" | "other" ?? "",
+      gender: teacher?.gender as "male" | "female" ?? "",
       birth_date: teacher?.birth_date ?? "",
       birth_place: teacher?.birth_place ?? "",
       address_line: teacher?.address_line ?? "",
@@ -646,7 +623,7 @@ function TeacherDialog({
               name="nip"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>NIP</FormLabel>
+                  <FormLabelRequired>NIP</FormLabelRequired>
                   <FormControl>
                     <Input {...field} placeholder="T-001" />
                   </FormControl>
@@ -659,7 +636,7 @@ function TeacherDialog({
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama lengkap</FormLabel>
+                  <FormLabelRequired>Nama lengkap</FormLabelRequired>
                   <FormControl>
                     <Input {...field} placeholder="Grace Hopper" />
                   </FormControl>
@@ -707,7 +684,6 @@ function TeacherDialog({
                       <SelectContent>
                         <SelectItem value="male">Laki-laki</SelectItem>
                         <SelectItem value="female">Perempuan</SelectItem>
-                        <SelectItem value="other">Lainnya</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

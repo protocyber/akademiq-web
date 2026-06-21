@@ -7,8 +7,9 @@ import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Pencil, Plus, Trash
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import { DataTable } from "@/components/ui/data-table";
 import {
   DropdownMenu,
@@ -87,8 +88,6 @@ function AcademicTermsContent({ canManage, upgradeMessage }: { canManage: boolea
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
-  const meta = terms.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
-
   function openEdit(term: AcademicTerm, tab: "info" | "rapor" = "info") {
     setEditing(term);
     setEditInitialTab(tab);
@@ -113,44 +112,40 @@ function AcademicTermsContent({ canManage, upgradeMessage }: { canManage: boolea
             </Card>
           ) : null}
 
-          <Card className="border border-border shadow-sm">
-            <CardHeader className="border-b pb-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <CardTitle className="text-lg">Semester</CardTitle>
-                  <CardDescription>Daftar semester untuk tahun ajaran yang dipilih.</CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={searchDraft}
-                    onChange={(event) => setSearchDraft(event.target.value)}
-                    placeholder="Cari nama semester"
-                    className="md:w-72"
-                  />
-                  <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
-                    <span>
-                      <Button disabled={!canManage} onClick={() => setCreateOpen(true)} className="gap-1">
-                        <Plus className="h-4 w-4" /> Buat Semester
-                      </Button>
-                    </span>
-                  </EntitlementTooltip>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              {terms.data ? (
-                <TermsTableSection
-                  terms={terms.data.data}
-                  meta={meta}
-                  params={params}
-                  canManage={canManage}
-                  yearId={yearId}
-                  onParamsChange={(next) => replaceParams(router, next)}
-                  onEdit={(term) => openEdit(term, "info")}
+          <DataTableCard
+            title="Semester"
+            description="Daftar semester untuk tahun ajaran yang dipilih."
+            primaryActions={
+              <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
+                <span>
+                  <Button disabled={!canManage} onClick={() => setCreateOpen(true)} className="gap-1">
+                    <Plus className="h-4 w-4" /> Buat Semester
+                  </Button>
+                </span>
+              </EntitlementTooltip>
+            }
+            toolbar={{
+              search: (
+                <Input
+                  value={searchDraft}
+                  onChange={(event) => setSearchDraft(event.target.value)}
+                  placeholder="Cari nama semester"
+                  className="min-w-[160px] sm:flex-1 lg:flex-1"
                 />
-              ) : null}
-            </CardContent>
-          </Card>
+              ),
+            }}
+          >
+            {terms.data ? (
+              <TermsTableSection
+                terms={terms.data.data}
+                params={params}
+                canManage={canManage}
+                yearId={yearId}
+                onParamsChange={(next) => replaceParams(router, next)}
+                onEdit={(term) => openEdit(term, "info")}
+              />
+            ) : null}
+          </DataTableCard>
         </>
       )}
 
@@ -182,7 +177,6 @@ function AcademicTermsContent({ canManage, upgradeMessage }: { canManage: boolea
 
 function TermsTableSection({
   terms,
-  meta,
   params,
   canManage,
   yearId,
@@ -190,7 +184,6 @@ function TermsTableSection({
   onEdit,
 }: {
   terms: AcademicTerm[];
-  meta: { page: number; page_size: number; total: number; };
   params: AcademicTermsParams;
   canManage: boolean;
   yearId: string;
@@ -199,8 +192,6 @@ function TermsTableSection({
 }) {
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [targetId, setTargetId] = React.useState<string | null>(null);
-
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
@@ -296,31 +287,8 @@ function TermsTableSection({
         data={terms}
         getRowId={(row) => row.term_id}
         emptyText="Belum ada semester. Tambahkan mis. &quot;Semester 1&quot; / &quot;Semester 2&quot;."
+        classNames={{ wrapper: "rounded-t-none !border-x-0" }}
       />
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} semester
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page <= 1}
-            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page >= pageCount}
-            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      </div>
 
       <DeleteConfirmDialog
         open={confirmDelete}

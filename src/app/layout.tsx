@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="id" suppressHydrationWarning>
       <body className={`${inter.variable} ${plusJakartaSans.variable} min-h-screen bg-background font-sans antialiased`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <QueryProvider>
             <AcademicScopeProvider>
               <TooltipProvider delayDuration={150}>

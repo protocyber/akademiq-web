@@ -159,8 +159,8 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
           )}
         </div>
       </CardHeader>
-      <CardContent className="pt-6 space-y-4">
-        <div className="grid gap-3 md:grid-cols-2">
+      <CardContent className="p-0">
+        <div className="grid gap-3 md:grid-cols-2 border-b p-4">
           <QuerySelect
             items={filteredHomerooms}
             isLoading={homerooms.isLoading}
@@ -184,7 +184,7 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
         </div>
 
         {!scopeReady && (
-          <p className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground">
+          <p className="p-6 text-sm text-muted-foreground">
             Pilih kelas dan mapel untuk membuka grid nilai.
           </p>
         )}
@@ -253,7 +253,7 @@ function EvaluationGrid({
 }) {
   if (evaluations.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center">
+      <div className="p-8 text-center">
         <p className="text-sm font-medium text-muted-foreground">Belum ada evaluasi untuk kelas+mapel ini.</p>
         {canWrite && (
           <Button size="sm" className="mt-3" onClick={onOpenKelola}>
@@ -270,8 +270,8 @@ function EvaluationGrid({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm bg-background">
+    <div className="overflow-x-auto rounded-b-md">
+      <table className="w-full text-sm bg-card">
         <thead>
           <tr className="bg-muted/60">
             <th className="sticky left-0 z-10 bg-muted/60 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -296,7 +296,7 @@ function EvaluationGrid({
         <tbody>
           {students.map((student) => (
             <tr key={student.student_id} className="border-t">
-              <td className="sticky left-0 z-10 bg-background px-4 py-2.5">
+              <td className="sticky left-0 z-10 px-4 py-2.5">
                 <p className="font-medium">{student.full_name}</p>
                 <p className="text-xs text-muted-foreground">{student.nis}</p>
               </td>
@@ -772,7 +772,7 @@ export function WeightMatrix({
   const types = reportTypes.data;
   if (types.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground">
+      <p className="p-3 text-xs text-muted-foreground">
         Belum ada jenis rapor untuk semester ini. Tambahkan dari Pengaturan → Semester (tab Jenis Rapor pada semester yang dipilih).
       </p>
     );

@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -219,7 +219,7 @@ function TermCreateSection({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nama</FormLabel>
+              <FormLabelRequired>Nama</FormLabelRequired>
               <FormControl>
                 <Input placeholder="contoh: Semester 1" disabled={!canManage} {...field} />
               </FormControl>
@@ -233,7 +233,7 @@ function TermCreateSection({
             name="start_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tanggal mulai</FormLabel>
+                <FormLabelRequired>Tanggal mulai</FormLabelRequired>
                 <FormControl>
                   <DatePicker value={field.value} onChange={field.onChange} />
                 </FormControl>
@@ -246,7 +246,7 @@ function TermCreateSection({
             name="end_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tanggal selesai</FormLabel>
+                <FormLabelRequired>Tanggal selesai</FormLabelRequired>
                 <FormControl>
                   <DatePicker value={field.value} onChange={field.onChange} />
                 </FormControl>
@@ -410,7 +410,7 @@ function TermInfoSection({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nama</FormLabel>
+              <FormLabelRequired>Nama</FormLabelRequired>
               <FormControl>
                 <Input placeholder="contoh: Semester 1" disabled={!canManage} {...field} />
               </FormControl>
@@ -424,7 +424,7 @@ function TermInfoSection({
             name="start_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tanggal mulai</FormLabel>
+                <FormLabelRequired>Tanggal mulai</FormLabelRequired>
                 <FormControl>
                   <DatePicker value={field.value} onChange={field.onChange} />
                 </FormControl>
@@ -437,7 +437,7 @@ function TermInfoSection({
             name="end_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tanggal selesai</FormLabel>
+                <FormLabelRequired>Tanggal selesai</FormLabelRequired>
                 <FormControl>
                   <DatePicker value={field.value} onChange={field.onChange} />
                 </FormControl>
@@ -678,7 +678,7 @@ function ReportTypesSection({
               name="code"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs">Kode</FormLabel>
+                  <FormLabel className="text-xs">Kode <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <Input placeholder="Rapor UTS" disabled={!canManage} {...field} />
                   </FormControl>
@@ -691,7 +691,7 @@ function ReportTypesSection({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs">Nama</FormLabel>
+                  <FormLabel className="text-xs">Nama <span className="text-destructive">*</span></FormLabel>
                   <FormControl>
                     <Input placeholder="Rapor Tengah Semester" disabled={!canManage} {...field} />
                   </FormControl>

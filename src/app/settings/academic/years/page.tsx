@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import type { ColumnDef, OnChangeFn, RowSelectionState } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil, Check } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { cn } from "@/lib/utils";
@@ -11,10 +11,11 @@ import { formatDate } from "@/lib/date-utils";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   DropdownMenu,
@@ -78,6 +79,7 @@ import {
   gradingPolicySchema,
   type GradingPolicyForm,
 } from "@/lib/schemas/grading-policy";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 import {
   curriculumVersionSchema,
   type CurriculumVersionForm,
@@ -116,7 +118,11 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseAcademicYearsParams(searchParams), [searchParams]);
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
+  const [rowSelection, setRowSelection] = React.useState<AcademicYearsRowSelection>({});
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [targetId, setTargetId] = React.useState<string | null>(null);
   const years = useAcademicYearsTable(params);
+  const yearList = years.data?.data ?? [];
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<AcademicYear | null>(null);
@@ -130,7 +136,19 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
-  const meta = years.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [params.page, params.search, params.sort]);
+
+  const selectWithinPage = useSelectWithinPage({
+    rows: yearList,
+    rowSelection,
+    getRowId: (y) => y.academic_year_id,
+    onRowSelectionChange: setRowSelection,
+    toggleMode: "some",
+  });
+
+  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
   return (
     <div className="space-y-4">
@@ -141,43 +159,58 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         </Card>
       ) : null}
 
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-lg">Tahun Ajaran</CardTitle>
-              <CardDescription>Kalender akademik, kebijakan nilai, dan versi kurikulum.</CardDescription>
+      <DataTableCard
+        title="Tahun Ajaran"
+        description="Kalender akademik, kebijakan nilai, dan versi kurikulum."
+        primaryActions={
+          <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
+            <span>
+              <Button disabled={!canManage} onClick={() => setCreateOpen(true)} className="gap-1">
+                <Plus className="h-4 w-4" /> Buat Tahun Ajaran
+              </Button>
+            </span>
+          </EntitlementTooltip>
+        }
+        toolbar={{
+          selectAll: {
+            checked: selectWithinPage.checked,
+            disabled: selectWithinPage.disabled,
+            onToggle: () => selectWithinPage.toggleAll(),
+          },
+          bulkActions: selectedIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>{selectedIds.length} dipilih</span>
+              <Button size="sm" variant="destructive" className="gap-1" disabled={!canManage} onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="h-4 w-4" /> Hapus
+              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Cari nama tahun ajaran"
-                className="md:w-72"
-              />
-              <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
-                <span>
-                  <Button disabled={!canManage} onClick={() => setCreateOpen(true)} className="gap-1">
-                    <Plus className="h-4 w-4" /> Buat Tahun Ajaran
-                  </Button>
-                </span>
-              </EntitlementTooltip>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {years.data ? (
-            <YearsTableSection
-              years={years.data.data}
-              meta={meta}
-              params={params}
-              canManage={canManage}
-              onParamsChange={(next) => replaceParams(router, next)}
-              onEdit={(year) => setEditing(year)}
+          ) : undefined,
+          search: (
+            <Input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="Cari nama tahun ajaran"
+              className="min-w-[160px] sm:flex-1 lg:flex-1"
             />
-          ) : null}
-        </CardContent>
-      </Card>
+          ),
+        }}
+      >
+        {years.data ? (
+          <YearsTableSection
+            years={yearList}
+            params={params}
+            canManage={canManage}
+            rowSelection={rowSelection}
+            onRowSelectionChange={setRowSelection}
+            onParamsChange={(next) => replaceParams(router, next)}
+            onEdit={(year) => setEditing(year)}
+            onTriggerDelete={(singleId) => {
+              if (singleId) setTargetId(singleId);
+              setConfirmDelete(true);
+            }}
+          />
+        ) : null}
+      </DataTableCard>
 
       <YearFormModal
         open={createOpen}
@@ -194,44 +227,45 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         year={editing ?? undefined}
         canManage={canManage}
       />
+
+      <DeleteConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        targetId={targetId}
+        selectedIds={selectedIds}
+        clearSelection={() => setRowSelection({})}
+        clearTarget={() => setTargetId(null)}
+      />
     </div>
   );
 }
 
+type AcademicYearsRowSelection = Record<string, boolean>;
+
 function YearsTableSection({
   years,
-  meta,
   params,
   canManage,
+  rowSelection,
+  onRowSelectionChange,
   onParamsChange,
   onEdit,
+  onTriggerDelete,
 }: {
   years: AcademicYear[];
-  meta: { page: number; page_size: number; total: number; };
   params: AcademicYearsParams;
   canManage: boolean;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onParamsChange: (next: AcademicYearsParams) => void;
   onEdit: (year: AcademicYear) => void;
+  onTriggerDelete: (singleId?: string) => void;
 }) {
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const [targetId, setTargetId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setRowSelection({});
-  }, [params.page, params.search, params.sort]);
-
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
-
   function toggleSort(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
     const next = params.sort === asc ? desc : asc;
     onParamsChange({ ...params, sort: next, page: 1 });
   }
-
-  const allSelected = years.length > 0 && years.every((y) => rowSelection[y.academic_year_id]);
-  const someSelected = years.some((y) => rowSelection[y.academic_year_id]);
-  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
   function sortIcon(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
@@ -244,20 +278,7 @@ function YearsTableSection({
     {
       id: "select",
       size: 40,
-      header: () => (
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(checked) => {
-            const next: RowSelectionState = { ...rowSelection };
-            years.forEach((y) => {
-              if (checked) next[y.academic_year_id] = true;
-              else delete next[y.academic_year_id];
-            });
-            setRowSelection(next);
-          }}
-          aria-label="Pilih semua"
-        />
-      ),
+      header: () => null,
       cell: ({ row }) => (
         <Checkbox
           checked={Boolean(rowSelection[row.original.academic_year_id])}
@@ -265,7 +286,7 @@ function YearsTableSection({
             const next: RowSelectionState = { ...rowSelection };
             if (checked) next[row.original.academic_year_id] = true;
             else delete next[row.original.academic_year_id];
-            setRowSelection(next);
+            onRowSelectionChange(next);
           }}
           aria-label={`Pilih ${row.original.name}`}
         />
@@ -332,8 +353,7 @@ function YearsTableSection({
                   disabled={!canManage}
                   className="text-destructive focus:text-destructive"
                   onClick={() => {
-                    setTargetId(year.academic_year_id);
-                    setConfirmDelete(true);
+                    onTriggerDelete(year.academic_year_id);
                   }}
                 >
                   <Trash2 className="h-4 w-4" /> Hapus
@@ -347,76 +367,15 @@ function YearsTableSection({
   ];
 
   return (
-    <div className="space-y-3">
-      {selectedIds.length > 0 ? (
-        <BulkActionBar
-          selectedCount={selectedIds.length}
-          canManage={canManage}
-          onConfirm={() => setConfirmDelete(true)}
-        />
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        data={years}
-        getRowId={(row) => row.academic_year_id}
-        rowSelection={rowSelection}
-        onRowSelectionChange={setRowSelection}
-        emptyText="Belum ada tahun ajaran."
-      />
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} tahun
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page <= 1}
-            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page >= pageCount}
-            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      </div>
-
-      <DeleteConfirmDialog
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        targetId={targetId}
-        selectedIds={selectedIds}
-        clearSelection={() => setRowSelection({})}
-        clearTarget={() => setTargetId(null)}
-      />
-    </div>
-  );
-}
-
-function BulkActionBar({
-  selectedCount,
-  canManage,
-  onConfirm,
-}: {
-  selectedCount: number;
-  canManage: boolean;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm">
-      <span>{selectedCount} dipilih</span>
-      <Button size="sm" variant="destructive" className="gap-1" disabled={!canManage} onClick={onConfirm}>
-        <Trash2 className="h-4 w-4" /> Hapus
-      </Button>
-    </div>
+    <DataTable
+      columns={columns}
+      data={years}
+      getRowId={(row) => row.academic_year_id}
+      rowSelection={rowSelection}
+      onRowSelectionChange={onRowSelectionChange}
+      emptyText="Belum ada tahun ajaran."
+      classNames={{ wrapper: "rounded-t-none !border-x-0" }}
+    />
   );
 }
 
@@ -661,8 +620,8 @@ function IdentitySection({
       }
     } catch (err) {
       const code =
-        (err as { error?: { code?: string } })?.error?.code ||
-        (err as { code?: string })?.code;
+        (err as { error?: { code?: string; }; })?.error?.code ||
+        (err as { code?: string; })?.code;
       if (code === "YEAR_NAME_EXISTS") {
         form.setError("name", { message: "Nama tahun ajaran sudah digunakan." });
         return;
@@ -682,7 +641,7 @@ function IdentitySection({
           name="name"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Nama</FormLabel>
+              <FormLabelRequired>Nama</FormLabelRequired>
               <FormControl>
                 <Input placeholder="contoh: 2026/2027" {...field} />
               </FormControl>
@@ -696,7 +655,7 @@ function IdentitySection({
             name="start_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tanggal mulai</FormLabel>
+                <FormLabelRequired>Tanggal mulai</FormLabelRequired>
                 <FormControl>
                   <DatePicker value={field.value} onChange={field.onChange} />
                 </FormControl>
@@ -709,7 +668,7 @@ function IdentitySection({
             name="end_date"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Tanggal selesai</FormLabel>
+                <FormLabelRequired>Tanggal selesai</FormLabelRequired>
                 <FormControl>
                   <DatePicker value={field.value} onChange={field.onChange} />
                 </FormControl>
@@ -897,7 +856,7 @@ function GradingPolicySection({ yearId, canManage }: { yearId?: string; canManag
               name="minimum_passing_score"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Min. kelulusan</FormLabel>
+                  <FormLabelRequired>Min. kelulusan</FormLabelRequired>
                   <FormControl>
                     <Input type="number" disabled={disabled} {...field} />
                   </FormControl>
@@ -910,7 +869,7 @@ function GradingPolicySection({ yearId, canManage }: { yearId?: string; canManag
               name="grading_scale"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Skala</FormLabel>
+                  <FormLabelRequired>Skala</FormLabelRequired>
                   <Select
                     value={field.value}
                     onValueChange={field.onChange}

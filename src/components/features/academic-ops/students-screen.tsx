@@ -19,10 +19,10 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -41,7 +41,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -79,6 +79,7 @@ import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-
 import { QuerySelect } from "@/components/ui/query-select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
 const STUDENT_ARCHIVE_REASONS = [
   { value: "nonaktif_sementara", label: "Nonaktif Sementara" },
@@ -89,13 +90,13 @@ const STUDENT_ARCHIVE_REASONS = [
   { value: "lainnya", label: "Lainnya" },
 ];
 
-const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; }> = {
   aktif: { label: "Aktif", variant: "default" },
   nonaktif: { label: "Nonaktif", variant: "secondary" },
   arsip: { label: "Arsip", variant: "outline" },
 };
 
-const SORT_FIELDS: Record<string, { asc: StudentsSort; desc: StudentsSort }> = {
+const SORT_FIELDS: Record<string, { asc: StudentsSort; desc: StudentsSort; }> = {
   name: { asc: "name", desc: "-name" },
   nis: { asc: "nis", desc: "-nis" },
 };
@@ -108,12 +109,12 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
   const students = useStudentsTable(params);
   const users = useTenantUsers();
   const [importOpen, setImportOpen] = React.useState(false);
+  const [selected, setSelected] = React.useState<RowSelectionState>({});
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [pendingId, setPendingId] = React.useState<string | null>(null);
 
   const studentUsers = React.useMemo(
-    () =>
-      (users.data?.data ?? []).filter(
-        (user) => user.roles.includes("student"),
-      ),
+    () => (users.data?.data ?? []).filter((user) => user.roles.includes("student")),
     [users.data],
   );
 
@@ -130,53 +131,114 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
+  React.useEffect(() => {
+    setSelected({});
+  }, [params.page, params.search, params.sort]);
+
+  const pageRows = students.data?.data ?? [];
+  const selectWithinPage = useSelectWithinPage({
+    rows: pageRows,
+    rowSelection: selected,
+    getRowId: (s) => s.student_id,
+    onRowSelectionChange: setSelected,
+    toggleMode: "some",
+  });
+
+  const meta = students.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
+  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
+  const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+
   return (
     <div className="space-y-4">
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-lg">Daftar Siswa</CardTitle>
-              <CardDescription>Kelola master data siswa dan identitas NIS.</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Cari nama atau NIS"
-                className="md:w-72"
-              />
-              <Button variant="outline" size="sm" className="gap-1" onClick={() => setImportOpen(true)}>
-                <Upload className="h-4 w-4" /> Impor
-              </Button>
-              <StudentDialog
-                canManage={canManage}
-                upgradeMessage={upgradeMessage}
-                trigger={<Button size="sm">+ Tambah</Button>}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {students.isLoading ? (
-            <TableSkeleton />
-          ) : students.error ? (
-            <p className="text-sm text-destructive">{getErrorMessage(students.error)}</p>
-          ) : (
-            <StudentsTable
-              students={students.data?.data ?? []}
-              meta={students.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-              params={params}
+      <DataTableCard
+        title="Daftar Siswa"
+        description="Kelola master data siswa dan identitas NIS."
+        primaryActions={
+          <>
+            <Button variant="outline" size="sm" className="gap-1" onClick={() => setImportOpen(true)}>
+              <Upload className="h-4 w-4" /> Impor
+            </Button>
+            <StudentDialog
               canManage={canManage}
               upgradeMessage={upgradeMessage}
-              studentUsers={studentUsers}
-              usersList={users.data?.data ?? []}
-              usersLoading={users.isLoading}
-              onParamsChange={(next) => replaceParams(router, next)}
+              trigger={<Button size="sm">+ Tambah</Button>}
             />
-          )}
-        </CardContent>
-      </Card>
+          </>
+        }
+        toolbar={{
+          selectAll: {
+            checked: selectWithinPage.checked,
+            disabled: selectWithinPage.disabled,
+            onToggle: () => selectWithinPage.toggleAll(),
+          },
+          bulkActions: selectedIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>{selectedIds.length} dipilih</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    Aksi massal <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Aksi untuk {selectedIds.length} siswa</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!canManage}
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => { setPendingId(null); setConfirmDelete(true); }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Hapus
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          ) : null,
+          search: (
+            <Input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="Cari nama atau NIS"
+              className="min-w-[160px] sm:flex-1 lg:flex-1"
+            />
+          ),
+        }}
+        pagination={{
+          page: meta.page,
+          pageCount,
+          total: meta.total,
+          label: "siswa",
+          onPrev: () => replaceParams(router, { ...params, page: meta.page - 1 }),
+          onNext: () => replaceParams(router, { ...params, page: meta.page + 1 }),
+        }}
+      >
+        {students.isLoading ? (
+          <div className="px-4"><TableSkeleton /></div>
+        ) : students.error ? (
+          <p className="px-4 text-sm text-destructive">{getErrorMessage(students.error)}</p>
+        ) : (
+          <StudentsTable
+            students={pageRows}
+            params={params}
+            canManage={canManage}
+            upgradeMessage={upgradeMessage}
+            studentUsers={studentUsers}
+            usersList={users.data?.data ?? []}
+            usersLoading={users.isLoading}
+            rowSelection={selected}
+            onRowSelectionChange={setSelected}
+            onStartDelete={(id) => { setPendingId(id); setSelected({ [id]: true }); setConfirmDelete(true); }}
+            onParamsChange={(next) => replaceParams(router, next)}
+          />
+        )}
+      </DataTableCard>
+
+      <DeleteConfirm
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        ids={pendingId ? [pendingId] : selectedIds}
+        onDone={() => { setSelected({}); setPendingId(null); }}
+      />
 
       <ImportDialog
         open={importOpen}
@@ -194,41 +256,35 @@ function replaceParams(router: ReturnType<typeof useRouter>, params: StudentsPar
   router.replace(query ? `/students?${query}` : "/students", { scroll: false });
 }
 
-type Meta = { page: number; page_size: number; total: number };
-
 function StudentsTable({
   students,
-  meta,
   params,
   canManage,
   upgradeMessage,
   studentUsers,
   usersList,
   usersLoading,
+  rowSelection,
+  onRowSelectionChange,
+  onStartDelete,
   onParamsChange,
 }: {
   students: Student[];
-  meta: Meta;
   params: StudentsParams;
   canManage: boolean;
   upgradeMessage: string;
   studentUsers: TenantUser[];
   usersList: TenantUser[];
   usersLoading: boolean;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: (value: RowSelectionState) => void;
+  onStartDelete: (id: string) => void;
   onParamsChange: (params: StudentsParams) => void;
 }) {
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [editing, setEditing] = React.useState<Student | null>(null);
   const [linking, setLinking] = React.useState<Student | null>(null);
   const [managingGuardians, setManagingGuardians] = React.useState<Student | null>(null);
   const [archiveTarget, setArchiveTarget] = React.useState<Student | null>(null);
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const [pendingId, setPendingId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setRowSelection({});
-  }, [params.page, params.search, params.sort]);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
@@ -242,34 +298,11 @@ function StudentsTable({
     return <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />;
   }
 
-  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
-  const allSelected = students.length > 0 && students.every((s) => rowSelection[s.student_id]);
-  const someSelected = students.some((s) => rowSelection[s.student_id]);
-
-  function startDelete(id: string) {
-    setPendingId(id);
-    setRowSelection({ [id]: true });
-    setConfirmDelete(true);
-  }
-
   const columns: ColumnDef<Student>[] = [
     {
       id: "select",
       size: 40,
-      header: () => (
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(checked) => {
-            const next: RowSelectionState = { ...rowSelection };
-            students.forEach((s) => {
-              if (checked) next[s.student_id] = true;
-              else delete next[s.student_id];
-            });
-            setRowSelection(next);
-          }}
-          aria-label="Pilih semua"
-        />
-      ),
+      header: () => null,
       cell: ({ row }) => (
         <Checkbox
           checked={Boolean(rowSelection[row.original.student_id])}
@@ -277,7 +310,7 @@ function StudentsTable({
             const next: RowSelectionState = { ...rowSelection };
             if (checked) next[row.original.student_id] = true;
             else delete next[row.original.student_id];
-            setRowSelection(next);
+            onRowSelectionChange(next);
           }}
           aria-label={`Pilih ${row.original.full_name}`}
         />
@@ -364,7 +397,7 @@ function StudentsTable({
                 <DropdownMenuItem
                   disabled={!canManage}
                   className="text-destructive focus:text-destructive"
-                  onClick={() => startDelete(student.student_id)}
+                  onClick={() => onStartDelete(student.student_id)}
                 >
                   <Trash2 className="h-4 w-4" /> Hapus
                 </DropdownMenuItem>
@@ -377,56 +410,15 @@ function StudentsTable({
   ];
 
   return (
-    <div className="space-y-4">
-      {selectedIds.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-          <span>{selectedIds.length} dipilih</span>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="gap-1"
-            disabled={!canManage}
-            onClick={() => {
-              setPendingId(null);
-              setConfirmDelete(true);
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Hapus
-          </Button>
-        </div>
-      ) : null}
-
+    <div>
       <DataTable
         columns={columns}
         data={students}
         getRowId={(row) => row.student_id}
         rowSelection={rowSelection}
         emptyText="Tidak ada siswa yang cocok."
+        classNames={{ wrapper: "rounded-none !border-x-0" }}
       />
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} siswa
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page <= 1}
-            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page >= pageCount}
-            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      </div>
 
       {editing ? (
         <StudentDialog
@@ -434,9 +426,7 @@ function StudentsTable({
           canManage={canManage}
           upgradeMessage={upgradeMessage}
           open={Boolean(editing)}
-          onOpenChange={(open) => {
-            if (!open) setEditing(null);
-          }}
+          onOpenChange={(open) => { if (!open) setEditing(null); }}
         />
       ) : null}
 
@@ -447,9 +437,7 @@ function StudentsTable({
           usersLoading={usersLoading}
           canManage={canManage}
           open={Boolean(linking)}
-          onOpenChange={(open) => {
-            if (!open) setLinking(null);
-          }}
+          onOpenChange={(open) => { if (!open) setLinking(null); }}
         />
       ) : null}
 
@@ -460,9 +448,7 @@ function StudentsTable({
           usersLoading={usersLoading}
           canManage={canManage}
           open={Boolean(managingGuardians)}
-          onOpenChange={(open) => {
-            if (!open) setManagingGuardians(null);
-          }}
+          onOpenChange={(open) => { if (!open) setManagingGuardians(null); }}
         />
       ) : null}
 
@@ -471,21 +457,9 @@ function StudentsTable({
           student={archiveTarget}
           canManage={canManage}
           open={Boolean(archiveTarget)}
-          onOpenChange={(open) => {
-            if (!open) setArchiveTarget(null);
-          }}
+          onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}
         />
       ) : null}
-
-      <DeleteConfirm
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        ids={pendingId ? [pendingId] : selectedIds}
-        onDone={() => {
-          setRowSelection({});
-          setPendingId(null);
-        }}
-      />
     </div>
   );
 }
@@ -617,7 +591,7 @@ function StudentDialog({
                 name="nis"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>NIS *</FormLabel>
+                    <FormLabelRequired>NIS</FormLabelRequired>
                     <FormControl>
                       <Input {...field} placeholder="S-001" />
                     </FormControl>
@@ -657,7 +631,7 @@ function StudentDialog({
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama lengkap *</FormLabel>
+                  <FormLabelRequired>Nama lengkap</FormLabelRequired>
                   <FormControl>
                     <Input {...field} placeholder="Budi Santoso" />
                   </FormControl>
@@ -671,8 +645,8 @@ function StudentDialog({
                 name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Gender *</FormLabel>
-                    <Select value={field.value ?? ""} onValueChange={(value) => field.onChange(value as "male" | "female" | "other")}>
+                    <FormLabelRequired>Gender</FormLabelRequired>
+                    <Select value={field.value ?? ""} onValueChange={(value) => field.onChange(value as "male" | "female")}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih gender" />
@@ -681,7 +655,6 @@ function StudentDialog({
                       <SelectContent>
                         <SelectItem value="male">Laki-laki</SelectItem>
                         <SelectItem value="female">Perempuan</SelectItem>
-                        <SelectItem value="other">Lainnya</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -693,7 +666,7 @@ function StudentDialog({
                 name="birth_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tanggal lahir *</FormLabel>
+                    <FormLabelRequired>Tanggal lahir</FormLabelRequired>
                     <FormControl>
                       <DatePicker value={field.value} onChange={field.onChange} />
                     </FormControl>
@@ -861,7 +834,7 @@ function ArchiveStudentDialog({
             name="reason"
             render={() => (
               <FormItem>
-                <FormLabel>Alasan arsip *</FormLabel>
+                <FormLabelRequired>Alasan arsip</FormLabelRequired>
                 <Select value={reason} onValueChange={(value) => setReason(value as string)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Pilih alasan" />
@@ -898,7 +871,7 @@ function ArchiveStudentDialog({
 function genderLabel(gender: string) {
   if (gender === "male") return "Laki-laki";
   if (gender === "female") return "Perempuan";
-  return "Lainnya";
+  return gender;
 }
 
 function LinkAccountDialog({

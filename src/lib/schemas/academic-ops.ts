@@ -10,7 +10,7 @@ const optionalDate = z.string().min(1).optional().or(z.literal(""));
 export const studentSchema = z.object({
   nis: identifier,
   full_name: z.string().min(1, "Nama wajib diisi"),
-  gender: z.enum(["male", "female", "other"]),
+  gender: z.enum(["male", "female"]),
   birth_date: z.string().min(1, "Tanggal lahir wajib diisi"),
   nisn: optionalString,
   nik: optionalString,
@@ -35,7 +35,7 @@ export const teacherSchema = z.object({
   full_name: z.string().min(1, "Nama wajib diisi"),
   nik: optionalString,
   education_level: optionalString,
-  gender: z.enum(["male", "female", "other"]).optional().or(z.literal("")),
+  gender: z.enum(["male", "female"]).optional().or(z.literal("")),
   birth_date: optionalDate,
   birth_place: optionalString,
   address_line: optionalString,

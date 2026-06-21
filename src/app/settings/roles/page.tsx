@@ -4,7 +4,7 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import type { ColumnDef, OnChangeFn, RowSelectionState } from "@tanstack/react-table";
 import {
   ArrowDown,
   ArrowUp,
@@ -21,10 +21,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -34,7 +35,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
@@ -61,6 +62,7 @@ import {
   type TenantRolesParams,
   type TenantRolesSort,
 } from "@/lib/schemas/tenant-roles-params";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
 export default function SettingsRolesPage() {
   return (
@@ -92,6 +94,8 @@ function RolesContent() {
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseTenantRolesParams(searchParams), [searchParams]);
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
   const roles = useTenantRoles(params);
   const permissions = useTenantPermissions();
   const logout = useLogout();
@@ -110,6 +114,20 @@ function RolesContent() {
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
+  const roleList = roles.data?.data ?? [];
+
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [params.page, params.search, params.sort]);
+
+  const selectWithinPage = useSelectWithinPage({
+    rows: roleList,
+    rowSelection,
+    getRowId: (r) => r.role_id,
+    onRowSelectionChange: setRowSelection,
+    toggleMode: "some",
+  });
+
   if (tenant.isLoading || me.isLoading || roles.isLoading || permissions.isLoading) {
     return <RolesSkeleton />;
   }
@@ -119,6 +137,12 @@ function RolesContent() {
     const status = error instanceof ApiHttpError ? error.status : undefined;
     return <ErrorView status={status} fullPage onRetry={() => window.location.reload()} />;
   }
+
+  const meta = roles.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
+  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
+  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
+  const selectedRoles = roleList.filter((r) => selectedIds.includes(r.role_id));
+  const selectionHasBuiltin = selectedRoles.some((r) => r.is_builtin);
 
   return (
     <SidebarLayout
@@ -132,42 +156,86 @@ function RolesContent() {
       }}
       className="mx-auto w-full"
     >
+      <DataTableCard
+        title="Daftar Role"
+        description="Kelola role bawaan dan role custom sekolah dari palet izin yang Anda miliki."
+        primaryActions={<RoleDialog permissions={permissions.data ?? []} />}
+        toolbar={{
+          selectAll: {
+            checked: selectWithinPage.checked,
+            disabled: selectWithinPage.disabled,
+            onToggle: () => selectWithinPage.toggleAll(),
+          },
+          bulkActions: selectedIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>{selectedIds.length} dipilih</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    Aksi massal <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Aksi untuk {selectedIds.length} role</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={selectionHasBuiltin}
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setConfirmDelete(true)}
+                  >
+                    <Trash2 className="h-4 w-4" /> Hapus
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {selectionHasBuiltin ? (
+                <span className="text-xs text-destructive">{BULK_DELETE_BUILTIN_BLOCKED}</span>
+              ) : null}
+            </div>
+          ) : undefined,
+          search: (
+            <Input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="Cari nama atau kode role"
+              className="min-w-[160px] sm:flex-1 lg:flex-1"
+            />
+          ),
+        }}
+        pagination={{
+          page: meta.page,
+          pageCount,
+          total: meta.total,
+          label: "role",
+          onPrev: () => replaceRolesParams(router, { ...params, page: meta.page - 1 }),
+          onNext: () => replaceRolesParams(router, { ...params, page: meta.page + 1 }),
+        }}
+      >
+        {!canManageRoles ? (
+          <Alert variant="destructive">
+            <AlertTitle>Akses dibatasi</AlertTitle>
+            <AlertDescription>Anda belum memiliki izin role.manage untuk mengelola katalog role.</AlertDescription>
+          </Alert>
+        ) : null}
+        <RolesTableSection
+          roles={roleList}
+          permissions={permissions.data ?? []}
+          params={params}
+          rowSelection={rowSelection}
+          onRowSelectionChange={setRowSelection}
+          onParamsChange={(next) => replaceRolesParams(router, next)}
+          onTriggerDelete={(singleId) => {
+            if (singleId) setRowSelection({ [singleId]: true });
+            setConfirmDelete(true);
+          }}
+        />
+      </DataTableCard>
 
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-lg">Daftar Role</CardTitle>
-              <CardDescription>Kelola role bawaan dan role custom sekolah dari palet izin yang Anda miliki.</CardDescription>
-            </div>
-            <div className="flex flex-col md:flex-row gap-2">
-              <Input
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Cari nama atau kode role"
-              />
-              <RoleDialog permissions={permissions.data ?? []} />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {!canManageRoles ? (
-            <Alert variant="destructive">
-              <AlertTitle>Akses dibatasi</AlertTitle>
-              <AlertDescription>Anda belum memiliki izin role.manage untuk mengelola katalog role.</AlertDescription>
-            </Alert>
-          ) : null}
-          <RolesTableSection
-            roles={roles.data?.data ?? []}
-            meta={roles.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-            permissions={permissions.data ?? []}
-            params={params}
-            searchDraft={searchDraft}
-            onSearchDraftChange={setSearchDraft}
-            onParamsChange={(next) => replaceRolesParams(router, next)}
-          />
-        </CardContent>
-      </Card>
+      <BulkDeleteConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        selectedIds={selectedIds}
+        onDone={() => setRowSelection({})}
+      />
     </SidebarLayout>
   );
 }
@@ -181,12 +249,12 @@ type Meta = { page: number; page_size: number; total: number; };
 
 type RolesTableSectionProps = {
   roles: TenantRole[];
-  meta: Meta;
   permissions: Permission[];
   params: TenantRolesParams;
-  searchDraft: string;
-  onSearchDraftChange: (value: string) => void;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onParamsChange: (params: TenantRolesParams) => void;
+  onTriggerDelete: (selectSingle?: string) => void;
 };
 
 const SORT_FIELDS: Record<string, { asc: TenantRolesSort; desc: TenantRolesSort; }> = {
@@ -198,22 +266,16 @@ const SORT_FIELDS: Record<string, { asc: TenantRolesSort; desc: TenantRolesSort;
 function RolesTableSection(props: RolesTableSectionProps) {
   const {
     roles,
-    meta,
     permissions,
     params,
+    rowSelection,
+    onRowSelectionChange,
     onParamsChange,
+    onTriggerDelete,
   } = props;
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [editing, setEditing] = React.useState<TenantRole | null>(null);
   const [cloning, setCloning] = React.useState<TenantRole | null>(null);
   const [viewing, setViewing] = React.useState<TenantRole | null>(null);
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-
-  // Clear selection when the page / data changes to avoid stale selections.
-  React.useEffect(() => {
-    setRowSelection({});
-  }, [params.page, params.search, params.sort]);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
@@ -229,30 +291,12 @@ function RolesTableSection(props: RolesTableSectionProps) {
   }
 
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
-  const selectedRoles = roles.filter((r) => selectedIds.includes(r.role_id));
-  const selectionHasBuiltin = selectedRoles.some((r) => r.is_builtin);
-
-  const allSelected = roles.length > 0 && roles.every((r) => rowSelection[r.role_id]);
-  const someSelected = roles.some((r) => rowSelection[r.role_id]);
 
   const columns: ColumnDef<TenantRole>[] = [
     {
       id: "select",
       size: 40,
-      header: () => (
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(checked) => {
-            const next: RowSelectionState = { ...rowSelection };
-            roles.forEach((r) => {
-              if (checked) next[r.role_id] = true;
-              else delete next[r.role_id];
-            });
-            setRowSelection(next);
-          }}
-          aria-label="Pilih semua"
-        />
-      ),
+      header: () => null,
       cell: ({ row }) => (
         <Checkbox
           checked={Boolean(rowSelection[row.original.role_id])}
@@ -260,7 +304,7 @@ function RolesTableSection(props: RolesTableSectionProps) {
             const next: RowSelectionState = { ...rowSelection };
             if (checked) next[row.original.role_id] = true;
             else delete next[row.original.role_id];
-            setRowSelection(next);
+            onRowSelectionChange(next);
           }}
           aria-label={`Pilih ${row.original.name}`}
         />
@@ -307,7 +351,7 @@ function RolesTableSection(props: RolesTableSectionProps) {
         <span className="tabular-nums text-foreground">{row.original.user_count}</span>
       ),
     },
-      {
+    {
       id: "actions",
       size: 180,
       header: () => <span className="sr-only">Aksi</span>,
@@ -337,8 +381,7 @@ function RolesTableSection(props: RolesTableSectionProps) {
                   disabled={role.is_builtin}
                   className="text-destructive focus:text-destructive"
                   onClick={() => {
-                    setRowSelection({ [role.role_id]: true });
-                    setConfirmDelete(true);
+                    onTriggerDelete(role.role_id);
                   }}
                 >
                   <Trash2 className="h-4 w-4" /> Hapus
@@ -353,47 +396,15 @@ function RolesTableSection(props: RolesTableSectionProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex space-x-4">
-        {selectedIds.length > 0 ? (
-          <BulkActionBar
-            selectedCount={selectedIds.length}
-            selectedIds={selectedIds}
-            selectionHasBuiltin={selectionHasBuiltin}
-            onConfirm={() => setConfirmDelete(true)}
-          />
-        ) : null}
-      </div>
-
       <DataTable
         columns={columns}
         data={roles}
         getRowId={(row) => row.role_id}
         rowSelection={rowSelection}
+        onRowSelectionChange={onRowSelectionChange}
         emptyText="Tidak ada role yang cocok."
+        classNames={{ wrapper: "rounded-none !border-x-0" }}
       />
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} role
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page <= 1}
-            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page >= pageCount}
-            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      </div>
 
       {editing ? (
         <RoleDialog
@@ -426,43 +437,6 @@ function RolesTableSection(props: RolesTableSectionProps) {
         />
       ) : null}
 
-      <BulkDeleteConfirmDialog
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        selectedIds={selectedIds}
-        onDone={() => setRowSelection({})}
-      />
-    </div>
-  );
-}
-
-function BulkActionBar({
-  selectedCount,
-  selectedIds,
-  selectionHasBuiltin,
-  onConfirm,
-}: {
-  selectedCount: number;
-  selectedIds: string[];
-  selectionHasBuiltin: boolean;
-  onConfirm: () => void;
-}) {
-  return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-      <span>{selectedCount} dipilih</span>
-      <Button
-        size="sm"
-        variant="destructive"
-        className="gap-1"
-        disabled={selectionHasBuiltin}
-        onClick={onConfirm}
-      >
-        <Trash2 className="h-4 w-4" /> Hapus
-      </Button>
-      {selectionHasBuiltin ? (
-        <span className="text-xs text-destructive">{BULK_DELETE_BUILTIN_BLOCKED}</span>
-      ) : null}
-      <span className="sr-only">{selectedIds.length} role dipilih</span>
     </div>
   );
 }
@@ -584,14 +558,14 @@ function RoleDialog({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <FormField control={form.control} name="code" render={({ field }) => (
               <FormItem>
-                <FormLabel>Kode</FormLabel>
+                <FormLabelRequired>Kode</FormLabelRequired>
                 <FormControl><Input {...field} disabled={Boolean(role)} placeholder="wakil_kurikulum" /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem>
-                <FormLabel>Nama</FormLabel>
+                <FormLabelRequired>Nama</FormLabelRequired>
                 <FormControl><Input {...field} placeholder="Wakil Kepala Kurikulum" /></FormControl>
                 <FormMessage />
               </FormItem>

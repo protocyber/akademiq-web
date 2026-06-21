@@ -3,15 +3,17 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
+import type { ColumnDef, OnChangeFn, RowSelectionState } from "@tanstack/react-table";
+import type { UseSelectWithinPageResult } from "@/lib/data-table/use-select-within-page";
 import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +30,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
@@ -51,6 +53,7 @@ import {
   classTemplateSchema,
   type ClassTemplateForm,
 } from "@/lib/schemas/class-template";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 import {
   parseAcademicClassTemplatesParams,
   serializeAcademicClassTemplatesParams,
@@ -83,6 +86,8 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
   const params = React.useMemo(() => parseAcademicClassTemplatesParams(searchParams), [searchParams]);
   const { yearId, isResolving } = useAcademicScope();
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
 
   const tableParams: AcademicClassTemplatesParams = React.useMemo(() => ({
     academic_year_id: yearId || undefined,
@@ -93,6 +98,7 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
   }), [yearId, params]);
 
   const templates = useClassTemplatesTable(tableParams);
+  const templateList = templates.data?.data ?? [];
 
   React.useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -110,7 +116,28 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
+  React.useEffect(() => {
+    setRowSelection({});
+  }, [params.page, params.search, params.sort, yearId]);
+
+  const selectWithinPage = useSelectWithinPage({
+    rows: templateList,
+    rowSelection,
+    getRowId: (t) => t.template_id,
+    onRowSelectionChange: setRowSelection,
+    toggleMode: "some",
+  });
+
   const meta = templates.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
+  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
+  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
+
+  function replaceParams(next: AcademicClassTemplatesParams) {
+    router.replace(
+      `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams(next)}`,
+      { scroll: false },
+    );
+  }
 
   if (isResolving) {
     return (
@@ -137,20 +164,33 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
   return (
     <div className="space-y-4">
       <ClassTemplatesTableSection
-        templates={templates.data?.data ?? []}
+        templates={templateList}
         meta={meta}
         params={tableParams}
         canManage={canManage}
         searchDraft={searchDraft}
         onSearchDraftChange={setSearchDraft}
-        onParamsChange={(next) =>
-          router.replace(
-            `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams(next)}`,
-            { scroll: false },
-          )
-        }
+        onParamsChange={replaceParams}
         isLoading={templates.isLoading}
         academicYearId={yearId}
+        rowSelection={rowSelection}
+        onRowSelectionChange={setRowSelection}
+        selectWithinPage={selectWithinPage}
+        selectedIds={selectedIds}
+        pageCount={pageCount}
+        onTriggerDelete={(singleId) => {
+          if (singleId) setRowSelection({ [singleId]: true });
+          setConfirmDelete(true);
+        }}
+      />
+
+      <ClassTemplateDeleteConfirm
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        targetId={null}
+        selectedIds={selectedIds}
+        clearSelection={() => setRowSelection({})}
+        clearTarget={() => { }}
       />
     </div>
   );
@@ -166,6 +206,12 @@ function ClassTemplatesTableSection({
   onParamsChange,
   isLoading,
   academicYearId,
+  rowSelection,
+  onRowSelectionChange,
+  selectWithinPage,
+  selectedIds,
+  pageCount,
+  onTriggerDelete,
 }: {
   templates: ClassTemplate[];
   meta: { page: number; page_size: number; total: number; };
@@ -176,21 +222,15 @@ function ClassTemplatesTableSection({
   onParamsChange: (next: AcademicClassTemplatesParams) => void;
   isLoading: boolean;
   academicYearId: string;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: OnChangeFn<RowSelectionState>;
+  selectWithinPage: UseSelectWithinPageResult;
+  selectedIds: string[];
+  pageCount: number;
+  onTriggerDelete: (singleId?: string) => void;
 }) {
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const [targetId, setTargetId] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState<ClassTemplate | null>(null);
   const [creating, setCreating] = React.useState(false);
-
-  React.useEffect(() => {
-    setRowSelection({});
-  }, [params.page, params.search, params.sort, academicYearId]);
-
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
-  const allSelected = templates.length > 0 && templates.every((t) => rowSelection[t.template_id]);
-  const someSelected = templates.some((t) => rowSelection[t.template_id]);
-  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
@@ -209,20 +249,7 @@ function ClassTemplatesTableSection({
     {
       id: "select",
       size: 40,
-      header: () => (
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(checked) => {
-            const next: RowSelectionState = { ...rowSelection };
-            templates.forEach((t) => {
-              if (checked) next[t.template_id] = true;
-              else delete next[t.template_id];
-            });
-            setRowSelection(next);
-          }}
-          aria-label="Pilih semua"
-        />
-      ),
+      header: () => null,
       cell: ({ row }) => (
         <Checkbox
           checked={Boolean(rowSelection[row.original.template_id])}
@@ -230,7 +257,7 @@ function ClassTemplatesTableSection({
             const next: RowSelectionState = { ...rowSelection };
             if (checked) next[row.original.template_id] = true;
             else delete next[row.original.template_id];
-            setRowSelection(next);
+            onRowSelectionChange(next);
           }}
           aria-label={`Pilih ${row.original.grade_level}`}
         />
@@ -280,8 +307,7 @@ function ClassTemplatesTableSection({
                   disabled={!canManage}
                   className="text-destructive focus:text-destructive"
                   onClick={() => {
-                    setTargetId(template.template_id);
-                    setConfirmDelete(true);
+                    onTriggerDelete(template.template_id);
                   }}
                 >
                   <Trash2 className="h-4 w-4" /> Hapus
@@ -295,80 +321,67 @@ function ClassTemplatesTableSection({
   ];
 
   return (
-    <div className="space-y-3">
-      {selectedIds.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-          <span>{selectedIds.length} dipilih</span>
-          <Button size="sm" variant="destructive" className="gap-1" disabled={!canManage} onClick={() => setConfirmDelete(true)}>
-            <Trash2 className="h-4 w-4" /> Hapus
-          </Button>
-        </div>
-      ) : null}
-
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <CardTitle className="text-lg">Template Kelas</CardTitle>
-              <CardDescription>Template kapasitas kelas per tahun ajaran</CardDescription>
-            </div>
-            <div className="flex items-center gap-3">
-              <Input
-                value={searchDraft}
-                onChange={(event) => onSearchDraftChange(event.target.value)}
-                placeholder="Cari tingkat"
-                className="md:w-72"
-              />
-              <Button disabled={!canManage} onClick={() => setCreating(true)} className="gap-1">
-                <Plus className="h-4 w-4" /> Tambah Template
-              </Button>
-            </div>
+    <DataTableCard
+      title="Template Kelas"
+      description="Template kapasitas kelas per tahun ajaran"
+      primaryActions={
+        <Button disabled={!canManage} onClick={() => setCreating(true)} className="gap-1">
+          <Plus className="h-4 w-4" /> Tambah Template
+        </Button>
+      }
+      toolbar={{
+        selectAll: {
+          checked: selectWithinPage.checked,
+          disabled: selectWithinPage.disabled,
+          onToggle: () => selectWithinPage.toggleAll(),
+        },
+        bulkActions: selectedIds.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span>{selectedIds.length} dipilih</span>
+            <Button size="sm" variant="destructive" className="gap-1" disabled={!canManage} onClick={() => onTriggerDelete()}>
+              <Trash2 className="h-4 w-4" /> Hapus
+            </Button>
           </div>
-        </CardHeader>
-        <CardContent className={isLoading ? "space-y-3 pt-6" : "p-6"}>
-          {isLoading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))
-          ) : (
-            <DataTable
-              columns={columns}
-              data={templates}
-              getRowId={(row) => row.template_id}
-              rowSelection={rowSelection}
-              onRowSelectionChange={setRowSelection}
-              emptyText="Belum ada template kelas."
-            />
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} template
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={meta.page <= 1} onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}>
-            Sebelumnya
-          </Button>
-          <Button variant="outline" size="sm" disabled={meta.page >= pageCount} onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}>
-            Berikutnya
-          </Button>
+        ) : undefined,
+        search: (
+          <Input
+            value={searchDraft}
+            onChange={(event) => onSearchDraftChange(event.target.value)}
+            placeholder="Cari tingkat"
+            className="min-w-[160px] sm:flex-1 lg:flex-1"
+          />
+        ),
+      }}
+      pagination={{
+        page: meta.page,
+        pageCount,
+        total: meta.total,
+        label: "template",
+        onPrev: () => onParamsChange({ ...params, page: meta.page - 1 }),
+        onNext: () => onParamsChange({ ...params, page: meta.page + 1 }),
+      }}
+    >
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
         </div>
-      </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={templates}
+          getRowId={(row) => row.template_id}
+          rowSelection={rowSelection}
+          onRowSelectionChange={onRowSelectionChange}
+          emptyText="Belum ada template kelas."
+          classNames={{ wrapper: "rounded-none !border-x-0" }}
+        />
+      )}
 
       <ClassTemplateDialog open={creating} onOpenChange={setCreating} mode="create" academicYearId={academicYearId} />
       <ClassTemplateDialog open={Boolean(editing)} onOpenChange={(o) => { if (!o) setEditing(null); }} mode="edit" template={editing ?? undefined} academicYearId={academicYearId} />
-
-      <ClassTemplateDeleteConfirm
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        targetId={targetId}
-        selectedIds={selectedIds}
-        clearSelection={() => setRowSelection({})}
-        clearTarget={() => setTargetId(null)}
-      />
-    </div>
+    </DataTableCard>
   );
 }
 
@@ -438,7 +451,7 @@ function ClassTemplateDialog({
                 name="grade_level"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tingkat</FormLabel>
+                    <FormLabelRequired>Tingkat</FormLabelRequired>
                     <FormControl>
                       <Input placeholder="X" {...field} />
                     </FormControl>
@@ -451,7 +464,7 @@ function ClassTemplateDialog({
                 name="default_capacity"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Kapasitas</FormLabel>
+                    <FormLabelRequired>Kapasitas</FormLabelRequired>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>

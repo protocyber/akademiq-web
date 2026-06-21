@@ -24,6 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +45,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { MultiSelect } from "@/components/ui/multi-select";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -239,6 +240,8 @@ function UsersContent() {
     replaceUsersParams(router, next);
   }
 
+  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
+
   return (
     <SidebarLayout
       schoolName={tenant.data.school_name}
@@ -251,42 +254,38 @@ function UsersContent() {
       }}
       className="mx-auto w-full space-y-4"
     >
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-lg">Pengguna</CardTitle>
-              <CardDescription>Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ.</CardDescription>
-            </div>
-            <div className="flex flex-col md:flex-row gap-2">
-              <CreateUserDialog roles={roleList} />
-              <InviteDialog roles={roleList} />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:flex-1">
-              <Checkbox
-                checked={selectWithinPage.checked}
-                disabled={selectWithinPage.disabled}
-                onCheckedChange={() => selectWithinPage.toggleAll()}
-                aria-label="Pilih semua di halaman ini"
-                className="size-4"
-              />
-              <BulkActionMenu
-                selectedIds={selectedIds}
-                roles={roleList}
-                onDone={() => setSelected({})}
-              />
-              <Input
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Cari nama, email, username"
-                className="min-w-[160px] sm:flex-1 lg:flex-1"
-              />
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <DataTableCard
+        title="Pengguna"
+        description="Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ."
+        primaryActions={
+          <>
+            <CreateUserDialog roles={roleList} />
+            <InviteDialog roles={roleList} />
+          </>
+        }
+        toolbar={{
+          selectAll: {
+            checked: selectWithinPage.checked,
+            disabled: selectWithinPage.disabled,
+            onToggle: () => selectWithinPage.toggleAll(),
+          },
+          bulkActions: (
+            <BulkActionMenu
+              selectedIds={selectedIds}
+              roles={roleList}
+              onDone={() => setSelected({})}
+            />
+          ),
+          search: (
+            <Input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="Cari nama, email, username"
+              className="min-w-[160px] sm:flex-1 lg:flex-1"
+            />
+          ),
+          filters: (
+            <>
               <Select
                 value={params.role ?? "all"}
                 onValueChange={(role) => applyParams({ ...params, role: role === "all" ? undefined : role, page: 1 })}
@@ -319,20 +318,27 @@ function UsersContent() {
               <Button variant="outline" onClick={() => exportTenantUsers(params)}>
                 <Download className="h-4 w-4" /> Export
               </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <UsersTableSection
-        users={userList}
-        meta={meta}
-        roles={roleList}
-        params={params}
-        rowSelection={selected}
-        onRowSelectionChange={setSelected}
-        onParamsChange={(next) => replaceUsersParams(router, next)}
-      />
+            </>
+          ),
+        }}
+        pagination={{
+          page: meta.page,
+          pageCount,
+          total: meta.total,
+          label: "pengguna",
+          onPrev: () => applyParams({ ...params, page: meta.page - 1 }),
+          onNext: () => applyParams({ ...params, page: meta.page + 1 }),
+        }}
+      >
+        <UsersTableSection
+          users={userList}
+          roles={roleList}
+          params={params}
+          rowSelection={selected}
+          onRowSelectionChange={setSelected}
+          onParamsChange={(next) => replaceUsersParams(router, next)}
+        />
+      </DataTableCard>
 
       <Card className="border border-border shadow-sm">
         <CardHeader className="border-b pb-4">
@@ -362,11 +368,8 @@ function replaceUsersParams(router: ReturnType<typeof useRouter>, params: Tenant
   router.replace(query ? `/settings/users?${query}` : "/settings/users", { scroll: false });
 }
 
-type Meta = { page: number; page_size: number; total: number; };
-
 type UsersTableSectionProps = {
   users: TenantUser[];
-  meta: Meta;
   roles: TenantRole[];
   params: TenantUsersParams;
   rowSelection: RowSelectionState;
@@ -383,14 +386,12 @@ const SORT_FIELDS: Record<string, { asc: TenantUsersSort; desc: TenantUsersSort;
 function UsersTableSection(props: UsersTableSectionProps) {
   const {
     users,
-    meta,
     roles,
     params,
     rowSelection,
     onRowSelectionChange,
     onParamsChange,
   } = props;
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
   const [editing, setEditing] = React.useState<TenantUser | null>(null);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
@@ -497,31 +498,8 @@ function UsersTableSection(props: UsersTableSectionProps) {
         getRowId={(row) => row.user_id}
         rowSelection={rowSelection}
         emptyText="Tidak ada pengguna yang cocok."
+        classNames={{ wrapper: "rounded-none !border-x-0" }}
       />
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} pengguna
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page <= 1}
-            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page >= pageCount}
-            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      </div>
 
       {editing ? (
         <EditUserDialog
@@ -660,7 +638,7 @@ function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabelRequired>Username</FormLabelRequired>
                   <FormControl>
                     <Input placeholder="budi_guru" autoComplete="off" {...field} />
                   </FormControl>
@@ -673,7 +651,7 @@ function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama lengkap</FormLabel>
+                  <FormLabelRequired>Nama lengkap</FormLabelRequired>
                   <FormControl>
                     <Input placeholder="Budi Santoso" {...field} />
                   </FormControl>
@@ -686,7 +664,7 @@ function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
               name="roles"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
+                  <FormLabelRequired>Role</FormLabelRequired>
                   <FormControl>
                     <MultiSelect
                       options={roleOptions(roles)}
@@ -861,7 +839,7 @@ function EditUserDialog({
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabelRequired>Username</FormLabelRequired>
                   <FormControl>
                     <Input autoComplete="off" {...field} />
                   </FormControl>
@@ -874,7 +852,7 @@ function EditUserDialog({
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama lengkap</FormLabel>
+                  <FormLabelRequired>Nama lengkap</FormLabelRequired>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -1036,7 +1014,7 @@ function InviteDialog({ roles }: { roles: TenantRole[]; }) {
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabelRequired>Email</FormLabelRequired>
                   <FormControl>
                     <Input type="email" autoComplete="email" placeholder="guru@sekolah.sch.id" {...field} />
                   </FormControl>
@@ -1049,7 +1027,7 @@ function InviteDialog({ roles }: { roles: TenantRole[]; }) {
               name="roles"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
+                  <FormLabelRequired>Role</FormLabelRequired>
                   <FormControl>
                     <MultiSelect
                       options={roleOptions(roles)}

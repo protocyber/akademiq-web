@@ -1,16 +1,26 @@
 "use client";
 
+import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Pencil } from "lucide-react";
+import { Image as ImageIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
@@ -25,7 +35,6 @@ import { formatDate } from "@/lib/date-utils";
 import { schoolProfileSchema, type SchoolProfileForm } from "@/lib/schemas/academic-ops";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import type { MediaAsset } from "@/lib/query/queries/use-academic-ops";
-import { Image as ImageIcon } from "lucide-react";
 
 export default function SchoolProfilePage() {
   return (
@@ -64,6 +73,7 @@ function SchoolProfileContent() {
   const media = useSchoolMedia();
   const uploadLogo = useUploadSchoolLogo();
   const logout = useLogout();
+  const [editOpen, setEditOpen] = React.useState(false);
 
   if (tenant.isLoading || me.isLoading || profile.isLoading || media.isLoading) {
     return <SchoolProfileSkeleton />;
@@ -122,19 +132,55 @@ function SchoolProfileContent() {
     >
       <div className="space-y-6">
         <Card>
-          <CardHeader className="border-b pb-4">
-            <CardTitle className="text-lg">Profil Sekolah</CardTitle>
-            <CardDescription>
-              Kelola informasi identitas, kontak, dan alamat sekolah Anda.
-            </CardDescription>
+          <CardHeader className="flex-row items-start justify-between border-b pb-4">
+            <div>
+              <CardTitle className="text-lg">Profil Sekolah</CardTitle>
+              <CardDescription>
+                Kelola informasi identitas, kontak, dan alamat sekolah Anda.
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditOpen(true)}
+              className="shrink-0"
+            >
+              <Pencil className="mr-2 h-3.5 w-3.5" />
+              Edit
+            </Button>
           </CardHeader>
           <CardContent className="pt-6">
-            <SchoolProfileForm
-              profile={profile.data}
-              logoUrl={logoUrl}
-              onLogoUpload={onLogoUpload}
-              isUploading={uploadLogo.isPending}
-            />
+            <SchoolProfileView profile={profile.data} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="border-b pb-4">
+            <CardTitle className="text-lg">Logo Sekolah</CardTitle>
+            <CardDescription>Unggah atau perbarui logo sekolah.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo sekolah" className="h-24 w-24 rounded-lg border object-cover" />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-lg border-2 border-dashed bg-muted">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                </div>
+              )}
+              <div className="flex-1">
+                <Input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={onLogoUpload}
+                  disabled={uploadLogo.isPending}
+                  className="max-w-xs"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  JPG, PNG, atau WebP. Maksimal 2MB.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -152,20 +198,103 @@ function SchoolProfileContent() {
           </Card>
         )}
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Profil Sekolah</DialogTitle>
+          </DialogHeader>
+          <SchoolProfileForm
+            profile={profile.data}
+            onSuccess={() => setEditOpen(false)}
+            onCancel={() => setEditOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </SidebarLayout>
+  );
+}
+
+const EMPTY_LABEL = "Belum diisi";
+
+function ViewField({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="space-y-1">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="text-sm">{value || <span className="text-muted-foreground">{EMPTY_LABEL}</span>}</dd>
+    </div>
+  );
+}
+
+const SCHOOL_LEVEL_LABELS: Record<string, string> = {
+  sd: "SD",
+  smp: "SMP",
+  sma: "SMA",
+  mi: "MI",
+  mts: "MTs",
+  ma: "MA",
+  slb: "SLB",
+  lainnya: "Lainnya",
+};
+
+const SCHOOL_STATUS_LABELS: Record<string, string> = {
+  negeri: "Negeri",
+  swasta: "Swasta",
+};
+
+const ACCREDITATION_LABELS: Record<string, string> = {
+  a: "A",
+  b: "B",
+  c: "C",
+  belum_terakreditasi: "Belum Terakreditasi",
+};
+
+function SchoolProfileView({ profile }: { profile: SchoolProfile }) {
+  return (
+    <dl className="space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Identitas Sekolah</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ViewField label="Nama Sekolah" value={profile.school_name} />
+          <ViewField label="NPSN" value={profile.npsn} />
+          <ViewField label="Jenjang" value={SCHOOL_LEVEL_LABELS[profile.school_level ?? ""] ?? profile.school_level} />
+          <ViewField label="Status" value={SCHOOL_STATUS_LABELS[profile.school_status ?? ""] ?? profile.school_status} />
+          <ViewField label="Akreditasi" value={ACCREDITATION_LABELS[profile.accreditation ?? ""] ?? profile.accreditation} />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Kontak</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ViewField label="Nomor Telepon" value={profile.phone_number} />
+          <ViewField label="Email" value={profile.email} />
+          <ViewField label="Website" value={profile.website} />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Alamat</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ViewField label="Alamat" value={profile.address_line} />
+          <ViewField label="Kelurahan/Desa" value={profile.village} />
+          <ViewField label="Kecamatan" value={profile.subdistrict} />
+          <ViewField label="Kota/Kabupaten" value={profile.city_regency} />
+          <ViewField label="Provinsi" value={profile.province} />
+          <ViewField label="Kode Pos" value={profile.postal_code} />
+        </div>
+      </div>
+    </dl>
   );
 }
 
 function SchoolProfileForm({
   profile,
-  logoUrl,
-  onLogoUpload,
-  isUploading,
+  onSuccess,
+  onCancel,
 }: {
   profile: SchoolProfile;
-  logoUrl?: string;
-  onLogoUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  isUploading: boolean;
+  onSuccess: () => void;
+  onCancel: () => void;
 }) {
   const updateProfile = useUpdateSchoolProfile();
   const form = useForm<SchoolProfileForm>({
@@ -192,6 +321,7 @@ function SchoolProfileForm({
     try {
       await updateProfile.mutateAsync(data);
       toast.success("Profil sekolah berhasil diperbarui");
+      onSuccess();
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length === 0) {
@@ -204,38 +334,13 @@ function SchoolProfileForm({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Logo Sekolah</h3>
-          <div className="flex items-start gap-4">
-            {logoUrl ? (
-              <img src={logoUrl} alt="Logo sekolah" className="h-24 w-24 rounded-lg border object-cover" />
-            ) : (
-              <div className="flex h-24 w-24 items-center justify-center rounded-lg border-2 border-dashed bg-muted">
-                <ImageIcon className="h-8 w-8 text-muted-foreground" />
-              </div>
-            )}
-            <div className="flex-1">
-              <Input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={onLogoUpload}
-                disabled={isUploading}
-                className="max-w-xs"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                JPG, PNG, atau WebP. Maksimal 2MB.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-4">
           <h3 className="text-sm font-semibold text-foreground">Identitas Sekolah</h3>
           <FormField
             control={form.control}
             name="school_name"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Nama Sekolah</FormLabel>
+                <FormLabelRequired>Nama Sekolah</FormLabelRequired>
                 <FormControl>
                   <Input {...field} placeholder="SMA Negeri 1 Jakarta" />
                 </FormControl>
@@ -464,11 +569,14 @@ function SchoolProfileForm({
           />
         </div>
 
-        <div className="flex justify-end gap-2 border-t pt-4">
-          <Button type="submit" loading={updateProfile.isPending}>
-            Simpan Perubahan
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Batal
           </Button>
-        </div>
+          <Button type="submit" loading={updateProfile.isPending}>
+            Simpan
+          </Button>
+        </DialogFooter>
       </form>
     </Form>
   );

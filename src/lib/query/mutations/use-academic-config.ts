@@ -86,7 +86,11 @@ export function useDeleteAcademicYear() {
         method: "DELETE",
         authenticated: true,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: ACADEMIC_TERMS_QUERY_KEY });
+      qc.invalidateQueries({ queryKey: CURRICULUM_VERSIONS_QUERY_KEY });
+    },
   });
 }
 
@@ -167,7 +171,10 @@ export function useDeleteAcademicTerm(yearId: string) {
         method: "DELETE",
         authenticated: true,
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...ACADEMIC_TERMS_QUERY_KEY, yearId] });
+      qc.invalidateQueries({ queryKey: ACADEMIC_YEARS_QUERY_KEY });
+    },
   });
 }
 

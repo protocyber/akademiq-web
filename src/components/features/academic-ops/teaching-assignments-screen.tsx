@@ -8,10 +8,11 @@ import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,7 @@ import {
   serializeTeachingAssignmentsParams,
   type TeachingAssignmentsParams,
 } from "@/lib/schemas/teaching-assignments-params";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
 export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsContext) {
   const { yearId } = useAcademicScope();
@@ -63,10 +65,7 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
   const searchParams = useSearchParams();
   const params = React.useMemo(() => {
     const p = parseTeachingAssignmentsParams(searchParams);
-    return {
-      ...p,
-      academic_year_id: yearId || undefined,
-    };
+    return { ...p, academic_year_id: yearId || undefined };
   }, [searchParams, yearId]);
   const assignments = useTeachingAssignmentsTable(params);
   const homerooms = useHomerooms();
@@ -79,12 +78,30 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
   );
 
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [selected, setSelected] = React.useState<RowSelectionState>({});
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [pendingId, setPendingId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    setSelected({});
+  }, [params.page, params.search, params.sort, params.academic_year_id, params.homeroom_id]);
+
+  const pageRows = assignments.data?.data ?? [];
+  const selectWithinPage = useSelectWithinPage({
+    rows: pageRows,
+    rowSelection: selected,
+    getRowId: (a) => a.assignment_id,
+    onRowSelectionChange: setSelected,
+    toggleMode: "some",
+  });
+
+  const meta = assignments.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
+  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
+  const selectedIds = Object.keys(selected).filter((id) => selected[id]);
 
   function onParamsChange(next: TeachingAssignmentsParams) {
     const query = serializeTeachingAssignmentsParams(next);
-    router.replace(query ? `/teaching-assignments?${query}` : "/teaching-assignments", {
-      scroll: false,
-    });
+    router.replace(query ? `/teaching-assignments?${query}` : "/teaching-assignments", { scroll: false });
   }
 
   if (!yearId) {
@@ -101,58 +118,96 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
 
   return (
     <div className="space-y-4">
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-lg">Penugasan Mengajar</CardTitle>
-              <CardDescription>Assign guru ke mata pelajaran dan kelas untuk tahun ajaran aktif.</CardDescription>
+      <DataTableCard
+        title="Penugasan Mengajar"
+        description="Assign guru ke mata pelajaran dan kelas untuk tahun ajaran aktif."
+        primaryActions={
+          <Button size="sm" className="gap-1" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" /> Tambah Penugasan
+          </Button>
+        }
+        toolbar={{
+          selectAll: {
+            checked: selectWithinPage.checked,
+            disabled: selectWithinPage.disabled,
+            onToggle: () => selectWithinPage.toggleAll(),
+          },
+          bulkActions: selectedIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>{selectedIds.length} dipilih</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    Aksi massal <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Aksi untuk {selectedIds.length} penugasan</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!canManage}
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => { setPendingId(null); setConfirmDelete(true); }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Hapus
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <div className="flex items-center gap-2">
-              <Select
-                value={params.homeroom_id ?? "all"}
-                onValueChange={(value) =>
-                  onParamsChange({
-                    ...params,
-                    homeroom_id: value === "all" ? undefined : value,
-                    page: 1,
-                  })
-                }
-              >
-                <SelectTrigger className="w-[10rem]">
-                  <SelectValue placeholder="Kelas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua kelas</SelectItem>
-                  {filteredHomerooms.map((homeroom) => (
-                    <SelectItem key={homeroom.homeroom_id} value={homeroom.homeroom_id}>
-                      {homeroom.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button size="sm" className="gap-1" onClick={() => setCreateOpen(true)}>
-                <Plus className="h-4 w-4" /> Tambah Penugasan
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {assignments.isLoading ? (
-            <TableSkeleton />
-          ) : assignments.error ? (
-            <p className="text-sm text-destructive">{getErrorMessage(assignments.error)}</p>
-          ) : (
-            <AssignmentTable
-              assignments={assignments.data?.data ?? []}
-              meta={assignments.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-              params={params}
-              canManage={canManage}
-              onParamsChange={onParamsChange}
-            />
-          )}
-        </CardContent>
-      </Card>
+          ) : null,
+          search: (
+            <Select
+              value={params.homeroom_id ?? "all"}
+              onValueChange={(value) =>
+                onParamsChange({ ...params, homeroom_id: value === "all" ? undefined : value, page: 1 })
+              }
+            >
+              <SelectTrigger className="w-full sm:w-[10rem]">
+                <SelectValue placeholder="Kelas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua kelas</SelectItem>
+                {filteredHomerooms.map((homeroom) => (
+                  <SelectItem key={homeroom.homeroom_id} value={homeroom.homeroom_id}>
+                    {homeroom.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ),
+        }}
+        pagination={{
+          page: meta.page,
+          pageCount,
+          total: meta.total,
+          label: "penugasan",
+          onPrev: () => onParamsChange({ ...params, page: meta.page - 1 }),
+          onNext: () => onParamsChange({ ...params, page: meta.page + 1 }),
+        }}
+      >
+        {assignments.isLoading ? (
+          <div className="px-4"><TableSkeleton /></div>
+        ) : assignments.error ? (
+          <p className="px-4 text-sm text-destructive">{getErrorMessage(assignments.error)}</p>
+        ) : (
+          <AssignmentTable
+            assignments={pageRows}
+            params={params}
+            canManage={canManage}
+            rowSelection={selected}
+            onRowSelectionChange={setSelected}
+            onStartDelete={(id) => { setPendingId(id); setSelected({ [id]: true }); setConfirmDelete(true); }}
+            onParamsChange={onParamsChange}
+          />
+        )}
+      </DataTableCard>
+
+      <DeleteConfirm
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        ids={pendingId ? [pendingId] : selectedIds}
+        onDone={() => { setSelected({}); setPendingId(null); }}
+      />
 
       <AssignmentDialog
         canManage={canManage}
@@ -164,65 +219,39 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
   );
 }
 
-
-
 type Meta = { page: number; page_size: number; total: number; };
 
 function AssignmentTable({
   assignments,
-  meta,
   params,
   canManage,
+  rowSelection,
+  onRowSelectionChange,
+  onStartDelete,
   onParamsChange,
 }: {
   assignments: TeachingAssignment[];
-  meta: Meta;
   params: TeachingAssignmentsParams;
   canManage: boolean;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: (value: RowSelectionState) => void;
+  onStartDelete: (id: string) => void;
   onParamsChange: (params: TeachingAssignmentsParams) => void;
 }) {
   const teachers = useTeachers();
   const homerooms = useHomerooms();
-  // Subjects are nested under curriculum versions; resolve names across all of
-  // the selected year's curricula so the Mapel column shows names, not ids.
   const subjectYearId = params.academic_year_id ?? assignments[0]?.academic_year_id;
   const subjects = useSubjectsForYear(subjectYearId);
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
-
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const [pendingId, setPendingId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setRowSelection({});
-  }, [params.page, params.search, params.sort, params.academic_year_id, params.homeroom_id]);
 
   const teacherName = useNameMap(teachers.data ?? [], (t) => t.teacher_id, (t) => t.full_name);
   const homeroomName = useNameMap(homerooms.data ?? [], (h) => h.homeroom_id, (h) => h.name);
   const subjectName = useNameMap(subjects.data ?? [], (s) => s.subject_id, (s) => s.name);
 
-  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
-  const allSelected = assignments.length > 0 && assignments.every((a) => rowSelection[a.assignment_id]);
-  const someSelected = assignments.some((a) => rowSelection[a.assignment_id]);
-
   const columns: ColumnDef<TeachingAssignment>[] = [
     {
       id: "select",
       size: 40,
-      header: () => (
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(checked) => {
-            const next: RowSelectionState = { ...rowSelection };
-            assignments.forEach((a) => {
-              if (checked) next[a.assignment_id] = true;
-              else delete next[a.assignment_id];
-            });
-            setRowSelection(next);
-          }}
-          aria-label="Pilih semua"
-        />
-      ),
+      header: () => null,
       cell: ({ row }) => (
         <Checkbox
           checked={Boolean(rowSelection[row.original.assignment_id])}
@@ -230,7 +259,7 @@ function AssignmentTable({
             const next: RowSelectionState = { ...rowSelection };
             if (checked) next[row.original.assignment_id] = true;
             else delete next[row.original.assignment_id];
-            setRowSelection(next);
+            onRowSelectionChange(next);
           }}
           aria-label={`Pilih ${teacherName(row.original.teacher_id)}`}
         />
@@ -273,67 +302,14 @@ function AssignmentTable({
   ];
 
   return (
-    <div className="space-y-4">
-      {selectedIds.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-          <span>{selectedIds.length} dipilih</span>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="gap-1"
-            disabled={!canManage}
-            onClick={() => {
-              setPendingId(null);
-              setConfirmDelete(true);
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Hapus
-          </Button>
-        </div>
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        data={assignments}
-        getRowId={(row) => row.assignment_id}
-        rowSelection={rowSelection}
-        emptyText="Tidak ada penugasan yang cocok."
-      />
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} penugasan
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page <= 1}
-            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page >= pageCount}
-            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      </div>
-
-      <DeleteConfirm
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        ids={pendingId ? [pendingId] : selectedIds}
-        onDone={() => {
-          setRowSelection({});
-          setPendingId(null);
-        }}
-      />
-    </div>
+    <DataTable
+      columns={columns}
+      data={assignments}
+      getRowId={(row) => row.assignment_id}
+      rowSelection={rowSelection}
+      emptyText="Tidak ada penugasan yang cocok."
+      classNames={{ wrapper: "rounded-none !border-x-0" }}
+    />
   );
 }
 
@@ -446,10 +422,7 @@ function AssignmentDialog({
   async function onSubmit(values: TeachingAssignmentForm) {
     if (!yearId) return;
     try {
-      await assign.mutateAsync({
-        ...values,
-        academic_year_id: yearId,
-      });
+      await assign.mutateAsync({ ...values, academic_year_id: yearId });
       toast.success("Penugasan dibuat.");
       onOpenChange(false);
     } catch (err) {

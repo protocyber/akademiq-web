@@ -10,9 +10,10 @@ import { ReportCardDetailBody } from "@/components/features/grading/report-card-
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard, DataTablePagination, DataTableToolbar } from "@/components/ui/data-table-card";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toaster";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { getErrorMessage } from "@/lib/errors/messages";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 import { useBulkTransitionReportCards, useGenerateReportCards } from "@/lib/query/mutations/use-grading";
 import { useHomeroomRoster, useHomerooms } from "@/lib/query/queries/use-academic-ops";
 import {
@@ -139,20 +141,20 @@ function ReportCardsBoard() {
   const bothSelected = Boolean(reportTypeId && homeroomId);
 
   return (
-    <Card className="border border-border shadow-sm">
-      <CardHeader className="border-b pb-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <CardTitle className="text-lg">Papan Rapor</CardTitle>
-            <CardDescription>Pilih jenis rapor dan kelas untuk mengelola rapor siswa.</CardDescription>
-          </div>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center">
-            <Select value={reportTypeId} onValueChange={(value) => { setReportTypeId(value === "__none__" ? "" : value); }}>
-              <SelectTrigger className="md:w-56">
+    <DataTableCard
+      title="Papan Rapor"
+      description="Pilih jenis rapor dan kelas untuk mengelola rapor siswa."
+      primaryActions={
+        <GenerateDraftButton reportTypeId={reportTypeId} homeroomId={homeroomId} disabled={!bothSelected} />
+      }
+      toolbar={{
+        filters: (
+          <>
+            <Select value={reportTypeId || undefined} onValueChange={setReportTypeId}>
+              <SelectTrigger className="w-full sm:w-56">
                 <SelectValue placeholder="Jenis Rapor" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">— Pilih jenis rapor —</SelectItem>
                 {(reportTypes.data ?? []).map((rt) => (
                   <SelectItem key={rt.report_type_id} value={rt.report_type_id}>
                     {rt.name}
@@ -160,12 +162,11 @@ function ReportCardsBoard() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={homeroomId} onValueChange={(value) => { setHomeroomId(value === "__none__" ? "" : value); }}>
-              <SelectTrigger className="md:w-56">
+            <Select value={homeroomId || undefined} onValueChange={setHomeroomId}>
+              <SelectTrigger className="w-full sm:w-56">
                 <SelectValue placeholder="Kelas" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">— Pilih kelas —</SelectItem>
                 {(homerooms.data ?? []).map((room) => (
                   <SelectItem key={room.homeroom_id} value={room.homeroom_id}>
                     {room.name}
@@ -173,26 +174,24 @@ function ReportCardsBoard() {
                 ))}
               </SelectContent>
             </Select>
-            <GenerateDraftButton reportTypeId={reportTypeId} homeroomId={homeroomId} disabled={!bothSelected} />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-6">
-        {!yearId ? (
-          <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Silakan pilih tahun ajaran di header untuk melihat jenis rapor.
-          </p>
-        ) : reportTypes.isLoading || homerooms.isLoading ? (
-          <Skeleton className="h-48 w-full" />
-        ) : !bothSelected ? (
-          <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-            Pilih jenis rapor dan kelas untuk memuat papan rapor.
-          </p>
-        ) : (
-          <ReportCardsTable key={`${reportTypeId}:${homeroomId}`} reportTypeId={reportTypeId} homeroomId={homeroomId} />
-        )}
-      </CardContent>
-    </Card>
+          </>
+        ),
+      }}
+    >
+      {!yearId ? (
+        <p className="p-6 text-center text-sm text-muted-foreground">
+          Silakan pilih tahun ajaran di header untuk melihat jenis rapor.
+        </p>
+      ) : reportTypes.isLoading || homerooms.isLoading ? (
+        <Skeleton className="h-48 w-full" />
+      ) : !bothSelected ? (
+        <p className="p-6 text-center text-sm text-muted-foreground border-t">
+          Pilih jenis rapor dan kelas untuk memuat papan rapor.
+        </p>
+      ) : (
+        <ReportCardsTable key={`${reportTypeId}:${homeroomId}`} reportTypeId={reportTypeId} homeroomId={homeroomId} />
+      )}
+    </DataTableCard>
   );
 }
 
@@ -249,25 +248,34 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
     [statusData, currentPage],
   );
 
+  const selectWithinPage = useSelectWithinPage({
+    rows: pagedData,
+    rowSelection: selection,
+    getRowId: (c) => c.report_card_id,
+    onRowSelectionChange: setSelection,
+    toggleMode: "some",
+  });
+
+  const selectedIds = Object.keys(selection).filter((id) => selection[id]);
+
   const columns = React.useMemo<ColumnDef<ReportCard>[]>(
     () => [
       {
         id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={table.getIsAllPageRowsSelected()}
-            onCheckedChange={(value) => table.toggleAllPageRowsSelected(Boolean(value))}
-            aria-label="Pilih semua di halaman ini"
-          />
-        ),
+        header: () => null,
         cell: ({ row }) => (
           <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(Boolean(value))}
+            checked={Boolean(selection[row.original.report_card_id])}
+            onCheckedChange={(value) => {
+              const next: RowSelectionState = { ...selection };
+              if (value) next[row.original.report_card_id] = true;
+              else delete next[row.original.report_card_id];
+              setSelection(next);
+            }}
             aria-label="Pilih baris"
           />
         ),
-        enableSorting: false,
+        enableSorting: false
       },
       {
         id: "name",
@@ -295,36 +303,45 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
         ),
       },
     ],
-    [studentNameById],
+    [studentNameById, selection],
   );
 
-  const selectedIds = Object.keys(selection).filter((id) => selection[id]);
-
   return (
-    <div className="space-y-4">
-      <Tabs
-        value={activeStatus}
-        onValueChange={(value) => {
-          setActiveStatus(value as ReportCardStatus);
-          setPage(1);
-          setSelection({});
+    <div className="">
+      <DataTableToolbar
+        className="min-h-[60px]"
+        selectAll={{
+          checked: selectWithinPage.checked,
+          disabled: selectWithinPage.disabled,
+          onToggle: () => selectWithinPage.toggleAll(),
         }}
-      >
-        <TabsList scrollable>
-          {STATUSES.map((status) => (
-            <TabsTrigger key={status} value={status} className="gap-1.5">
-              {LABELS[status]}
-              {byStatus[status].length > 0 ? <span>{byStatus[status].length}</span> : ""}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-
-      <BulkActionMenu
-        selectedIds={selectedIds}
-        reportTypeId={reportTypeId}
-        homeroomId={homeroomId}
-        onDone={() => setSelection({})}
+        bulkActions={selectedIds.length > 0 ? (
+          <BulkActionMenu
+            selectedIds={selectedIds}
+            reportTypeId={reportTypeId}
+            homeroomId={homeroomId}
+            onDone={() => setSelection({})}
+          />
+        ) : undefined}
+        search={
+          <Tabs
+            value={activeStatus}
+            onValueChange={(value) => {
+              setActiveStatus(value as ReportCardStatus);
+              setPage(1);
+              setSelection({});
+            }}
+          >
+            <TabsList scrollable>
+              {STATUSES.map((status) => (
+                <TabsTrigger key={status} value={status} className="gap-1.5">
+                  {LABELS[status]}
+                  {byStatus[status].length > 0 ? <span>{byStatus[status].length}</span> : ""}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        }
       />
 
       {cards.isLoading || roster.isLoading ? (
@@ -337,23 +354,18 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
           rowSelection={selection}
           onRowSelectionChange={setSelection}
           emptyText={`Belum ada kartu "${LABELS[activeStatus]}". Jalankan Generate Draft.`}
+          classNames={{ wrapper: "rounded-none border-x-0" }}
         />
       )}
 
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {currentPage} dari {pageCount} · {statusData.length} siswa
-          {selectedIds.length > 0 ? ` · ${selectedIds.length} terpilih` : ""}
-        </span>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>
-            Sebelumnya
-          </Button>
-          <Button variant="outline" size="sm" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)}>
-            Berikutnya
-          </Button>
-        </div>
-      </div>
+      <DataTablePagination
+        page={currentPage}
+        pageCount={pageCount}
+        total={statusData.length}
+        label="siswa"
+        onPrev={() => setPage(currentPage - 1)}
+        onNext={() => setPage(currentPage + 1)}
+      />
 
       <Dialog open={detailCardId !== null} onOpenChange={(open) => { if (!open) setDetailCardId(null); }}>
         <DialogContent className="max-w-3xl">
@@ -398,7 +410,7 @@ function BulkActionMenu({
   if (selectedIds.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
+    <div className="flex flex-wrap items-center gap-2 bg-muted/30 text-sm">
       <span>{selectedIds.length} dipilih</span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

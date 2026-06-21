@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toaster";
 import { getErrorMessage } from "@/lib/errors/messages";
@@ -291,7 +291,7 @@ function CreateFamilyDialog({
               name="full_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama Lengkap *</FormLabel>
+                  <FormLabelRequired>Nama Lengkap</FormLabelRequired>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>

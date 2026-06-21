@@ -9,7 +9,7 @@ import { KeyRound, Lock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toaster";
@@ -100,7 +100,7 @@ function SetPasswordContent() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password baru</FormLabel>
+                    <FormLabelRequired>Password baru</FormLabelRequired>
                     <div className="relative">
                       <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <FormControl>
@@ -122,7 +122,7 @@ function SetPasswordContent() {
                 name="confirm"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Konfirmasi password</FormLabel>
+                    <FormLabelRequired>Konfirmasi password</FormLabelRequired>
                     <div className="relative">
                       <KeyRound className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                       <FormControl>

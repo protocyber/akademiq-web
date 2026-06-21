@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -128,6 +128,8 @@ export function RegisterClient() {
     if (idx > 0) setStep(STEPS[idx - 1].id as StepId);
   }
 
+  const [showPassword, setShowPassword] = React.useState(false);
+
   const isPending = isExistingMode
     ? registerForUser.isPending || enterTenant.isPending
     : register.isPending;
@@ -201,7 +203,7 @@ export function RegisterClient() {
                   name="school_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nama sekolah</FormLabel>
+                      <FormLabelRequired>Nama sekolah</FormLabelRequired>
                       <FormControl>
                         <Input placeholder="SMA Demo" {...field} />
                       </FormControl>
@@ -222,7 +224,7 @@ export function RegisterClient() {
                     name="admin_full_name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Nama lengkap</FormLabel>
+                         <FormLabelRequired>Nama lengkap</FormLabelRequired>
                         <FormControl>
                           <Input placeholder="Andi Saputra" {...field} />
                         </FormControl>
@@ -235,7 +237,7 @@ export function RegisterClient() {
                     name="admin_email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email admin</FormLabel>
+                         <FormLabelRequired>Email admin</FormLabelRequired>
                         <FormControl>
                           <Input
                             type="email"
@@ -248,23 +250,34 @@ export function RegisterClient() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="admin_password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="password"
-                            autoComplete="new-password"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                   <FormField
+                     control={form.control}
+                     name="admin_password"
+                     render={({ field }) => (
+                       <FormItem>
+                         <FormLabelRequired>Password</FormLabelRequired>
+                         <FormControl>
+                           <div className="relative">
+                             <Input
+                               type={showPassword ? "text" : "password"}
+                               autoComplete="new-password"
+                               {...field}
+                             />
+                             <Button
+                               type="button"
+                               variant="ghost"
+                               size="icon"
+                               onClick={() => setShowPassword(!showPassword)}
+                               className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                             >
+                               {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                             </Button>
+                           </div>
+                         </FormControl>
+                         <FormMessage />
+                       </FormItem>
+                     )}
+                   />
                 </div>
               ) : null}
 
@@ -353,7 +366,7 @@ function PlanStep({
       name="plan_id"
       render={({ field }) => (
         <FormItem>
-          <FormLabel>Pilih plan</FormLabel>
+                       <FormLabelRequired>Pilih plan</FormLabelRequired>
           <FormControl>
             <div className="grid gap-4 md:grid-cols-3">
               {plans.map((plan) => {

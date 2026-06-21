@@ -16,10 +16,10 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +68,7 @@ import {
   type HomeroomsParams,
   type HomeroomsSort,
 } from "@/lib/schemas/homerooms-params";
+import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
 const SORT_FIELDS: Record<string, { asc: HomeroomsSort; desc: HomeroomsSort }> = {
   name: { asc: "name", desc: "-name" },
@@ -80,6 +81,9 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
   const params = React.useMemo(() => parseHomeroomsParams(searchParams), [searchParams]);
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const homerooms = useHomeroomsTable(params);
+  const [selected, setSelected] = React.useState<RowSelectionState>({});
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [pendingId, setPendingId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     setSearchDraft(params.search ?? "");
@@ -94,47 +98,106 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
     return () => window.clearTimeout(handle);
   }, [params, router, searchDraft]);
 
+  React.useEffect(() => {
+    setSelected({});
+  }, [params.page, params.search, params.sort]);
+
+  const pageRows = homerooms.data?.data ?? [];
+  const selectWithinPage = useSelectWithinPage({
+    rows: pageRows,
+    rowSelection: selected,
+    getRowId: (h) => h.homeroom_id,
+    onRowSelectionChange: setSelected,
+    toggleMode: "some",
+  });
+
+  const meta = homerooms.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
+  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
+  const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+
   return (
     <div className="space-y-4">
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-lg">Daftar Kelas</CardTitle>
-              <CardDescription>Buat homeroom, lihat roster, dan enroll siswa.</CardDescription>
+      <DataTableCard
+        title="Daftar Kelas"
+        description="Buat homeroom, lihat roster, dan enroll siswa."
+        primaryActions={
+          <HomeroomDialog
+            canManage={canManage}
+            upgradeMessage={upgradeMessage}
+            trigger={<Button size="sm">+ Tambah</Button>}
+          />
+        }
+        toolbar={{
+          selectAll: {
+            checked: selectWithinPage.checked,
+            disabled: selectWithinPage.disabled,
+            onToggle: () => selectWithinPage.toggleAll(),
+          },
+          bulkActions: selectedIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>{selectedIds.length} dipilih</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" className="gap-1">
+                    Aksi massal <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Aksi untuk {selectedIds.length} kelas</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    disabled={!canManage}
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => { setPendingId(null); setConfirmDelete(true); }}
+                  >
+                    <Trash2 className="h-4 w-4" /> Hapus
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                placeholder="Cari nama atau tingkat"
-                className="md:w-72"
-              />
-              <HomeroomDialog
-                canManage={canManage}
-                upgradeMessage={upgradeMessage}
-                trigger={<Button size="sm">+ Tambah</Button>}
-              />
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6">
-          {homerooms.isLoading ? (
-            <TableSkeleton />
-          ) : homerooms.error ? (
-            <p className="text-sm text-destructive">{getErrorMessage(homerooms.error)}</p>
-          ) : (
-            <HomeroomsTable
-              homerooms={homerooms.data?.data ?? []}
-              meta={homerooms.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 }}
-              params={params}
-              canManage={canManage}
-              upgradeMessage={upgradeMessage}
-              onParamsChange={(next) => replaceParams(router, next)}
+          ) : null,
+          search: (
+            <Input
+              value={searchDraft}
+              onChange={(event) => setSearchDraft(event.target.value)}
+              placeholder="Cari nama atau tingkat"
+              className="min-w-[160px] sm:flex-1 lg:flex-1"
             />
-          )}
-        </CardContent>
-      </Card>
+          ),
+        }}
+        pagination={{
+          page: meta.page,
+          pageCount,
+          total: meta.total,
+          label: "kelas",
+          onPrev: () => replaceParams(router, { ...params, page: meta.page - 1 }),
+          onNext: () => replaceParams(router, { ...params, page: meta.page + 1 }),
+        }}
+      >
+        {homerooms.isLoading ? (
+          <div className="px-4"><TableSkeleton /></div>
+        ) : homerooms.error ? (
+          <p className="px-4 text-sm text-destructive">{getErrorMessage(homerooms.error)}</p>
+        ) : (
+          <HomeroomsTable
+            homerooms={pageRows}
+            params={params}
+            canManage={canManage}
+            upgradeMessage={upgradeMessage}
+            rowSelection={selected}
+            onRowSelectionChange={setSelected}
+            onStartDelete={(id) => { setPendingId(id); setSelected({ [id]: true }); setConfirmDelete(true); }}
+            onParamsChange={(next) => replaceParams(router, next)}
+          />
+        )}
+      </DataTableCard>
+
+      <DeleteConfirm
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        ids={pendingId ? [pendingId] : selectedIds}
+        onDone={() => { setSelected({}); setPendingId(null); }}
+      />
     </div>
   );
 }
@@ -144,33 +207,27 @@ function replaceParams(router: ReturnType<typeof useRouter>, params: HomeroomsPa
   router.replace(query ? `/homerooms?${query}` : "/homerooms", { scroll: false });
 }
 
-type Meta = { page: number; page_size: number; total: number };
-
 function HomeroomsTable({
   homerooms,
-  meta,
   params,
   canManage,
   upgradeMessage,
+  rowSelection,
+  onRowSelectionChange,
+  onStartDelete,
   onParamsChange,
 }: {
   homerooms: Homeroom[];
-  meta: Meta;
   params: HomeroomsParams;
   canManage: boolean;
   upgradeMessage: string;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: (value: RowSelectionState) => void;
+  onStartDelete: (id: string) => void;
   onParamsChange: (params: HomeroomsParams) => void;
 }) {
-  const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [editing, setEditing] = React.useState<Homeroom | null>(null);
   const [roster, setRoster] = React.useState<Homeroom | null>(null);
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const [pendingId, setPendingId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setRowSelection({});
-  }, [params.page, params.search, params.sort]);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
@@ -184,34 +241,11 @@ function HomeroomsTable({
     return <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />;
   }
 
-  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
-  const allSelected = homerooms.length > 0 && homerooms.every((h) => rowSelection[h.homeroom_id]);
-  const someSelected = homerooms.some((h) => rowSelection[h.homeroom_id]);
-
-  function startDelete(id: string) {
-    setPendingId(id);
-    setRowSelection({ [id]: true });
-    setConfirmDelete(true);
-  }
-
   const columns: ColumnDef<Homeroom>[] = [
     {
       id: "select",
       size: 40,
-      header: () => (
-        <Checkbox
-          checked={allSelected ? true : someSelected ? "indeterminate" : false}
-          onCheckedChange={(checked) => {
-            const next: RowSelectionState = { ...rowSelection };
-            homerooms.forEach((h) => {
-              if (checked) next[h.homeroom_id] = true;
-              else delete next[h.homeroom_id];
-            });
-            setRowSelection(next);
-          }}
-          aria-label="Pilih semua"
-        />
-      ),
+      header: () => null,
       cell: ({ row }) => (
         <Checkbox
           checked={Boolean(rowSelection[row.original.homeroom_id])}
@@ -219,7 +253,7 @@ function HomeroomsTable({
             const next: RowSelectionState = { ...rowSelection };
             if (checked) next[row.original.homeroom_id] = true;
             else delete next[row.original.homeroom_id];
-            setRowSelection(next);
+            onRowSelectionChange(next);
           }}
           aria-label={`Pilih ${row.original.name}`}
         />
@@ -281,7 +315,7 @@ function HomeroomsTable({
                 <DropdownMenuItem
                   disabled={!canManage}
                   className="text-destructive focus:text-destructive"
-                  onClick={() => startDelete(homeroom.homeroom_id)}
+                  onClick={() => onStartDelete(homeroom.homeroom_id)}
                 >
                   <Trash2 className="h-4 w-4" /> Hapus
                 </DropdownMenuItem>
@@ -294,56 +328,15 @@ function HomeroomsTable({
   ];
 
   return (
-    <div className="space-y-4">
-      {selectedIds.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3 text-sm">
-          <span>{selectedIds.length} dipilih</span>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="gap-1"
-            disabled={!canManage}
-            onClick={() => {
-              setPendingId(null);
-              setConfirmDelete(true);
-            }}
-          >
-            <Trash2 className="h-4 w-4" /> Hapus
-          </Button>
-        </div>
-      ) : null}
-
+    <div>
       <DataTable
         columns={columns}
         data={homerooms}
         getRowId={(row) => row.homeroom_id}
         rowSelection={rowSelection}
         emptyText="Tidak ada kelas yang cocok."
+        classNames={{ wrapper: "rounded-none !border-x-0" }}
       />
-
-      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>
-          Halaman {meta.page} dari {pageCount} · {meta.total} kelas
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page <= 1}
-            onClick={() => onParamsChange({ ...params, page: meta.page - 1 })}
-          >
-            Sebelumnya
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={meta.page >= pageCount}
-            onClick={() => onParamsChange({ ...params, page: meta.page + 1 })}
-          >
-            Berikutnya
-          </Button>
-        </div>
-      </div>
 
       {editing ? (
         <HomeroomDialog
@@ -351,9 +344,7 @@ function HomeroomsTable({
           canManage={canManage}
           upgradeMessage={upgradeMessage}
           open={Boolean(editing)}
-          onOpenChange={(open) => {
-            if (!open) setEditing(null);
-          }}
+          onOpenChange={(open) => { if (!open) setEditing(null); }}
         />
       ) : null}
 
@@ -362,21 +353,9 @@ function HomeroomsTable({
           homeroom={roster}
           canManage={canManage}
           open={Boolean(roster)}
-          onOpenChange={(open) => {
-            if (!open) setRoster(null);
-          }}
+          onOpenChange={(open) => { if (!open) setRoster(null); }}
         />
       ) : null}
-
-      <DeleteConfirm
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
-        ids={pendingId ? [pendingId] : selectedIds}
-        onDone={() => {
-          setRowSelection({});
-          setPendingId(null);
-        }}
-      />
     </div>
   );
 }

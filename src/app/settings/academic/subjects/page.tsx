@@ -7,8 +7,9 @@ import { ChevronDown, ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from 
 import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import {
@@ -34,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
@@ -66,6 +67,7 @@ import {
   type SubjectGroupForm,
 } from "@/lib/schemas/subject";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
+import { cn } from '@/lib/utils';
 
 export default function AcademicSubjectsPage() {
   return (
@@ -172,45 +174,35 @@ function SubjectGroupsBoard({
 
   return (
     <div className="space-y-4">
-      <Card className="border border-border shadow-sm">
-        <CardHeader className="border-b pb-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle className="text-lg">Mata Pelajaran</CardTitle>
-              <CardDescription>Kelola kelompok dan mata pelajaran per versi kurikulum.</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={subjectSearch}
-                onChange={(event) => setSubjectSearch(event.target.value)}
-                placeholder="Cari nama atau kode mapel"
-                className="md:w-64"
-              />
-              <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
-                <span>
-                  <Button
-                    disabled={!canManage}
-                    onClick={() => setCreatingGroup(true)}
-                    variant="outline"
-                    className="gap-1"
-                  >
-                    <Plus className="h-4 w-4" /> Tambah Kelompok
-                  </Button>
-                </span>
-              </EntitlementTooltip>
-              <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
-                <span>
-                  <Button disabled={!canManage} onClick={() => setCreatingSubject(true)} className="gap-1">
-                    <Plus className="h-4 w-4" /> Tambah Mapel
-                  </Button>
-                </span>
-              </EntitlementTooltip>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-6 space-y-4">
-          {selectedSubjectIds.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 border bg-muted/30 p-3 text-sm">
+      <DataTableCard
+        title="Mata Pelajaran"
+        description="Kelola kelompok dan mata pelajaran per versi kurikulum."
+        primaryActions={
+          <>
+            <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
+              <span>
+                <Button
+                  disabled={!canManage}
+                  onClick={() => setCreatingGroup(true)}
+                  variant="outline"
+                  className="gap-1"
+                >
+                  <Plus className="h-4 w-4" /> Tambah Kelompok
+                </Button>
+              </span>
+            </EntitlementTooltip>
+            <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
+              <span>
+                <Button disabled={!canManage} onClick={() => setCreatingSubject(true)} className="gap-1">
+                  <Plus className="h-4 w-4" /> Tambah Mapel
+                </Button>
+              </span>
+            </EntitlementTooltip>
+          </>
+        }
+        toolbar={{
+          bulkActions: selectedSubjectIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               <span>{selectedSubjectIds.length} mapel dipilih</span>
               <Button
                 size="sm"
@@ -225,7 +217,18 @@ function SubjectGroupsBoard({
                 <Trash2 className="h-4 w-4" /> Hapus
               </Button>
             </div>
-          ) : null}
+          ) : undefined,
+          search: (
+            <Input
+              value={subjectSearch}
+              onChange={(event) => setSubjectSearch(event.target.value)}
+              placeholder="Cari nama atau kode mapel"
+              className="min-w-[160px] sm:flex-1 lg:flex-1"
+            />
+          ),
+        }}
+      >
+        <div className="space-y-4">
 
           {groups.isLoading || subjects.isLoading ? (
             <div className="space-y-3">
@@ -238,15 +241,15 @@ function SubjectGroupsBoard({
               Belum ada kelompok. Tambahkan kelompok terlebih dahulu sebelum membuat mata pelajaran.
             </p>
           ) : (
-            <div className="space-y-3">
-              {sortedGroups.map((group) => {
+            <div className="">
+              {sortedGroups.map((group, i, groups) => {
                 const groupSubjects = subjectsByGroup.get(group.subject_group_id) ?? [];
                 const isCollapsed = collapsed[group.subject_group_id];
                 const groupSelection = groupSubjects.filter((s) => subjectSelection[s.subject_id]);
                 const allInGroupSelected = groupSubjects.length > 0 && groupSelection.length === groupSubjects.length;
                 const someInGroupSelected = groupSelection.length > 0 && !allInGroupSelected;
                 return (
-                  <Card key={group.subject_group_id} className="overflow-hidden">
+                  <Card key={group.subject_group_id} className={cn("overflow-hidden border-x-0", i < (groups.length - 1) ? "rounded-none" : "rounded-t-none")}>
                     <CardHeader className="border-b py-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <Button
@@ -271,7 +274,6 @@ function SubjectGroupsBoard({
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                             {groupSubjects.length} mapel
                           </span>
-                          <span className="text-xs text-muted-foreground">Posisi {group.position}</span>
                         </Button>
                         <div className="flex items-center gap-1">
                           <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="Edit Kelompok" onClick={() => setEditingGroup(group)}>
@@ -327,8 +329,8 @@ function SubjectGroupsBoard({
               })}
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </DataTableCard>
 
       <SubjectGroupDialog
         open={creatingGroup}
@@ -497,6 +499,7 @@ function GroupSubjectTable({
       rowSelection={selection}
       onRowSelectionChange={onSelectionChange}
       emptyText="Belum ada mata pelajaran."
+      classNames={{ wrapper: "rounded-none border-none" }}
     />
   );
 }
@@ -575,7 +578,7 @@ function SubjectDialog({
               name="subject_group_id"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Kelompok</FormLabel>
+                  <FormLabelRequired>Kelompok</FormLabelRequired>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
@@ -600,7 +603,7 @@ function SubjectDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama</FormLabel>
+                  <FormLabelRequired>Nama</FormLabelRequired>
                   <FormControl>
                     <Input placeholder="Matematika" {...field} />
                   </FormControl>
@@ -627,7 +630,7 @@ function SubjectDialog({
                 name="passing_grade"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>KKM</FormLabel>
+                    <FormLabelRequired>KKM</FormLabelRequired>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -714,7 +717,7 @@ function SubjectGroupDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Nama</FormLabel>
+                  <FormLabelRequired>Nama</FormLabelRequired>
                   <FormControl>
                     <Input placeholder="Kelompok A" {...field} />
                   </FormControl>
@@ -741,7 +744,7 @@ function SubjectGroupDialog({
                 name="position"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Posisi</FormLabel>
+                    <FormLabelRequired>Posisi</FormLabelRequired>
                     <FormControl>
                       <Input type="number" min={1} {...field} />
                     </FormControl>

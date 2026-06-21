@@ -19,6 +19,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
+
+type DataTableClassNames = {
+  wrapper?: string;
+  table?: string;
+  headerRow?: string;
+  headerCell?: string;
+  body?: string;
+  row?: string;
+  cell?: string;
+  emptyCell?: string;
+};
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
@@ -32,6 +44,17 @@ type DataTableProps<TData, TValue> = {
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
   emptyText?: string;
+  /**
+   * Additional classes appended after `classOverrides` (or the default) via `cn()`.
+   * When used alone, merges with the element's default classes.
+   * When used with `classOverrides`, appends on top of the override.
+   */
+  classNames?: DataTableClassNames;
+  /**
+   * Replaces the element's default classes entirely.
+   * `classNames` is then appended on top of this value if also provided.
+   */
+  classOverrides?: DataTableClassNames;
 };
 
 /**
@@ -48,6 +71,8 @@ export function DataTable<TData, TValue>({
   rowSelection,
   onRowSelectionChange,
   emptyText = "Tidak ada data.",
+  classNames,
+  classOverrides,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -66,13 +91,13 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="overflow-hidden rounded-md border">
-      <Table>
+    <div className={cn(classOverrides?.wrapper ?? "overflow-hidden rounded-md border", classNames?.wrapper)}>
+      <Table className={cn(classOverrides?.table ?? "bg-card", classNames?.table)}>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
+            <TableRow key={headerGroup.id} className={cn(classOverrides?.headerRow, classNames?.headerRow)}>
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>
+                <TableHead key={header.id} className={cn(classOverrides?.headerCell, classNames?.headerCell)} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -84,15 +109,16 @@ export function DataTable<TData, TValue>({
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody>
+        <TableBody className={cn(classOverrides?.body, classNames?.body)}>
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
+                className={cn(classOverrides?.row, classNames?.row)}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                  <TableCell key={cell.id} className={cn(classOverrides?.cell, classNames?.cell)}>
                     {flexRender(
                       cell.column.columnDef.cell,
                       cell.getContext(),
@@ -105,7 +131,7 @@ export function DataTable<TData, TValue>({
             <TableRow>
               <TableCell
                 colSpan={columns.length}
-                className="h-24 text-center text-sm text-muted-foreground"
+                className={cn(classOverrides?.emptyCell ?? "h-24 text-center text-sm text-muted-foreground", classNames?.emptyCell)}
               >
                 {emptyText}
               </TableCell>

@@ -102,6 +102,14 @@ const FormLabel = React.forwardRef<
 });
 FormLabel.displayName = "FormLabel";
 
+function FormLabelRequired({ children }: { children: React.ReactNode }) {
+  return (
+    <FormLabel>
+      {children} <span className="text-destructive">*</span>
+    </FormLabel>
+  );
+}
+
 const FormControl = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>
@@ -170,6 +178,7 @@ export {
   Form,
   FormItem,
   FormLabel,
+  FormLabelRequired,
   FormControl,
   FormDescription,
   FormMessage,
