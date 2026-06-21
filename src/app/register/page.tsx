@@ -12,7 +12,7 @@ export default async function RegisterPage() {
   const state = dehydrate(client);
   return (
     <HydrationBoundary state={state}>
-      <PublicOnly>
+      <PublicOnly suppressIdentityRedirect>
         <RegisterClient />
       </PublicOnly>
     </HydrationBoundary>

@@ -19,6 +19,11 @@ export type RegisterTenantResult = {
   plan_code: string;
 };
 
+export type RegisterTenantForUserInput = {
+  school_name: string;
+  plan_id: string;
+};
+
 export function useRegisterTenant() {
   return useMutation<RegisterTenantResult, unknown, RegisterTenantInput>({
     mutationFn: async (input) => {
@@ -46,6 +51,20 @@ export function useRegisterTenant() {
       });
       setTokens(tokens.access_token, tokens.refresh_token);
       return data;
+    },
+  });
+}
+
+export function useRegisterTenantForUser() {
+  return useMutation<RegisterTenantResult, unknown, RegisterTenantForUserInput>({
+    mutationFn: async (input) => {
+      return apiFetch<RegisterTenantResult>({
+        service: "billing",
+        path: "/api/v1/billing/tenants/register-for-user",
+        method: "POST",
+        identityAuthenticated: true,
+        body: input,
+      });
     },
   });
 }

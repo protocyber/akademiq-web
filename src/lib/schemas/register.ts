@@ -18,3 +18,13 @@ export const registerSchema = z.object({
 });
 
 export type RegisterFormValues = z.infer<typeof registerSchema>;
+
+export const registerExistingUserSchema = z.object({
+  school_name: z
+    .string()
+    .min(1, "School name is required")
+    .max(200, "School name is too long"),
+  plan_id: z.string().uuid("Choose a plan"),
+});
+
+export type RegisterExistingUserFormValues = z.infer<typeof registerExistingUserSchema>;

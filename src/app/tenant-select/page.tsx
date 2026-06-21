@@ -171,6 +171,8 @@ function TenantSelectContent() {
 }
 
 function ZeroTenantState({ onLogout }: { onLogout: () => void }) {
+  const router = useRouter();
+
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
@@ -186,6 +188,13 @@ function ZeroTenantState({ onLogout }: { onLogout: () => void }) {
           </p>
         </div>
         <div className="flex flex-col gap-2 w-full max-w-xs">
+          <Button
+            variant="default"
+            onClick={() => router.push("/register?mode=existing")}
+            className="w-full"
+          >
+            Daftar Sekolah Baru
+          </Button>
           <Button variant="outline" onClick={onLogout} className="w-full">
             Keluar
           </Button>

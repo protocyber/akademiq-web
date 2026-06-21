@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,28 +16,52 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { usePlans, type PlanView } from "@/lib/query/queries/use-plans";
-import { useRegisterTenant } from "@/lib/query/mutations/use-register-tenant";
+import {
+  useRegisterTenant,
+  useRegisterTenantForUser,
+} from "@/lib/query/mutations/use-register-tenant";
+import { useEnterTenant } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
-import { registerSchema, type RegisterFormValues } from "@/lib/schemas/register";
+import { getIdentityToken } from "@/lib/api/client";
+import { registerSchema, registerExistingUserSchema, type RegisterFormValues, type RegisterExistingUserFormValues } from "@/lib/schemas/register";
 
-const STEPS = [
+const ALL_STEPS = [
   { id: "school", label: "Profil sekolah" },
   { id: "plan", label: "Pilih plan" },
   { id: "admin", label: "Akun admin" },
 ] as const;
 
-type StepId = (typeof STEPS)[number]["id"];
+const EXISTING_STEPS = [
+  { id: "school", label: "Profil sekolah" },
+  { id: "plan", label: "Pilih plan" },
+] as const;
+
+type StepId = "school" | "plan" | "admin";
 
 export function RegisterClient() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get("mode");
+  const isExistingMode = mode === "existing";
+
+  const STEPS = isExistingMode ? EXISTING_STEPS : ALL_STEPS;
+
+  React.useEffect(() => {
+    if (isExistingMode && !getIdentityToken()) {
+      router.replace("/login");
+    }
+  }, [isExistingMode, router]);
+
   const plans = usePlans();
   const register = useRegisterTenant();
+  const registerForUser = useRegisterTenantForUser();
+  const enterTenant = useEnterTenant();
   const [step, setStep] = React.useState<StepId>("school");
   const [topError, setTopError] = React.useState<string | null>(null);
 
   const form = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(isExistingMode ? (registerExistingUserSchema as typeof registerSchema) : registerSchema),
     defaultValues: {
       school_name: "",
       plan_id: "",
@@ -53,17 +77,26 @@ export function RegisterClient() {
   const onSubmit = form.handleSubmit(async (values) => {
     setTopError(null);
     try {
-      await register.mutateAsync(values);
-      toast.success("Sekolah berhasil terdaftar");
-      router.push("/dashboard");
+      if (isExistingMode) {
+        const result = await registerForUser.mutateAsync({
+          school_name: values.school_name,
+          plan_id: values.plan_id,
+        });
+        toast.success("Sekolah berhasil terdaftar");
+        await enterTenant.mutateAsync({ tenantId: result.tenant_id });
+        router.push("/dashboard");
+      } else {
+        await register.mutateAsync(values);
+        toast.success("Sekolah berhasil terdaftar");
+        router.push("/dashboard");
+      }
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
       if (applied.length > 0) {
-        // Take the user back to the step that owns the offending field.
         const fields = applied;
         if (fields.includes("school_name")) setStep("school");
         else if (fields.includes("plan_id")) setStep("plan");
-        else setStep("admin");
+        else if (!isExistingMode) setStep("admin");
         return;
       }
       const message = getErrorMessage(err, { fallback: "Pendaftaran gagal. Coba lagi." });
@@ -84,7 +117,7 @@ export function RegisterClient() {
 
     const idx = STEPS.findIndex((s) => s.id === step);
     if (idx < STEPS.length - 1) {
-      setStep(STEPS[idx + 1].id);
+      setStep(STEPS[idx + 1].id as StepId);
     } else {
       onSubmit();
     }
@@ -92,8 +125,15 @@ export function RegisterClient() {
 
   function goBack() {
     const idx = STEPS.findIndex((s) => s.id === step);
-    if (idx > 0) setStep(STEPS[idx - 1].id);
+    if (idx > 0) setStep(STEPS[idx - 1].id as StepId);
   }
+
+  const isPending = isExistingMode
+    ? registerForUser.isPending || enterTenant.isPending
+    : register.isPending;
+
+  const isLastStep = stepIndex === STEPS.length - 1;
+  const lastStepLabel = isExistingMode ? "Daftar sekolah" : step === "admin" ? "Daftar sekolah" : "Lanjut";
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-10">
@@ -101,7 +141,9 @@ export function RegisterClient() {
         <CardHeader>
           <CardTitle>Daftarkan sekolah Anda</CardTitle>
           <CardDescription>
-            Lengkapi data sekolah, pilih plan langganan, lalu buat akun admin.
+            {isExistingMode
+              ? "Lengkapi data sekolah dan pilih plan langganan."
+              : "Lengkapi data sekolah, pilih plan langganan, lalu buat akun admin."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,7 +215,7 @@ export function RegisterClient() {
                 <PlanStep form={form} plans={plans.data} loading={plans.isLoading} error={plans.error} onRetry={() => plans.refetch()} />
               ) : null}
 
-              {step === "admin" ? (
+              {step === "admin" && !isExistingMode ? (
                 <div className="space-y-4">
                   <FormField
                     control={form.control}
@@ -227,30 +269,35 @@ export function RegisterClient() {
               ) : null}
 
               <div className="flex items-center justify-between gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={goBack}
-                  disabled={stepIndex === 0}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Kembali
-                </Button>
-                <Button type="submit" loading={register.isPending}>
-                  {step === "admin" ? "Daftar sekolah" : "Lanjut"}
-                  {step !== "admin" ? <ChevronRight className="h-4 w-4" /> : null}
+                {stepIndex > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={goBack}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Kembali
+                  </Button>
+                ) : (
+                  <span />
+                )}
+                <Button type="submit" loading={isPending}>
+                  {isLastStep ? lastStepLabel : "Lanjut"}
+                  {!isLastStep ? <ChevronRight className="h-4 w-4" /> : null}
                 </Button>
               </div>
             </form>
           </Form>
         </CardContent>
       </Card>
-      <p className="mt-6 text-center text-sm text-muted-foreground">
-        Sudah punya akun?&nbsp;
-        <Link className="text-primary underline-offset-4 hover:underline" href="/login">
-          Masuk
-        </Link>
-      </p>
+      {!isExistingMode ? (
+        <p className="mt-6 text-center text-sm text-muted-foreground">
+          Sudah punya akun?&nbsp;
+          <Link className="text-primary underline-offset-4 hover:underline" href="/login">
+            Masuk
+          </Link>
+        </p>
+      ) : null}
     </main>
   );
 }
