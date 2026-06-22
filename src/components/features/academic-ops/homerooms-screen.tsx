@@ -58,7 +58,6 @@ import {
   useHomeroomEnrollments,
   useHomeroomsTable,
   useStudents,
-  type Enrollment,
   type Homeroom,
 } from "@/lib/query/queries/use-academic-ops";
 import { useAcademicScope } from "@/hooks/use-academic-scope";

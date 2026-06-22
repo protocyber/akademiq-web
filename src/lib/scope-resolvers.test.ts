@@ -50,7 +50,7 @@ describe("resolveDefaultTerm", () => {
 
   it("picks in-range term when no active term", () => {
     const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
+    const _todayStr = today.toISOString().slice(0, 10);
     const past = new Date(today.getTime() - 86400000 * 10).toISOString().slice(0, 10);
     const future = new Date(today.getTime() + 86400000 * 10).toISOString().slice(0, 10);
 

@@ -250,16 +250,14 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
   );
 }
 
-type Meta = { page: number; page_size: number; total: number; };
-
 function AssignmentTable({
   assignments,
   params,
   canManage,
   rowSelection,
   onRowSelectionChange,
-  onStartDelete,
-  onParamsChange,
+  onStartDelete: _onStartDelete,
+  onParamsChange: _onParamsChange,
 }: {
   assignments: TeachingAssignment[];
   params: TeachingAssignmentsParams;

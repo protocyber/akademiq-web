@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { QuerySelect } from "@/components/ui/query-select";
+import { QueryCombobox } from "@/components/ui/query-combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
@@ -60,7 +60,7 @@ import {
   useUpdateTeacher,
 } from "@/lib/query/mutations/use-academic-ops";
 import { useTeachersTable, type Teacher } from "@/lib/query/queries/use-academic-ops";
-import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-users";
+import { useTenantUsers } from "@/lib/query/queries/use-tenant-users";
 import { teacherSchema, type TeacherForm } from "@/lib/schemas/academic-ops";
 import {
   parseTeachersParams,
@@ -96,19 +96,10 @@ export function TeachersScreen({ canManage, upgradeMessage }: OpsContext) {
   const params = React.useMemo(() => parseTeachersParams(searchParams), [searchParams]);
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const teachers = useTeachersTable(params);
-  const users = useTenantUsers();
   const [importOpen, setImportOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
-
-  const teacherUsers = React.useMemo(
-    () =>
-      (users.data?.data ?? []).filter(
-        (user) => user.roles.includes("teacher") || user.roles.includes("homeroom_teacher"),
-      ),
-    [users.data],
-  );
 
   React.useEffect(() => {
     setSearchDraft(params.search ?? "");
@@ -214,8 +205,6 @@ export function TeachersScreen({ canManage, upgradeMessage }: OpsContext) {
             params={params}
             canManage={canManage}
             upgradeMessage={upgradeMessage}
-            teacherUsers={teacherUsers}
-            usersLoading={users.isLoading}
             rowSelection={selected}
             onRowSelectionChange={setSelected}
             onStartDelete={(id) => { setPendingId(id); setSelected({ [id]: true }); setConfirmDelete(true); }}
@@ -252,8 +241,6 @@ function TeachersTable({
   params,
   canManage,
   upgradeMessage,
-  teacherUsers,
-  usersLoading,
   rowSelection,
   onRowSelectionChange,
   onStartDelete,
@@ -263,8 +250,6 @@ function TeachersTable({
   params: TeachersParams;
   canManage: boolean;
   upgradeMessage: string;
-  teacherUsers: TenantUser[];
-  usersLoading: boolean;
   rowSelection: RowSelectionState;
   onRowSelectionChange: (value: RowSelectionState) => void;
   onStartDelete: (id: string) => void;
@@ -408,8 +393,6 @@ function TeachersTable({
       {linking ? (
         <LinkAccountDialog
           teacher={linking}
-          teacherUsers={teacherUsers}
-          usersLoading={usersLoading}
           canManage={canManage}
           open={Boolean(linking)}
           onOpenChange={(open) => { if (!open) setLinking(null); }}
@@ -476,21 +459,33 @@ function DeleteConfirm({
 
 function LinkAccountDialog({
   teacher,
-  teacherUsers,
-  usersLoading,
   canManage,
   open,
   onOpenChange,
 }: {
   teacher: Teacher;
-  teacherUsers: TenantUser[];
-  usersLoading: boolean;
   canManage: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const link = useLinkTeacherAccount();
   const [userId, setUserId] = React.useState(teacher.user_id ?? "");
+  const [search, setSearch] = React.useState("");
+
+  const users = useTenantUsers(
+    React.useMemo(
+      () => ({ search, page: 1, page_size: 50, sort: "name" as const }),
+      [search],
+    ),
+  );
+
+  const teacherUsers = React.useMemo(
+    () =>
+      (users.data?.data ?? []).filter(
+        (u) => u.roles.includes("teacher") || u.roles.includes("homeroom_teacher"),
+      ),
+    [users.data],
+  );
 
   React.useEffect(() => {
     setUserId(teacher.user_id ?? "");
@@ -516,15 +511,18 @@ function LinkAccountDialog({
             Pilih akun pengguna bertipe guru untuk menghubungkan dengan profil guru ini.
           </DialogDescription>
         </DialogHeader>
-        <QuerySelect
+        <QueryCombobox
           items={teacherUsers}
-          isLoading={usersLoading}
+          isLoading={users.isLoading}
+          isSearchLoading={users.isFetching}
           value={userId}
           onValueChange={setUserId}
           getValue={(user) => user.user_id}
           getLabel={(user) => `${user.full_name} (${user.email ?? user.username})`}
           placeholder="Pilih akun guru"
+          searchPlaceholder="Cari akun guru..."
           emptyText="Belum ada akun guru"
+          onSearchChange={setSearch}
         />
         <DialogFooter>
           <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>

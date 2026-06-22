@@ -143,7 +143,7 @@ export function useUpdateAcademicTerm(termId: string, yearId: string) {
   });
 }
 
-export function useTransitionAcademicTerm(termId: string, yearId: string) {
+export function useTransitionAcademicTerm(termId: string, _yearId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: TermTransitionRequestForm) =>

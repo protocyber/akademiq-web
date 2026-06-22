@@ -24,7 +24,7 @@ import { useEnterTenant } from "@/lib/query/mutations/use-login";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { getIdentityToken } from "@/lib/api/client";
-import { registerSchema, registerExistingUserSchema, type RegisterFormValues, type RegisterExistingUserFormValues } from "@/lib/schemas/register";
+import { registerSchema, registerExistingUserSchema, type RegisterFormValues } from "@/lib/schemas/register";
 
 const ALL_STEPS = [
   { id: "school", label: "Profil sekolah" },

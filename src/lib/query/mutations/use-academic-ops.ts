@@ -368,7 +368,7 @@ export function useUploadMedia() {
       body.set("file", file);
       return apiFetch<MediaAsset>({ service: "academic-ops", path: "/api/v1/academic-ops/media", method: "POST", authenticated: true, body });
     },
-    onSuccess: (_, { ownerType, ownerId }) => {
+    onSuccess: (_, { ownerType }) => {
       qc.invalidateQueries({ queryKey: MEDIA_QUERY_KEY });
       // Also invalidate the owner entity to refresh photo_media_id
       if (ownerType === "student") qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY });

@@ -245,8 +245,6 @@ function replaceRolesParams(router: ReturnType<typeof useRouter>, params: Tenant
   router.replace(query ? `/settings/roles?${query}` : "/settings/roles", { scroll: false });
 }
 
-type Meta = { page: number; page_size: number; total: number; };
-
 type RolesTableSectionProps = {
   roles: TenantRole[];
   permissions: Permission[];
@@ -289,8 +287,6 @@ function RolesTableSection(props: RolesTableSectionProps) {
     if (params.sort === desc) return <ArrowDown className="h-3.5 w-3.5" />;
     return <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />;
   }
-
-  const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
 
   const columns: ColumnDef<TenantRole>[] = [
     {

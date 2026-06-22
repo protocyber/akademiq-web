@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, type Control, type FieldValues } from "react-hook-form";
 import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
 import {
   ArrowDown,
@@ -76,6 +76,7 @@ import {
   type StudentsSort,
 } from "@/lib/schemas/students-params";
 import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-users";
+import { QueryCombobox } from "@/components/ui/query-combobox";
 import { QuerySelect } from "@/components/ui/query-select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -112,11 +113,6 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
   const [selected, setSelected] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
-
-  const studentUsers = React.useMemo(
-    () => (users.data?.data ?? []).filter((user) => user.roles.includes("student")),
-    [users.data],
-  );
 
   React.useEffect(() => {
     setSearchDraft(params.search ?? "");
@@ -222,7 +218,6 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
             params={params}
             canManage={canManage}
             upgradeMessage={upgradeMessage}
-            studentUsers={studentUsers}
             usersList={users.data?.data ?? []}
             usersLoading={users.isLoading}
             rowSelection={selected}
@@ -261,7 +256,6 @@ function StudentsTable({
   params,
   canManage,
   upgradeMessage,
-  studentUsers,
   usersList,
   usersLoading,
   rowSelection,
@@ -273,7 +267,6 @@ function StudentsTable({
   params: StudentsParams;
   canManage: boolean;
   upgradeMessage: string;
-  studentUsers: TenantUser[];
   usersList: TenantUser[];
   usersLoading: boolean;
   rowSelection: RowSelectionState;
@@ -433,8 +426,6 @@ function StudentsTable({
       {linking ? (
         <LinkAccountDialog
           student={linking}
-          studentUsers={studentUsers}
-          usersLoading={usersLoading}
           canManage={canManage}
           open={Boolean(linking)}
           onOpenChange={(open) => { if (!open) setLinking(null); }}
@@ -797,7 +788,7 @@ function StudentDialog({
 
 function ArchiveStudentDialog({
   student,
-  canManage,
+  canManage: _canManage,
   open,
   onOpenChange,
 }: {
@@ -830,7 +821,7 @@ function ArchiveStudentDialog({
         </DialogHeader>
         <div className="space-y-4 py-4">
           <FormField
-            control={{} as any}
+            control={{} as Control<FieldValues>}
             name="reason"
             render={() => (
               <FormItem>
@@ -876,21 +867,30 @@ function genderLabel(gender: string) {
 
 function LinkAccountDialog({
   student,
-  studentUsers,
-  usersLoading,
   canManage,
   open,
   onOpenChange,
 }: {
   student: Student;
-  studentUsers: TenantUser[];
-  usersLoading: boolean;
   canManage: boolean;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const link = useLinkStudentAccount();
   const [userId, setUserId] = React.useState(student.user_id ?? "");
+  const [search, setSearch] = React.useState("");
+
+  const users = useTenantUsers(
+    React.useMemo(
+      () => ({ search, page: 1, page_size: 50, sort: "name" as const }),
+      [search],
+    ),
+  );
+
+  const studentUsers = React.useMemo(
+    () => (users.data?.data ?? []).filter((u) => u.roles.includes("student")),
+    [users.data],
+  );
 
   React.useEffect(() => {
     setUserId(student.user_id ?? "");
@@ -916,15 +916,18 @@ function LinkAccountDialog({
             Pilih akun pengguna bertipe siswa untuk menghubungkan dengan profil siswa ini.
           </DialogDescription>
         </DialogHeader>
-        <QuerySelect
+        <QueryCombobox
           items={studentUsers}
-          isLoading={usersLoading}
+          isLoading={users.isLoading}
+          isSearchLoading={users.isFetching}
           value={userId}
           onValueChange={setUserId}
           getValue={(user) => user.user_id}
           getLabel={(user) => `${user.full_name} (${user.email ?? user.username})`}
           placeholder="Pilih akun siswa"
+          searchPlaceholder="Cari akun siswa..."
           emptyText="Belum ada akun siswa"
+          onSearchChange={setSearch}
         />
         <DialogFooter>
           <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>

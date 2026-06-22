@@ -49,10 +49,8 @@ const RELATIONSHIP_LABELS: Record<string, string> = {
 };
 
 export function FamilyManagementTab({ studentId }: { studentId: string }) {
-  const [searchQuery, setSearchQuery] = React.useState("");
   const [showCreateDialog, setShowCreateDialog] = React.useState(false);
   const [showLinkDialog, setShowLinkDialog] = React.useState(false);
-  const [selectedFamily, setSelectedFamily] = React.useState<FamilyProfile | null>(null);
 
   const familyLinksQuery = useStudentFamilyLinks(studentId);
   const createLink = useCreateFamilyLink(studentId);
@@ -72,7 +70,6 @@ export function FamilyManagementTab({ studentId }: { studentId: string }) {
       });
       toast.success("Keluarga berhasil ditautkan");
       setShowLinkDialog(false);
-      setSelectedFamily(null);
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Gagal menautkan keluarga" }));
     }
@@ -192,7 +189,7 @@ function LinkedFamilyCard({
 function CreateFamilyDialog({
   open,
   onOpenChange,
-  studentId,
+  studentId: _studentId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -402,7 +399,7 @@ function CreateFamilyDialog({
 function LinkFamilyDialog({
   open,
   onOpenChange,
-  studentId,
+  studentId: _studentId,
   linkedFamilyIds,
   onLink,
 }: {
