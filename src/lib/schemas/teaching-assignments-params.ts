@@ -10,6 +10,7 @@ export type TeachingAssignmentsParams = {
   search?: string;
   academic_year_id?: string;
   homeroom_id?: string;
+  subject_id?: string;
   page: number;
   page_size: number;
   sort: TeachingAssignmentsSort;
@@ -47,6 +48,7 @@ export function parseTeachingAssignmentsParams(
     search: textParam(searchParams.get("search")),
     academic_year_id: textParam(searchParams.get("academic_year_id")),
     homeroom_id: textParam(searchParams.get("homeroom_id")),
+    subject_id: textParam(searchParams.get("subject_id")),
     page,
     page_size: Math.min(Math.max(pageSize, 1), 100),
     sort:
@@ -62,6 +64,7 @@ export function serializeTeachingAssignmentsParams(params: TeachingAssignmentsPa
   if (params.academic_year_id)
     searchParams.set("academic_year_id", params.academic_year_id);
   if (params.homeroom_id) searchParams.set("homeroom_id", params.homeroom_id);
+  if (params.subject_id) searchParams.set("subject_id", params.subject_id);
   if (params.page !== DEFAULT_TEACHING_ASSIGNMENTS_PARAMS.page)
     searchParams.set("page", String(params.page));
   if (params.page_size !== DEFAULT_TEACHING_ASSIGNMENTS_PARAMS.page_size)
@@ -76,6 +79,7 @@ export function teachingAssignmentsParamsKey(params: TeachingAssignmentsParams) 
     params.search ?? "",
     params.academic_year_id ?? "",
     params.homeroom_id ?? "",
+    params.subject_id ?? "",
     params.page,
     params.page_size,
     params.sort,

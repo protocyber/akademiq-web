@@ -153,6 +153,13 @@ export const teachingAssignmentSchema = z.object({
   academic_year_id: uuid,
 });
 
+export const bulkTeachingAssignmentSchema = z.object({
+  teacher_ids: z.array(uuid).min(1, "Pilih minimal satu guru"),
+  subject_ids: z.array(uuid).min(1, "Pilih minimal satu mata pelajaran"),
+  homeroom_ids: z.array(uuid).min(1, "Pilih minimal satu kelas"),
+  academic_year_id: uuid,
+});
+
 export type StudentForm = z.infer<typeof studentSchema>;
 export type TeacherForm = z.infer<typeof teacherSchema>;
 export type FamilyProfileForm = z.infer<typeof familyProfileSchema>;
@@ -163,3 +170,4 @@ export type ArchiveReasonForm = z.infer<typeof archiveReasonSchema>;
 export type HomeroomForm = z.infer<typeof homeroomSchema>;
 export type EnrollmentForm = z.infer<typeof enrollmentSchema>;
 export type TeachingAssignmentForm = z.infer<typeof teachingAssignmentSchema>;
+export type BulkTeachingAssignmentForm = z.infer<typeof bulkTeachingAssignmentSchema>;

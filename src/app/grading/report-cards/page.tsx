@@ -365,6 +365,7 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
         label="siswa"
         onPrev={() => setPage(currentPage - 1)}
         onNext={() => setPage(currentPage + 1)}
+        className="py-2"
       />
 
       <Dialog open={detailCardId !== null} onOpenChange={(open) => { if (!open) setDetailCardId(null); }}>

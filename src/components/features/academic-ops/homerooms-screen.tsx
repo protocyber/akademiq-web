@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { QuerySelect } from "@/components/ui/query-select";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/toaster";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
@@ -70,7 +71,7 @@ import {
 } from "@/lib/schemas/homerooms-params";
 import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
-const SORT_FIELDS: Record<string, { asc: HomeroomsSort; desc: HomeroomsSort }> = {
+const SORT_FIELDS: Record<string, { asc: HomeroomsSort; desc: HomeroomsSort; }> = {
   name: { asc: "name", desc: "-name" },
   grade_level: { asc: "grade_level", desc: "-grade_level" },
 };
@@ -79,24 +80,10 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseHomeroomsParams(searchParams), [searchParams]);
-  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const homerooms = useHomeroomsTable(params);
   const [selected, setSelected] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setSearchDraft(params.search ?? "");
-  }, [params.search]);
-
-  React.useEffect(() => {
-    const handle = window.setTimeout(() => {
-      if ((params.search ?? "") !== searchDraft) {
-        replaceParams(router, { ...params, search: searchDraft || undefined, page: 1 });
-      }
-    }, 350);
-    return () => window.clearTimeout(handle);
-  }, [params, router, searchDraft]);
 
   React.useEffect(() => {
     setSelected({});
@@ -157,9 +144,10 @@ export function HomeroomsScreen({ canManage, upgradeMessage }: OpsContext) {
             </div>
           ) : null,
           search: (
-            <Input
-              value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
+            <SearchInput
+              value={params.search ?? ""}
+              onChange={(val) => replaceParams(router, { ...params, search: val || undefined, page: 1 })}
+              debounce={400}
               placeholder="Cari nama atau tingkat"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />
@@ -281,6 +269,15 @@ function HomeroomsTable({
       id: "capacity",
       header: () => <span>Kapasitas</span>,
       cell: ({ row }) => <span className="tabular-nums">{row.original.capacity}</span>,
+    },
+    {
+      id: "enrolled_count",
+      header: () => <span>Terisi</span>,
+      cell: ({ row }) => (
+        <span className="tabular-nums">
+          {row.original.enrolled_count} / {row.original.capacity}
+        </span>
+      ),
     },
     {
       id: "roster",
@@ -421,39 +418,98 @@ function RosterDialog({
   const students = useStudents();
   const enroll = useEnrollStudent(homeroom.homeroom_id);
   const unenroll = useUnenrollStudent(homeroom.homeroom_id);
-  const [studentId, setStudentId] = React.useState("");
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const [unenrollSelection, setUnenrollSelection] = React.useState<Set<string>>(new Set());
+  const [rosterSearch, setRosterSearch] = React.useState("");
+
+  const enrollmentList = enrollments.data ?? [];
+  const enrolledCount = enrollmentList.length;
 
   const studentName = React.useMemo(() => {
     const map = new Map((students.data ?? []).map((s) => [s.student_id, s.full_name]));
     return (id: string) => map.get(id) ?? id;
   }, [students.data]);
 
+  const filteredEnrollments = React.useMemo(() => {
+    const q = rosterSearch.trim().toLowerCase();
+    if (!q) return enrollmentList;
+    return enrollmentList.filter((e) =>
+      studentName(e.student_id).toLowerCase().includes(q),
+    );
+  }, [enrollmentList, rosterSearch, studentName]);
+
+  const allFilteredIds = filteredEnrollments.map((e) => e.enrollment_id);
+  const unenrollAllChecked =
+    allFilteredIds.length > 0 && allFilteredIds.every((id) => unenrollSelection.has(id));
+  const unenrollIndeterminate =
+    allFilteredIds.some((id) => unenrollSelection.has(id)) && !unenrollAllChecked;
+
+  function toggleUnenrollAll() {
+    if (unenrollAllChecked) {
+      setUnenrollSelection((prev) => {
+        const next = new Set(prev);
+        allFilteredIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setUnenrollSelection((prev) => new Set([...prev, ...allFilteredIds]));
+    }
+  }
+
+  function toggleUnenrollRow(enrollmentId: string) {
+    setUnenrollSelection((prev) => {
+      const next = new Set(prev);
+      if (next.has(enrollmentId)) next.delete(enrollmentId);
+      else next.add(enrollmentId);
+      return next;
+    });
+  }
+
   const enrolledIds = React.useMemo(
-    () => new Set((enrollments.data ?? []).map((e) => e.student_id)),
-    [enrollments.data],
+    () => new Set(enrollmentList.map((e) => e.student_id)),
+    [enrollmentList],
   );
-  const availableStudents = React.useMemo(
-    () => (students.data ?? []).filter((s) => !enrolledIds.has(s.student_id)),
+  const availableOptions = React.useMemo(
+    () =>
+      (students.data ?? [])
+        .filter((s) => !enrolledIds.has(s.student_id))
+        .map((s) => ({ value: s.student_id, label: s.full_name })),
     [students.data, enrolledIds],
   );
 
   async function onEnroll() {
-    if (!studentId) return;
-    try {
-      await enroll.mutateAsync({ student_id: studentId, homeroom_id: homeroom.homeroom_id });
-      toast.success("Siswa dienroll.");
-      setStudentId("");
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengenroll siswa." }));
+    if (selectedIds.length === 0) return;
+    const results = await Promise.allSettled(
+      selectedIds.map((id) =>
+        enroll.mutateAsync({ student_id: id, homeroom_id: homeroom.homeroom_id }),
+      ),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    const succeeded = results.length - failed;
+    if (succeeded > 0) {
+      toast.success(`${succeeded} siswa dienroll.`);
+      setSelectedIds([]);
+    }
+    if (failed > 0) {
+      toast.error(`${failed} siswa gagal dienroll.`);
     }
   }
 
-  async function onUnenroll(enrollment: Enrollment) {
-    try {
-      await unenroll.mutateAsync(enrollment.enrollment_id);
-      toast.success("Siswa di-unenroll.");
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Tidak bisa meng-unenroll siswa." }));
+  async function onBulkUnenroll() {
+    const ids = Array.from(unenrollSelection);
+    if (ids.length === 0) return;
+    const targets = enrollmentList.filter((e) => unenrollSelection.has(e.enrollment_id));
+    const results = await Promise.allSettled(
+      targets.map((e) => unenroll.mutateAsync(e.enrollment_id)),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    const succeeded = results.length - failed;
+    if (succeeded > 0) {
+      toast.success(`${succeeded} siswa di-unenroll.`);
+      setUnenrollSelection(new Set());
+    }
+    if (failed > 0) {
+      toast.error(`${failed} siswa gagal di-unenroll.`);
     }
   }
 
@@ -461,27 +517,31 @@ function RosterDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Roster — {homeroom.name}</DialogTitle>
+          <DialogTitle>
+            Roster — {homeroom.name}
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              {enrolledCount} siswa terdaftar
+            </span>
+          </DialogTitle>
           <DialogDescription>Enroll dan unenroll siswa untuk kelas ini.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[14rem] flex-1">
-              <QuerySelect
-                items={availableStudents}
-                isLoading={students.isLoading}
-                value={studentId}
-                onValueChange={setStudentId}
-                getValue={(s) => s.student_id}
-                getLabel={(s) => s.full_name}
-                placeholder="Pilih siswa"
+              <MultiSelect
+                options={availableOptions}
+                value={selectedIds}
+                onChange={setSelectedIds}
+                placeholder={students.isLoading ? "Memuat..." : "Cari dan pilih siswa"}
+                searchPlaceholder="Cari siswa..."
                 emptyText="Semua siswa sudah dienroll"
+                disabled={!canManage || students.isLoading || availableOptions.length === 0}
               />
             </div>
             <Button
               type="button"
-              disabled={!canManage || !studentId || enroll.isPending}
+              disabled={!canManage || selectedIds.length === 0 || enroll.isPending}
               loading={enroll.isPending}
               onClick={onEnroll}
             >
@@ -489,37 +549,59 @@ function RosterDialog({
             </Button>
           </div>
 
-          <div className="overflow-hidden rounded-lg border">
+          <SearchInput
+            value={rosterSearch}
+            onChange={setRosterSearch}
+            placeholder="Cari siswa terdaftar..."
+            debounce={350}
+          />
+
+          <div className="overflow-hidden rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={unenrollAllChecked}
+                      data-state={unenrollIndeterminate ? "indeterminate" : undefined}
+                      onCheckedChange={toggleUnenrollAll}
+                      disabled={!canManage || filteredEnrollments.length === 0}
+                      aria-label="Pilih semua"
+                    />
+                  </TableHead>
                   <TableHead>Nama</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-24 text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(enrollments.data ?? []).length === 0 ? (
+                {enrolledCount === 0 ? (
                   <TableRow>
                     <TableCell colSpan={3} className="h-20 text-center text-sm text-muted-foreground">
                       Roster kosong.
                     </TableCell>
                   </TableRow>
+                ) : filteredEnrollments.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-20 text-center text-sm text-muted-foreground">
+                      Tidak ada siswa yang cocok.
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                  (enrollments.data ?? []).map((enrollment) => (
-                    <TableRow key={enrollment.enrollment_id}>
+                  filteredEnrollments.map((enrollment) => (
+                    <TableRow
+                      key={enrollment.enrollment_id}
+                      data-state={unenrollSelection.has(enrollment.enrollment_id) ? "selected" : undefined}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={unenrollSelection.has(enrollment.enrollment_id)}
+                          onCheckedChange={() => toggleUnenrollRow(enrollment.enrollment_id)}
+                          disabled={!canManage}
+                          aria-label={`Pilih ${studentName(enrollment.student_id)}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{studentName(enrollment.student_id)}</TableCell>
                       <TableCell className="text-muted-foreground">active</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={!canManage || unenroll.isPending}
-                          onClick={() => onUnenroll(enrollment)}
-                        >
-                          Unenroll
-                        </Button>
-                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -528,7 +610,24 @@ function RosterDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sm:justify-between">
+          <div className="flex items-center gap-2">
+            {unenrollSelection.size > 0 && (
+              <>
+                <span className="text-sm text-muted-foreground">{unenrollSelection.size} dipilih</span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  disabled={unenroll.isPending}
+                  loading={unenroll.isPending}
+                  onClick={onBulkUnenroll}
+                >
+                  Unenroll Terpilih
+                </Button>
+              </>
+            )}
+          </div>
           <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
             Tutup
           </Button>

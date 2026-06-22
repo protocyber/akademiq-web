@@ -29,14 +29,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Form, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { QuerySelect } from "@/components/ui/query-select";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { MultiSelect } from "@/components/ui/multi-select";
+import { SearchInput } from "@/components/ui/search-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
 import { getErrorMessage } from "@/lib/errors/messages";
 import {
-  useAssignTeaching,
+  useBulkAssignTeaching,
   useBulkDeleteAssignments,
   useDeleteAssignment,
 } from "@/lib/query/mutations/use-academic-ops";
@@ -50,7 +51,7 @@ import {
   useSubjects,
   useSubjectsForYear,
 } from "@/lib/query/queries/use-academic-config";
-import { teachingAssignmentSchema, type TeachingAssignmentForm } from "@/lib/schemas/academic-ops";
+import { bulkTeachingAssignmentSchema, type BulkTeachingAssignmentForm } from "@/lib/schemas/academic-ops";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import {
   parseTeachingAssignmentsParams,
@@ -69,6 +70,7 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
   }, [searchParams, yearId]);
   const assignments = useTeachingAssignmentsTable(params);
   const homerooms = useHomerooms();
+  const subjects = useSubjectsForYear(yearId ?? undefined);
   const filteredHomerooms = React.useMemo(
     () =>
       (homerooms.data ?? []).filter(
@@ -84,7 +86,7 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
 
   React.useEffect(() => {
     setSelected({});
-  }, [params.page, params.search, params.sort, params.academic_year_id, params.homeroom_id]);
+  }, [params.page, params.search, params.sort, params.academic_year_id, params.homeroom_id, params.subject_id]);
 
   const pageRows = assignments.data?.data ?? [];
   const selectWithinPage = useSelectWithinPage({
@@ -156,24 +158,53 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
             </div>
           ) : null,
           search: (
-            <Select
-              value={params.homeroom_id ?? "all"}
-              onValueChange={(value) =>
-                onParamsChange({ ...params, homeroom_id: value === "all" ? undefined : value, page: 1 })
-              }
-            >
-              <SelectTrigger className="w-full sm:w-[10rem]">
-                <SelectValue placeholder="Kelas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua kelas</SelectItem>
-                {filteredHomerooms.map((homeroom) => (
-                  <SelectItem key={homeroom.homeroom_id} value={homeroom.homeroom_id}>
-                    {homeroom.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchInput
+              value={params.search ?? ""}
+              onChange={(val) => onParamsChange({ ...params, search: val || undefined, page: 1 })}
+              debounce={400}
+              placeholder="Cari nama guru"
+              className="min-w-[160px] sm:flex-1 lg:flex-1"
+            />
+          ),
+          filters: (
+            <div className="flex flex-wrap gap-2">
+              <Select
+                value={params.subject_id ?? "all"}
+                onValueChange={(value) =>
+                  onParamsChange({ ...params, subject_id: value === "all" ? undefined : value, page: 1 })
+                }
+              >
+                <SelectTrigger className="w-full sm:w-[10rem]">
+                  <SelectValue placeholder="Mata pelajaran" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua mapel</SelectItem>
+                  {(subjects.data ?? []).map((subject) => (
+                    <SelectItem key={subject.subject_id} value={subject.subject_id}>
+                      {subject.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={params.homeroom_id ?? "all"}
+                onValueChange={(value) =>
+                  onParamsChange({ ...params, homeroom_id: value === "all" ? undefined : value, page: 1 })
+                }
+              >
+                <SelectTrigger className="w-full sm:w-[10rem]">
+                  <SelectValue placeholder="Kelas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua kelas</SelectItem>
+                  {filteredHomerooms.map((homeroom) => (
+                    <SelectItem key={homeroom.homeroom_id} value={homeroom.homeroom_id}>
+                      {homeroom.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           ),
         }}
         pagination={{
@@ -405,25 +436,42 @@ function AssignmentDialog({
   const teachers = useTeachers();
   const subjects = useSubjects(curriculumId ?? undefined);
 
-  const form = useForm<TeachingAssignmentForm>({
-    resolver: zodResolver(teachingAssignmentSchema),
-    defaultValues: { teacher_id: "", subject_id: "", homeroom_id: "", academic_year_id: yearId || "" },
+  const form = useForm<BulkTeachingAssignmentForm>({
+    resolver: zodResolver(bulkTeachingAssignmentSchema),
+    defaultValues: { teacher_ids: [], subject_ids: [], homeroom_ids: [], academic_year_id: yearId || "" },
   });
 
   React.useEffect(() => {
     if (!open) {
-      form.reset({ teacher_id: "", subject_id: "", homeroom_id: "", academic_year_id: yearId || "" });
+      form.reset({ teacher_ids: [], subject_ids: [], homeroom_ids: [], academic_year_id: yearId || "" });
     }
   }, [open, form, yearId]);
 
-  const assign = useAssignTeaching();
+  const assign = useBulkAssignTeaching();
   const filteredHomerooms = (homerooms.data ?? []).filter((h) => !yearId || h.academic_year_id === yearId);
 
-  async function onSubmit(values: TeachingAssignmentForm) {
+  const teacherOptions = React.useMemo(
+    () => (teachers.data ?? []).map((t) => ({ value: t.teacher_id, label: t.full_name })),
+    [teachers.data],
+  );
+  const subjectOptions = React.useMemo(
+    () => (subjects.data ?? []).map((s) => ({ value: s.subject_id, label: s.name })),
+    [subjects.data],
+  );
+  const homeroomOptions = React.useMemo(
+    () => filteredHomerooms.map((h) => ({ value: h.homeroom_id, label: h.name })),
+    [filteredHomerooms],
+  );
+
+  async function onSubmit(values: BulkTeachingAssignmentForm) {
     if (!yearId) return;
     try {
-      await assign.mutateAsync({ ...values, academic_year_id: yearId });
-      toast.success("Penugasan dibuat.");
+      const result = await assign.mutateAsync({ ...values, academic_year_id: yearId });
+      if (result.skipped > 0) {
+        toast.success(`${result.created} penugasan dibuat, ${result.skipped} sudah ada (dilewati).`);
+      } else {
+        toast.success(`${result.created} penugasan dibuat.`);
+      }
       onOpenChange(false);
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Tidak bisa membuat penugasan." }));
@@ -435,64 +483,73 @@ function AssignmentDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Tambah penugasan</DialogTitle>
-          <DialogDescription>Pilih kelas, guru, lalu mata pelajaran.</DialogDescription>
+          <DialogDescription>Pilih guru, mata pelajaran, lalu kelas.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" noValidate>
             <FormField
               control={form.control}
-              name="homeroom_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Kelas</FormLabel>
-                  <QuerySelect
-                    items={filteredHomerooms}
-                    isLoading={homerooms.isLoading}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    getValue={(h) => h.homeroom_id}
-                    getLabel={(h) => h.name}
-                    placeholder="Pilih kelas"
-                    emptyText="Belum ada kelas"
-                  />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="teacher_id"
+              name="teacher_ids"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Guru</FormLabel>
-                  <QuerySelect
-                    items={teachers.data ?? []}
-                    isLoading={teachers.isLoading}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    getValue={(t) => t.teacher_id}
-                    getLabel={(t) => t.full_name}
-                    placeholder="Pilih guru"
-                    emptyText="Belum ada guru"
-                  />
+                  <FormControl>
+                    <MultiSelect
+                      options={teacherOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={teachers.isLoading ? "Memuat..." : "Pilih guru"}
+                      searchPlaceholder="Cari guru..."
+                      emptyText="Belum ada guru"
+                      disabled={teachers.isLoading || teacherOptions.length === 0}
+                      aria-invalid={Boolean(form.formState.errors.teacher_ids)}
+                    />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
             <FormField
               control={form.control}
-              name="subject_id"
+              name="subject_ids"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Mata pelajaran</FormLabel>
-                  <QuerySelect
-                    items={subjects.data ?? []}
-                    isLoading={subjects.isLoading}
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    getValue={(s) => s.subject_id}
-                    getLabel={(s) => s.name}
-                    placeholder="Pilih mapel"
-                    emptyText="Belum ada mapel"
-                  />
+                  <FormControl>
+                    <MultiSelect
+                      options={subjectOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={subjects.isLoading ? "Memuat..." : "Pilih mata pelajaran"}
+                      searchPlaceholder="Cari mata pelajaran..."
+                      emptyText="Belum ada mata pelajaran"
+                      disabled={subjects.isLoading || subjectOptions.length === 0}
+                      aria-invalid={Boolean(form.formState.errors.subject_ids)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="homeroom_ids"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Kelas</FormLabel>
+                  <FormControl>
+                    <MultiSelect
+                      options={homeroomOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder={homerooms.isLoading ? "Memuat..." : "Pilih kelas"}
+                      searchPlaceholder="Cari kelas..."
+                      emptyText="Belum ada kelas"
+                      disabled={homerooms.isLoading || homeroomOptions.length === 0}
+                      aria-invalid={Boolean(form.formState.errors.homeroom_ids)}
+                    />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />

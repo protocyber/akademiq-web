@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
 import type {
+  BulkTeachingAssignmentForm,
   EnrollmentForm,
   FamilyLinkForm,
   FamilyLinkUpdateForm,
@@ -134,6 +135,23 @@ export function useAssignTeaching(homeroomId?: string) {
         qc.invalidateQueries({ queryKey: TEACHING_ASSIGNMENTS_QUERY_KEY }),
         homeroomId ? qc.invalidateQueries({ queryKey: ["academic-ops", "teaching-assignments", "homeroom", homeroomId] }) : Promise.resolve(),
       ]);
+    },
+  });
+}
+
+export function useBulkAssignTeaching() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: BulkTeachingAssignmentForm) =>
+      apiFetch<{ created: number; skipped: number }>({
+        service: "academic-ops",
+        path: "/api/v1/academic-ops/teaching-assignments/bulk",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: TEACHING_ASSIGNMENTS_QUERY_KEY });
     },
   });
 }

@@ -327,12 +327,13 @@ export function SidebarLayout({
                   {schoolName}
                 </span>
               </div>
+              {/* Desktop Academic Scope Selector */}
+              <div className="hidden lg:flex lg:items-center lg:gap-3">
+                <AcademicScopeSelectors />
+              </div>
             </div>
 
-            {/* Desktop Academic Scope Selector */}
-            <div className="hidden lg:flex lg:items-center lg:gap-3">
-              <AcademicScopeSelectors />
-            </div>
+
 
             <div className="flex shrink-0 items-center gap-4">
               <ThemeSwitcher />
