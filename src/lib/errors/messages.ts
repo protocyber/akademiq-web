@@ -52,6 +52,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   missing_code: "Respons Login dengan Gmail tidak lengkap. Coba lagi.",
   missing_identity_token: "Login dengan Gmail tidak menghasilkan token sesi. Coba lagi.",
   verification_failed: "Akun Google tidak bisa diverifikasi. Coba lagi.",
+  ASSIGNMENT_MISMATCH: "Mata pelajaran dan kelas ini sudah ditugaskan ke guru lain. Hubungi admin jika ada kesalahan penugasan.",
   NOT_ASSIGNED: "Akun guru belum ditugaskan untuk kelas, mata pelajaran, dan tahun ajaran ini.",
   STUDENT_NOT_ENROLLED: "Siswa belum terdaftar aktif pada tahun ajaran ini.",
   TEACHER_ACCOUNT_NOT_LINKED: "Data guru belum terhubung ke akun pengguna. Hubungi admin untuk menghubungkan akun guru.",

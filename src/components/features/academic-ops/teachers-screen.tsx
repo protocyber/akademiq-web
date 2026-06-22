@@ -10,6 +10,8 @@ import {
   ArrowUp,
   Archive,
   ChevronsUpDown,
+  Link2,
+  Link2Off,
   LinkIcon,
   MoreHorizontal,
   Pencil,
@@ -22,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { DataTableCard } from "@/components/ui/data-table-card";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
@@ -57,6 +60,7 @@ import {
   useCreateTeacher,
   useDeleteTeacher,
   useLinkTeacherAccount,
+  useUnlinkTeacherAccount,
   useUpdateTeacher,
 } from "@/lib/query/mutations/use-academic-ops";
 import { useTeachersTable, type Teacher } from "@/lib/query/queries/use-academic-ops";
@@ -257,6 +261,7 @@ function TeachersTable({
 }) {
   const [editing, setEditing] = React.useState<Teacher | null>(null);
   const [linking, setLinking] = React.useState<Teacher | null>(null);
+  const [unlinking, setUnlinking] = React.useState<Teacher | null>(null);
   const [archiveTarget, setArchiveTarget] = React.useState<Teacher | null>(null);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
@@ -319,12 +324,22 @@ function TeachersTable({
     {
       id: "account",
       header: () => <span>Akun</span>,
-      cell: ({ row }) =>
-        row.original.user_id ? (
-          <Badge variant="secondary">Terhubung</Badge>
-        ) : (
-          <Badge variant="outline">Belum terhubung</Badge>
-        ),
+      cell: ({ row }) => (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              {row.original.user_id ? (
+                <Link2 className="h-4 w-4 text-green-600" />
+              ) : (
+                <Link2Off className="h-4 w-4 text-muted-foreground" />
+              )}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {row.original.user_id ? "Terhubung" : "Belum terhubung"}
+          </TooltipContent>
+        </Tooltip>
+      ),
     },
     {
       id: "actions",
@@ -349,6 +364,15 @@ function TeachersTable({
                 <DropdownMenuItem disabled={!canManage} onClick={() => setLinking(teacher)}>
                   <LinkIcon className="h-4 w-4" /> Hubungkan akun
                 </DropdownMenuItem>
+                {teacher.user_id && (
+                  <DropdownMenuItem
+                    disabled={!canManage}
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setUnlinking(teacher)}
+                  >
+                    <Link2Off className="h-4 w-4" /> Putuskan akun
+                  </DropdownMenuItem>
+                )}
                 {teacher.status !== "arsip" && (
                   <DropdownMenuItem disabled={!canManage} onClick={() => setArchiveTarget(teacher)}>
                     <Archive className="h-4 w-4" /> Arsipkan
@@ -405,6 +429,14 @@ function TeachersTable({
           canManage={canManage}
           open={Boolean(archiveTarget)}
           onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}
+        />
+      ) : null}
+
+      {unlinking ? (
+        <UnlinkAccountDialog
+          teacher={unlinking}
+          open={Boolean(unlinking)}
+          onOpenChange={(open) => { if (!open) setUnlinking(null); }}
         />
       ) : null}
     </div>
@@ -534,6 +566,43 @@ function LinkAccountDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function UnlinkAccountDialog({
+  teacher,
+  open,
+  onOpenChange,
+}: {
+  teacher: Teacher;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const unlink = useUnlinkTeacherAccount();
+
+  async function onConfirm() {
+    try {
+      await unlink.mutateAsync({ teacherId: teacher.teacher_id });
+      toast.success("Akun guru diputus.");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa memutus akun." }));
+    }
+  }
+
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Putuskan akun — ${teacher.full_name}?`}
+      description="Guru tidak bisa memasukkan nilai setelah akun diputus. Hubungkan ulang kapan saja melalui menu Hubungkan akun."
+      confirmLabel="Putuskan"
+      loadingLabel="Memutus..."
+      loading={unlink.isPending}
+      destructive
+      canConfirm
+      onConfirm={onConfirm}
+    />
   );
 }
 

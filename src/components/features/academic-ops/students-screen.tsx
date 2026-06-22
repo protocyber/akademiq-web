@@ -66,6 +66,7 @@ import {
   useDeleteStudent,
   useUpdateStudent,
   useLinkStudentAccount,
+  useUnlinkStudentAccount,
   useLinkGuardian,
   useUnlinkGuardian,
 } from "@/lib/query/mutations/use-academic-ops";
@@ -291,6 +292,7 @@ function StudentsTable({
 }) {
   const [editing, setEditing] = React.useState<Student | null>(null);
   const [linking, setLinking] = React.useState<Student | null>(null);
+  const [unlinking, setUnlinking] = React.useState<Student | null>(null);
   const [managingGuardians, setManagingGuardians] = React.useState<Student | null>(null);
   const [archiveTarget, setArchiveTarget] = React.useState<Student | null>(null);
 
@@ -416,6 +418,15 @@ function StudentsTable({
                 <DropdownMenuItem disabled={!canManage} onClick={() => setLinking(student)}>
                   <LinkIcon className="h-4 w-4" /> Hubungkan akun
                 </DropdownMenuItem>
+                {student.user_id && (
+                  <DropdownMenuItem
+                    disabled={!canManage}
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setUnlinking(student)}
+                  >
+                    <Link2Off className="h-4 w-4" /> Putuskan akun
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem disabled={!canManage} onClick={() => setManagingGuardians(student)}>
                   <Users className="h-4 w-4" /> Wali murid
                 </DropdownMenuItem>
@@ -486,6 +497,14 @@ function StudentsTable({
           canManage={canManage}
           open={Boolean(archiveTarget)}
           onOpenChange={(open) => { if (!open) setArchiveTarget(null); }}
+        />
+      ) : null}
+
+      {unlinking ? (
+        <UnlinkStudentAccountDialog
+          student={unlinking}
+          open={Boolean(unlinking)}
+          onOpenChange={(open) => { if (!open) setUnlinking(null); }}
         />
       ) : null}
     </div>
@@ -900,6 +919,43 @@ function genderLabel(gender: string) {
   if (gender === "male") return "Laki-laki";
   if (gender === "female") return "Perempuan";
   return gender;
+}
+
+function UnlinkStudentAccountDialog({
+  student,
+  open,
+  onOpenChange,
+}: {
+  student: Student;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const unlink = useUnlinkStudentAccount();
+
+  async function onConfirm() {
+    try {
+      await unlink.mutateAsync({ studentId: student.student_id });
+      toast.success("Akun siswa diputus.");
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa memutus akun." }));
+    }
+  }
+
+  return (
+    <ConfirmDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={`Putuskan akun — ${student.full_name}?`}
+      description="Siswa tidak bisa melihat rapor setelah akun diputus. Hubungkan ulang kapan saja melalui menu Hubungkan akun."
+      confirmLabel="Putuskan"
+      loadingLabel="Memutus..."
+      loading={unlink.isPending}
+      destructive
+      canConfirm
+      onConfirm={onConfirm}
+    />
+  );
 }
 
 function LinkAccountDialog({

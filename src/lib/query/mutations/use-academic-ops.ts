@@ -15,6 +15,7 @@ import type {
   TeachingAssignmentForm,
 } from "@/lib/schemas/academic-ops";
 import {
+  AVAILABLE_ROSTER_KEY,
   FAMILIES_QUERY_KEY,
   HOMEROOMS_QUERY_KEY,
   MEDIA_QUERY_KEY,
@@ -53,10 +54,26 @@ export function useLinkTeacherAccount() {
   });
 }
 
+export function useUnlinkTeacherAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ teacherId }: { teacherId: string }) => apiFetch<void>({ service: "academic-ops", path: `/api/v1/academic-ops/teachers/${teacherId}/account`, method: "DELETE", authenticated: true }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: TEACHERS_QUERY_KEY }),
+  });
+}
+
 export function useLinkStudentAccount() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ studentId, userId }: { studentId: string; userId: string }) => apiFetch<Student>({ service: "academic-ops", path: `/api/v1/academic-ops/students/${studentId}/account`, method: "PATCH", authenticated: true, body: { user_id: userId } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY }),
+  });
+}
+
+export function useUnlinkStudentAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ studentId }: { studentId: string }) => apiFetch<void>({ service: "academic-ops", path: `/api/v1/academic-ops/students/${studentId}/account`, method: "DELETE", authenticated: true }),
     onSuccess: () => qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY }),
   });
 }
@@ -107,6 +124,7 @@ export function useEnrollStudent(homeroomId?: string) {
         qc.invalidateQueries({ queryKey: ["academic-ops", "homeroom-roster", homeroomId] }),
         qc.invalidateQueries({ queryKey: ["academic-ops", "homeroom-enrollments", homeroomId] }),
         qc.invalidateQueries({ queryKey: HOMEROOMS_QUERY_KEY }),
+        qc.invalidateQueries({ queryKey: AVAILABLE_ROSTER_KEY }),
       ]);
     },
   });
@@ -121,6 +139,7 @@ export function useUnenrollStudent(homeroomId?: string) {
         qc.invalidateQueries({ queryKey: ["academic-ops", "homeroom-roster", homeroomId] }),
         qc.invalidateQueries({ queryKey: ["academic-ops", "homeroom-enrollments", homeroomId] }),
         qc.invalidateQueries({ queryKey: HOMEROOMS_QUERY_KEY }),
+        qc.invalidateQueries({ queryKey: AVAILABLE_ROSTER_KEY }),
       ]);
     },
   });

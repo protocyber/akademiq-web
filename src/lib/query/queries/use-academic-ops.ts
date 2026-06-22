@@ -135,7 +135,7 @@ export type MediaAsset = {
 
 export type Guardian = { tenant_id: string; user_id: string; student_id: string; created_at: string };
 export type Homeroom = { homeroom_id: string; name: string; grade_level: string; capacity: number; academic_year_id: string; enrolled_count: number };
-export type TeachingAssignment = { assignment_id: string; teacher_id: string; subject_id: string; homeroom_id: string; academic_year_id: string };
+export type TeachingAssignment = { assignment_id: string; teacher_id: string; subject_id: string; homeroom_id: string; academic_year_id: string; created_at: string };
 
 export type Paginated<T> = {
   data: T[];
@@ -191,6 +191,7 @@ export type Enrollment = {
   homeroom_id: string;
   academic_year_id: string;
   status: string;
+  student_full_name: string;
 };
 
 export type StudentEnrollmentSummary = {
@@ -213,7 +214,7 @@ export function useStudentEnrollmentsByYear(academicYearId?: string) {
   });
 }
 
-/** Active enrollments for a homeroom (with ids) — drives the roster unenroll. */
+/** Active enrollments for a homeroom (with ids and student names) — drives the roster unenroll. */
 export function useHomeroomEnrollments(homeroomId?: string) {
   return useQuery({
     queryKey: ["academic-ops", "homeroom-enrollments", homeroomId],
@@ -221,6 +222,27 @@ export function useHomeroomEnrollments(homeroomId?: string) {
     enabled: Boolean(homeroomId),
   });
 }
+
+export const AVAILABLE_ROSTER_KEY = ["academic-ops", "available-for-roster"] as const;
+
+export function useAvailableRosterStudents({ academicYearId, search, enabled }: { academicYearId?: string; search: string; enabled?: boolean }) {
+  const params = new URLSearchParams();
+  if (academicYearId) params.set("academic_year_id", academicYearId);
+  if (search) params.set("search", search);
+  const qs = params.toString();
+  return useQuery({
+    queryKey: [...AVAILABLE_ROSTER_KEY, academicYearId, search],
+    queryFn: () => apiFetch<RosterStudent[]>({ service: "academic-ops", path: `/api/v1/academic-ops/students/available-for-roster${qs ? `?${qs}` : ""}`, authenticated: true }),
+    enabled: Boolean(academicYearId) && (enabled ?? true),
+    staleTime: 30_000,
+  });
+}
+
+export type RosterStudent = {
+  student_id: string;
+  nis: string;
+  full_name: string;
+};
 
 /** Homeroom-scoped assignment list (grading entry / report cards). */
 export function useTeachingAssignments(homeroomId?: string) {

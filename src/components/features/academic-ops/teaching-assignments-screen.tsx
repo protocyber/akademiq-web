@@ -256,7 +256,7 @@ function AssignmentTable({
   canManage,
   rowSelection,
   onRowSelectionChange,
-  onStartDelete: _onStartDelete,
+  onStartDelete,
   onParamsChange: _onParamsChange,
 }: {
   assignments: TeachingAssignment[];
@@ -323,7 +323,7 @@ function AssignmentTable({
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>{teacherName(row.original.teacher_id)}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <RowDelete assignmentId={row.original.assignment_id} canManage={canManage} />
+            <RowDelete assignmentId={row.original.assignment_id} canManage={canManage} onDelete={() => onStartDelete(row.original.assignment_id)} />
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -388,20 +388,12 @@ function DeleteConfirm({
   );
 }
 
-function RowDelete({ assignmentId, canManage }: { assignmentId: string; canManage: boolean; }) {
-  const del = useDeleteAssignment();
+function RowDelete({ assignmentId, canManage, onDelete }: { assignmentId: string; canManage: boolean; onDelete: () => void; }) {
   return (
     <DropdownMenuItem
-      disabled={!canManage || del.isPending}
+      disabled={!canManage}
       className="text-destructive focus:text-destructive"
-      onClick={async () => {
-        try {
-          await del.mutateAsync(assignmentId);
-          toast.success("Penugasan dihapus.");
-        } catch (err) {
-          toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus penugasan." }));
-        }
-      }}
+      onClick={onDelete}
     >
       <Trash2 className="h-4 w-4" /> Hapus
     </DropdownMenuItem>

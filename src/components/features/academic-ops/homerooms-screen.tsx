@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { MultiSelect } from "@/components/ui/multi-select";
+import { QueryMultiSelect } from "@/components/ui/query-multi-select";
 import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/toaster";
@@ -55,9 +55,9 @@ import {
   useUpdateHomeroom,
 } from "@/lib/query/mutations/use-academic-ops";
 import {
+  useAvailableRosterStudents,
   useHomeroomEnrollments,
   useHomeroomsTable,
-  useStudents,
   type Homeroom,
 } from "@/lib/query/queries/use-academic-ops";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
@@ -414,28 +414,29 @@ function RosterDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const enrollments = useHomeroomEnrollments(homeroom.homeroom_id);
-  const students = useStudents();
   const enroll = useEnrollStudent(homeroom.homeroom_id);
   const unenroll = useUnenrollStudent(homeroom.homeroom_id);
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [unenrollSelection, setUnenrollSelection] = React.useState<Set<string>>(new Set());
   const [rosterSearch, setRosterSearch] = React.useState("");
+  const [availableSearch, setAvailableSearch] = React.useState("");
+
+  const available = useAvailableRosterStudents({
+    academicYearId: homeroom.academic_year_id,
+    search: availableSearch,
+    enabled: open,
+  });
 
   const enrollmentList = enrollments.data ?? [];
   const enrolledCount = enrollmentList.length;
-
-  const studentName = React.useMemo(() => {
-    const map = new Map((students.data ?? []).map((s) => [s.student_id, s.full_name]));
-    return (id: string) => map.get(id) ?? id;
-  }, [students.data]);
 
   const filteredEnrollments = React.useMemo(() => {
     const q = rosterSearch.trim().toLowerCase();
     if (!q) return enrollmentList;
     return enrollmentList.filter((e) =>
-      studentName(e.student_id).toLowerCase().includes(q),
+      e.student_full_name.toLowerCase().includes(q),
     );
-  }, [enrollmentList, rosterSearch, studentName]);
+  }, [enrollmentList, rosterSearch]);
 
   const allFilteredIds = filteredEnrollments.map((e) => e.enrollment_id);
   const unenrollAllChecked =
@@ -464,16 +465,10 @@ function RosterDialog({
     });
   }
 
-  const enrolledIds = React.useMemo(
-    () => new Set(enrollmentList.map((e) => e.student_id)),
-    [enrollmentList],
-  );
   const availableOptions = React.useMemo(
     () =>
-      (students.data ?? [])
-        .filter((s) => !enrolledIds.has(s.student_id))
-        .map((s) => ({ value: s.student_id, label: s.full_name })),
-    [students.data, enrolledIds],
+      (available.data ?? []).map((s) => ({ value: s.student_id, label: s.full_name })),
+    [available.data],
   );
 
   async function onEnroll() {
@@ -528,14 +523,16 @@ function RosterDialog({
         <div className="space-y-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[14rem] flex-1">
-              <MultiSelect
-                options={availableOptions}
+              <QueryMultiSelect
                 value={selectedIds}
                 onChange={setSelectedIds}
-                placeholder={students.isLoading ? "Memuat..." : "Cari dan pilih siswa"}
+                options={availableOptions}
+                onSearchChange={setAvailableSearch}
+                placeholder="Cari dan pilih siswa"
                 searchPlaceholder="Cari siswa..."
                 emptyText="Semua siswa sudah dienroll"
-                disabled={!canManage || students.isLoading || availableOptions.length === 0}
+                disabled={!canManage || available.isLoading}
+                loading={available.isLoading}
               />
             </div>
             <Button
@@ -596,10 +593,10 @@ function RosterDialog({
                           checked={unenrollSelection.has(enrollment.enrollment_id)}
                           onCheckedChange={() => toggleUnenrollRow(enrollment.enrollment_id)}
                           disabled={!canManage}
-                          aria-label={`Pilih ${studentName(enrollment.student_id)}`}
+                          aria-label={`Pilih ${enrollment.student_full_name}`}
                         />
                       </TableCell>
-                      <TableCell className="font-medium">{studentName(enrollment.student_id)}</TableCell>
+                      <TableCell className="font-medium">{enrollment.student_full_name}</TableCell>
                       <TableCell className="text-muted-foreground">active</TableCell>
                     </TableRow>
                   ))

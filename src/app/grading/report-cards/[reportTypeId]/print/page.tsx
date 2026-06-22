@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useSubjectsForYear } from "@/lib/query/queries/use-academic-config";
 import { useReportCardDetail } from "@/lib/query/queries/use-grading";
-import { useHomeroomRoster, useTeachers, useHomerooms } from "@/lib/query/queries/use-academic-ops";
+import { useHomeroomRoster, useTeachers, useHomerooms, useTeachingAssignments } from "@/lib/query/queries/use-academic-ops";
 
 // Number to Indonesian words (terbilang) helper for grade score
 function scoreToIndonesianWords(score: number): string {
@@ -48,10 +48,11 @@ function PrintReportCardShell() {
   const teachers = useTeachers();
   const homerooms = useHomerooms();
   const subjects = useSubjectsForYear(card?.academic_year_id);
+  const assignments = useTeachingAssignments(card?.homeroom_id);
 
   // Auto trigger print when page finishes loading
   React.useEffect(() => {
-    const isLoaded = !tenant.isLoading && !detail.isLoading && !roster.isLoading && !teachers.isLoading && !homerooms.isLoading && !subjects.isLoading;
+    const isLoaded = !tenant.isLoading && !detail.isLoading && !roster.isLoading && !teachers.isLoading && !homerooms.isLoading && !subjects.isLoading && !assignments.isLoading;
     const isSuccess = !tenant.error && !detail.error && tenant.data && detail.data && card;
 
     if (isLoaded && isSuccess) {
@@ -60,7 +61,7 @@ function PrintReportCardShell() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [tenant.isLoading, detail.isLoading, roster.isLoading, teachers.isLoading, homerooms.isLoading, subjects.isLoading, tenant.error, detail.error, tenant.data, detail.data, card]);
+  }, [tenant.isLoading, detail.isLoading, roster.isLoading, teachers.isLoading, homerooms.isLoading, subjects.isLoading, assignments.isLoading, tenant.error, detail.error, tenant.data, detail.data, card]);
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.opener) {
@@ -70,7 +71,7 @@ function PrintReportCardShell() {
     }
   };
 
-  if (tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading || subjects.isLoading) {
+  if (tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading || subjects.isLoading || assignments.isLoading) {
     return <PageSkeleton />;
   }
 
@@ -89,12 +90,19 @@ function PrintReportCardShell() {
   const homeroomName = (homerooms.data ?? []).find((h) => h.homeroom_id === card.homeroom_id)?.name;
   
   const teacherNameByUserId = new Map((teachers.data ?? []).flatMap((teacher) => teacher.user_id ? [[teacher.user_id, teacher.full_name] as const] : []));
-  
-  // Find homeroom teacher from approvals
-  const homeroomTeacherApproval = detail.data.approvals.find((a) => a.role === "homeroom_teacher");
-  const homeroomTeacherName = homeroomTeacherApproval
-    ? teacherNameByUserId.get(homeroomTeacherApproval.approver_id)
-    : null;
+  const teacherByTeacherId = new Map((teachers.data ?? []).map((t) => [t.teacher_id, t]));
+
+  // Find homeroom teacher — primary from approvals, fallback to oldest teaching assignment
+  const homeroomTeacherName = (() => {
+    const approval = detail.data.approvals.find((a) => a.role === "homeroom_teacher");
+    if (approval) return teacherNameByUserId.get(approval.approver_id) ?? null;
+    const sorted = [...(assignments.data ?? [])].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const oldest = sorted[0];
+    if (oldest) return teacherByTeacherId.get(oldest.teacher_id)?.full_name ?? null;
+    return null;
+  })();
 
   // Build subject lookup from year's curriculum (carries kelompok metadata).
   const subjectById = new Map((subjects.data ?? []).map((s) => [s.subject_id, s]));
@@ -284,7 +292,7 @@ function PrintReportCardShell() {
               </div>
               <div className="flex flex-col border-b border-black pb-1">
                 <span className="text-[10px] uppercase text-gray-500 font-extrabold select-none">NIK</span>
-                <span className="font-bold text-gray-900 pr-2">-</span>
+                <span className="font-bold text-gray-900 pr-2">{student?.nik ?? "-"}</span>
               </div>
               <div className="flex flex-col border-b border-black pb-1">
                 <span className="text-[10px] uppercase text-gray-500 font-extrabold select-none">Kelas</span>
@@ -292,7 +300,7 @@ function PrintReportCardShell() {
               </div>
               <div className="flex flex-col border-b border-black pb-1">
                 <span className="text-[10px] uppercase text-gray-500 font-extrabold select-none">Alamat</span>
-                <span className="font-bold text-gray-900 pr-2">-</span>
+                <span className="font-bold text-gray-900 pr-2">{student?.address_line ?? "-"}</span>
               </div>
               <div className="flex flex-col border-b border-black pb-1">
                 <span className="text-[10px] uppercase text-gray-500 font-extrabold select-none">Nisn</span>

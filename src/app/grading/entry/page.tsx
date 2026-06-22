@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { AuthGuard } from "@/components/features/auth-guard";
@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QuerySelect } from "@/components/ui/query-select";
@@ -31,12 +32,13 @@ import {
   useUpsertGrade,
 } from "@/lib/query/mutations/use-grading";
 import { useSubjects } from "@/lib/query/queries/use-academic-config";
-import { useHomeroomRoster, useHomerooms, useTeachingAssignments } from "@/lib/query/queries/use-academic-ops";
+import { useHomeroomRoster, useHomerooms, useTeachers, useTeachingAssignments, type Teacher } from "@/lib/query/queries/use-academic-ops";
 import { useClassGrades, useEvaluations, useReportTypes, useSubjectReportScoresForTypes, type Evaluation, type Grade } from "@/lib/query/queries/use-grading";
 import { useReportFormulasForTypes } from "@/lib/query/queries/use-grading";
 import { useUpsertReportFormula } from "@/lib/query/mutations/use-grading";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-users";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { gradeCellSchema } from "@/lib/schemas/grading";
 
@@ -72,12 +74,12 @@ function GradeEntryShell() {
       className="mx-auto w-full"
     >
       {!canWrite ? <Alert><AlertTitle>Kontrol dibatasi</AlertTitle><AlertDescription>{lockedMessage}</AlertDescription></Alert> : null}
-      <GradeEntryPanel canWrite={canWrite} />
+      <GradeEntryPanel canWrite={canWrite} meUserId={me.data.user_id} />
     </SidebarLayout>
   );
 }
 
-function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
+function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: string | undefined; }) {
   const { yearId, curriculumId, termId } = useAcademicScope();
   const homerooms = useHomerooms();
   const [homeroomId, setHomeroomId] = React.useState("");
@@ -92,6 +94,8 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
 
   const subjects = useSubjects(curriculumId ?? undefined);
   const assignments = useTeachingAssignments(homeroomId);
+  const teachers = useTeachers();
+  const tenantUsers = useTenantUsers({ page: 1, page_size: 100, sort: "name" });
   const roster = useHomeroomRoster(homeroomId);
   const evaluations = useEvaluations(homeroomId, subjectId, yearId ?? undefined, termId ?? undefined);
   const grades = useClassGrades(homeroomId, subjectId, yearId ?? undefined);
@@ -107,7 +111,27 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
   );
   const assignedSubjects = (subjects.data ?? []).filter((s) => assignedSubjectIds.has(s.subject_id));
   const scopeReady = Boolean(yearId && homeroomId && subjectId);
-  const canManageEvaluations = canWrite && scopeReady && assignedSubjects.length > 0;
+
+  const teacherById = React.useMemo(
+    () => new Map((teachers.data ?? []).map((t) => [t.teacher_id, t])),
+    [teachers.data],
+  );
+  const userById = React.useMemo(
+    () => new Map((tenantUsers.data?.data ?? []).map((u) => [u.user_id, u])),
+    [tenantUsers.data],
+  );
+
+  const assignedTeachers = React.useMemo(
+    () =>
+      (assignments.data ?? [])
+        .filter((a) => a.subject_id === subjectId && a.academic_year_id === yearId)
+        .map((a) => teacherById.get(a.teacher_id))
+        .filter((t): t is Teacher => t !== undefined),
+    [assignments.data, subjectId, yearId, teacherById],
+  );
+  const isAssignedUser = assignedTeachers.some((t) => t.user_id === meUserId);
+
+  const canManageEvaluations = canWrite && scopeReady && assignedSubjects.length > 0 && isAssignedUser;
 
   // Build grade index: `studentId:evaluationId` → Grade
   const gradeIndex = React.useMemo(() => {
@@ -183,6 +207,15 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
           />
         </div>
 
+        {homeroomId && subjectId && (
+          <TeacherInfoBar
+            assignedTeachers={assignedTeachers}
+            userById={userById}
+            isLoading={teachers.isLoading || assignments.isLoading || tenantUsers.isLoading}
+            isAssignedUser={isAssignedUser}
+          />
+        )}
+
         {!scopeReady && (
           <p className="p-6 text-sm text-muted-foreground">
             Pilih kelas dan mapel untuk membuka grid nilai.
@@ -203,7 +236,7 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
             homeroomId={homeroomId}
             subjectId={subjectId}
             yearId={yearId}
-            canWrite={canWrite && assignedSubjects.length > 0}
+            canWrite={canWrite && assignedSubjects.length > 0 && isAssignedUser}
             onOpenKelola={() => setKelolOpen(true)}
           />
         )}
@@ -221,6 +254,60 @@ function GradeEntryPanel({ canWrite }: { canWrite: boolean; }) {
         />
       )}
     </Card>
+  );
+}
+
+// ── Teacher Info Bar ───────────────────────────────────────────────────────────
+
+function TeacherInfoBar({
+  assignedTeachers,
+  userById,
+  isLoading,
+  isAssignedUser,
+}: {
+  assignedTeachers: Teacher[];
+  userById: Map<string, TenantUser>;
+  isLoading: boolean;
+  isAssignedUser: boolean;
+}) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 border-b px-4 py-2.5">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-5 w-32" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap justify-between gap-x-4 gap-y-1.5 border-b px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-x-4">
+        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Guru</span>
+        {assignedTeachers.length === 0 ? (
+          <span className="text-xs text-muted-foreground">Belum ada guru yang ditugaskan</span>
+        ) : (
+          assignedTeachers.map((teacher) => {
+            const user = teacher.user_id ? userById.get(teacher.user_id) : undefined;
+            const accountLabel = user ? (user.email ?? user.username) : null;
+            return (
+              <Badge key={teacher.teacher_id} variant="secondary" className="gap-1.5">
+                <UserRound className="h-3 w-3" />
+                {teacher.full_name}
+                {accountLabel ?
+                  <span className="text-secondary-foreground/70 font-normal">· {accountLabel}</span>
+                  : <span className="text-secondary-warning/70 font-normal">(akun belum terhubung)</span>
+                }
+              </Badge>
+            );
+          })
+        )}
+      </div>
+      {!isAssignedUser && assignedTeachers.length > 0 && (
+        <Badge variant="destructive">
+          Anda bukan pengajar di kelas ini — nilai dinonaktifkan.
+        </Badge>
+      )}
+    </div>
   );
 }
 
@@ -377,8 +464,9 @@ function GradeCell({
       await upsert.mutateAsync({ student_id: studentId, evaluation_id: evaluationId, score: parsed.data });
       setSavedValue(value);
       setStatus("saved");
-    } catch {
+    } catch (err) {
       setStatus("error");
+      toast.error(getErrorMessage(err, { fallback: "Gagal menyimpan nilai." }));
     }
   }
 
