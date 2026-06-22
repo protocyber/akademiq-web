@@ -5,10 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck, ChevronDown, Settings, UserRound, DoorOpen } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck, ChevronDown, Settings, UserRound, DoorOpen, Sun, Moon, Monitor, Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
+import { useTheme } from "next-themes";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useTenantPermissions } from "@/lib/query/queries/use-tenant-roles";
@@ -22,6 +23,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -294,6 +298,7 @@ export function SidebarLayout({
   const me = useMe();
   const emailVerified = me.data?.email_verified;
   const avatarUrl = me.data?.avatar_url;
+  const { theme, resolvedTheme, setTheme } = useTheme();
 
   React.useEffect(() => {
     setMobileMenuOpen(false);
@@ -379,6 +384,34 @@ export function SidebarLayout({
                       <span>Profil Saya</span>
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                      {resolvedTheme === "dark" ? (
+                        <Moon className="h-4 w-4" />
+                      ) : (
+                        <Sun className="h-4 w-4" />
+                      )}
+                      <span>Tema</span>
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2 cursor-pointer">
+                        <Sun className="h-4 w-4" />
+                        <span className="flex-1">Terang</span>
+                        {resolvedTheme === "light" && <Check className="h-4 w-4" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2 cursor-pointer">
+                        <Moon className="h-4 w-4" />
+                        <span className="flex-1">Gelap</span>
+                        {resolvedTheme === "dark" && <Check className="h-4 w-4" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2 cursor-pointer">
+                        <Monitor className="h-4 w-4" />
+                        <span className="flex-1">Sistem</span>
+                        {theme === "system" && <Check className="h-4 w-4" />}
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={onLogout}

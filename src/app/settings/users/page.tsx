@@ -9,6 +9,7 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronsUpDown,
+  Copy,
   Download,
   MailPlus,
   MoreHorizontal,
@@ -976,7 +977,7 @@ function InviteDialog({ roles }: { roles: TenantRole[]; }) {
   const invite = useInviteTenantUser();
   const form = useForm<InviteTenantUserForm>({
     resolver: zodResolver(inviteTenantUserSchema),
-    defaultValues: { email: "", roles: [roles[0]?.code ?? "teacher"] },
+    defaultValues: { email: "", roles: [] },
   });
 
   async function onSubmit(values: InviteTenantUserForm) {
@@ -984,7 +985,7 @@ function InviteDialog({ roles }: { roles: TenantRole[]; }) {
     try {
       const result = await invite.mutateAsync(values);
       setActivationLink(result.activation_link);
-      form.reset({ email: "", roles: values.roles });
+      form.reset({ email: "", roles: [] });
       toast.success("Undangan dibuat.");
     } catch (err) {
       const applied = applyServerFieldErrors(form, err);
@@ -1044,7 +1045,26 @@ function InviteDialog({ roles }: { roles: TenantRole[]; }) {
             {activationLink ? (
               <Alert>
                 <AlertTitle>Link aktivasi</AlertTitle>
-                <AlertDescription className="break-all text-xs">{activationLink}</AlertDescription>
+                <AlertDescription className="space-y-2 text-xs">
+                  <span className="break-all">{activationLink}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(activationLink);
+                        toast.success("Link disalin.");
+                      } catch {
+                        toast.error("Tidak bisa menyalin link.");
+                      }
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Salin Link
+                  </Button>
+                </AlertDescription>
               </Alert>
             ) : null}
             <DialogFooter>
