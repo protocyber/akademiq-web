@@ -27,6 +27,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   PASSWORD_NOT_SET: "Akun Anda belum punya password. Silakan set password terlebih dahulu.",
   LAST_ADMIN: "Tidak bisa menghapus otoritas admin terakhir di tenant ini.",
   LAST_ROLE: "Tidak bisa menghapus role terakhir pengguna. Gunakan aksi \"Keluarkan dari tenant\" untuk mengeluarkan pengguna.",
+  MEMBERSHIP_ALREADY_EXISTS: "Pengguna ini sudah menjadi anggota tenant. Tidak perlu mengundang ulang.",
+  PENDING_INVITATION_EXISTS: "Email ini sudah memiliki undangan tertunda. Batalkan undangan lama sebelum membuat yang baru.",
   PRIVILEGE_ESCALATION: "Anda hanya bisa memberi izin yang juga Anda miliki.",
   ROLE_CODE_EXISTS: "Kode role sudah digunakan.",
   ROLE_IN_USE: "Role masih dipakai pengguna dan tidak bisa dihapus.",

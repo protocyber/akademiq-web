@@ -10,6 +10,8 @@ import {
   ArrowUp,
   Archive,
   ChevronsUpDown,
+  Link2,
+  Link2Off,
   LinkIcon,
   MoreHorizontal,
   Pencil,
@@ -67,7 +69,8 @@ import {
   useLinkGuardian,
   useUnlinkGuardian,
 } from "@/lib/query/mutations/use-academic-ops";
-import { useStudentsTable, type Student, useStudentGuardians } from "@/lib/query/queries/use-academic-ops";
+import { useStudentsTable, useStudentEnrollmentsByYear, type Student, useStudentGuardians } from "@/lib/query/queries/use-academic-ops";
+import { useAcademicYears } from "@/lib/query/queries/use-academic-config";
 import { studentSchema, type StudentForm } from "@/lib/schemas/academic-ops";
 import {
   parseStudentsParams,
@@ -79,6 +82,7 @@ import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-
 import { QueryCombobox } from "@/components/ui/query-combobox";
 import { QuerySelect } from "@/components/ui/query-select";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
@@ -109,6 +113,14 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
   const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const students = useStudentsTable(params);
   const users = useTenantUsers();
+  const academicYears = useAcademicYears();
+  const activeYearId = academicYears.data?.find((y) => y.status === "Active")?.academic_year_id;
+  const enrollments = useStudentEnrollmentsByYear(activeYearId);
+  const homeroomMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const e of enrollments.data ?? []) map.set(e.student_id, e.homeroom_name);
+    return map;
+  }, [enrollments.data]);
   const [importOpen, setImportOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -220,6 +232,7 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
             upgradeMessage={upgradeMessage}
             usersList={users.data?.data ?? []}
             usersLoading={users.isLoading}
+            homeroomMap={homeroomMap}
             rowSelection={selected}
             onRowSelectionChange={setSelected}
             onStartDelete={(id) => { setPendingId(id); setSelected({ [id]: true }); setConfirmDelete(true); }}
@@ -258,6 +271,7 @@ function StudentsTable({
   upgradeMessage,
   usersList,
   usersLoading,
+  homeroomMap,
   rowSelection,
   onRowSelectionChange,
   onStartDelete,
@@ -269,6 +283,7 @@ function StudentsTable({
   upgradeMessage: string;
   usersList: TenantUser[];
   usersLoading: boolean;
+  homeroomMap: Map<string, string>;
   rowSelection: RowSelectionState;
   onRowSelectionChange: (value: RowSelectionState) => void;
   onStartDelete: (id: string) => void;
@@ -347,14 +362,36 @@ function StudentsTable({
       },
     },
     {
+      id: "homeroom",
+      header: () => <span>Kelas</span>,
+      cell: ({ row }) => {
+        const name = homeroomMap.get(row.original.student_id);
+        return name ? (
+          <span className="font-medium">{name}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        );
+      },
+    },
+    {
       id: "account",
       header: () => <span>Akun</span>,
-      cell: ({ row }) =>
-        row.original.user_id ? (
-          <Badge variant="secondary">Terhubung</Badge>
-        ) : (
-          <Badge variant="outline">Belum terhubung</Badge>
-        ),
+      cell: ({ row }) => (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              {row.original.user_id ? (
+                <Link2 className="h-4 w-4 text-green-600" />
+              ) : (
+                <Link2Off className="h-4 w-4 text-muted-foreground" />
+              )}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            {row.original.user_id ? "Terhubung" : "Belum terhubung"}
+          </TooltipContent>
+        </Tooltip>
+      ),
     },
     {
       id: "actions",

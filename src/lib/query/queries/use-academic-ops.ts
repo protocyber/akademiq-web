@@ -193,6 +193,26 @@ export type Enrollment = {
   status: string;
 };
 
+export type StudentEnrollmentSummary = {
+  student_id: string;
+  homeroom_id: string;
+  homeroom_name: string;
+};
+
+/** Active enrollments for all students in a given academic year, keyed by student_id. */
+export function useStudentEnrollmentsByYear(academicYearId?: string) {
+  return useQuery({
+    queryKey: ["academic-ops", "enrollments-by-student", academicYearId],
+    queryFn: () =>
+      apiFetch<StudentEnrollmentSummary[]>({
+        service: "academic-ops",
+        path: `/api/v1/academic-ops/enrollments/by-student?academic_year_id=${academicYearId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(academicYearId),
+  });
+}
+
 /** Active enrollments for a homeroom (with ids) — drives the roster unenroll. */
 export function useHomeroomEnrollments(homeroomId?: string) {
   return useQuery({

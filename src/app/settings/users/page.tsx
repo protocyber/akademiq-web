@@ -9,15 +9,25 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronsUpDown,
+  Check,
   Copy,
   Download,
+  Eye,
+  EyeOff,
   MailPlus,
   MoreHorizontal,
   Pencil,
   UserPlus,
 } from "lucide-react";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { EmailVerifiedBadge } from "@/components/ui/email-verified-badge";
 import { Button } from "@/components/ui/button";
@@ -591,6 +601,7 @@ async function runBulk(action: () => Promise<BulkResult[]>, onDone: () => void) 
 
 function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
   const [open, setOpen] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
   const create = useCreateTenantUser();
   const form = useForm<CreateTenantUserForm>({
     resolver: zodResolver(createTenantUserSchema),
@@ -602,6 +613,7 @@ function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
       await create.mutateAsync(values);
       toast.success("Pengguna dibuat.");
       form.reset({ username: "", full_name: "", roles: [], email: "", password: "" });
+      setShowPassword(false);
       setOpen(false);
     } catch (err) {
       // Create-time "already exists" steers the admin to invitations.
@@ -699,7 +711,25 @@ function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
                 <FormItem>
                   <FormLabel>Password (opsional)</FormLabel>
                   <FormControl>
-                    <Input type="password" autoComplete="new-password" placeholder="Kosongkan untuk akun pending" {...field} />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        placeholder="Kosongkan untuk akun pending"
+                        className="pr-10"
+                        {...field}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -737,6 +767,8 @@ function EditUserDialog({
   const remove = useRemoveTenantUser(user.user_id);
   const [confirmReset, setConfirmReset] = React.useState(false);
   const [confirmRemove, setConfirmRemove] = React.useState(false);
+  const [resetResult, setResetResult] = React.useState<string | null>(null);
+  const [passwordCopied, setPasswordCopied] = React.useState(false);
 
   const form = useForm<UpdateTenantUserForm>({
     resolver: zodResolver(updateTenantUserSchema),
@@ -797,8 +829,8 @@ function EditUserDialog({
   async function onResetPassword() {
     try {
       const result = await resetPassword.mutateAsync({ userId: user.user_id });
-      toast.success(`Password sementara: ${result.temporary_password}`);
       setConfirmReset(false);
+      setResetResult(result.temporary_password);
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Tidak bisa reset password." }));
     }
@@ -966,6 +998,56 @@ function EditUserDialog({
           loading={remove.isPending}
           onConfirm={onRemoveFromTenant}
         />
+
+        <AlertDialog
+          open={resetResult !== null}
+          onOpenChange={(open) => {
+            if (!open) setResetResult(null);
+            setPasswordCopied(false);
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Password berhasil direset</AlertDialogTitle>
+              <AlertDialogDescription>
+                Berikut password sementara untuk <span className="font-medium text-foreground">{user.full_name}</span>.
+                Simpan password ini — hanya ditampilkan sekali.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="flex items-center gap-2 rounded-md border bg-muted px-4 py-3">
+              <code className="flex-1 break-all font-mono text-sm font-semibold">{resetResult}</code>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={async () => {
+                  if (!resetResult) return;
+                  try {
+                    await navigator.clipboard.writeText(resetResult);
+                    toast.success("Password disalin.");
+                    setPasswordCopied(true);
+                    window.setTimeout(() => setPasswordCopied(false), 2000);
+                  } catch {
+                    toast.error("Tidak bisa menyalin password.");
+                  }
+                }}
+              >
+                {passwordCopied ? (
+                  <Check className="h-4 w-4 text-green-500" />
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4" />
+                    Salin
+                  </>
+                )}
+              </Button>
+            </div>
+            <div className="flex justify-end">
+              <AlertDialogAction onClick={() => setResetResult(null)}>Tutup</AlertDialogAction>
+            </div>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
@@ -974,6 +1056,7 @@ function EditUserDialog({
 function InviteDialog({ roles }: { roles: TenantRole[]; }) {
   const [open, setOpen] = React.useState(false);
   const [activationLink, setActivationLink] = React.useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = React.useState(false);
   const invite = useInviteTenantUser();
   const form = useForm<InviteTenantUserForm>({
     resolver: zodResolver(inviteTenantUserSchema),
@@ -982,6 +1065,7 @@ function InviteDialog({ roles }: { roles: TenantRole[]; }) {
 
   async function onSubmit(values: InviteTenantUserForm) {
     setActivationLink(null);
+    setLinkCopied(false);
     try {
       const result = await invite.mutateAsync(values);
       setActivationLink(result.activation_link);
@@ -996,84 +1080,121 @@ function InviteDialog({ roles }: { roles: TenantRole[]; }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline">
-          <MailPlus className="h-4 w-4" />
-          Undang Pengguna
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Undang pengguna tenant</DialogTitle>
-          <DialogDescription>Bagikan link aktivasi secara manual sampai layanan notifikasi tersedia.</DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabelRequired>Email</FormLabelRequired>
-                  <FormControl>
-                    <Input type="email" autoComplete="email" placeholder="guru@sekolah.sch.id" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            setActivationLink(null);
+            setLinkCopied(false);
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button variant="outline">
+            <MailPlus className="h-4 w-4" />
+            Undang Pengguna
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Undang pengguna tenant</DialogTitle>
+            <DialogDescription>Bagikan link aktivasi secara manual sampai layanan notifikasi tersedia.</DialogDescription>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabelRequired>Email</FormLabelRequired>
+                    <FormControl>
+                      <Input type="email" autoComplete="email" placeholder="guru@sekolah.sch.id" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="roles"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabelRequired>Role</FormLabelRequired>
+                    <FormControl>
+                      <MultiSelect
+                        options={roleOptions(roles)}
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Pilih role"
+                        aria-invalid={Boolean(form.formState.errors.roles)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" loading={invite.isPending}>Buat Undangan</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={activationLink !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setActivationLink(null);
+            setLinkCopied(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Link aktivasi dibuat</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bagikan link berikut ke pengguna yang diundang. Simpan sekarang — link ini hanya ditampilkan sekali.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="flex items-center gap-2 rounded-md border bg-muted px-4 py-3">
+            <code className="flex-1 break-all font-mono text-sm font-semibold">{activationLink}</code>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={async () => {
+                if (!activationLink) return;
+                try {
+                  await navigator.clipboard.writeText(activationLink);
+                  toast.success("Link disalin.");
+                  setLinkCopied(true);
+                  window.setTimeout(() => setLinkCopied(false), 2000);
+                } catch {
+                  toast.error("Tidak bisa menyalin link.");
+                }
+              }}
+            >
+              {linkCopied ? (
+                <Check className="h-4 w-4 text-green-500" />
+              ) : (
+                <>
+                  <Copy className="h-4 w-4" />
+                  Salin Link
+                </>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="roles"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabelRequired>Role</FormLabelRequired>
-                  <FormControl>
-                    <MultiSelect
-                      options={roleOptions(roles)}
-                      value={field.value}
-                      onChange={field.onChange}
-                      placeholder="Pilih role"
-                      aria-invalid={Boolean(form.formState.errors.roles)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {activationLink ? (
-              <Alert>
-                <AlertTitle>Link aktivasi</AlertTitle>
-                <AlertDescription className="space-y-2 text-xs">
-                  <span className="break-all">{activationLink}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={async () => {
-                      try {
-                        await navigator.clipboard.writeText(activationLink);
-                        toast.success("Link disalin.");
-                      } catch {
-                        toast.error("Tidak bisa menyalin link.");
-                      }
-                    }}
-                  >
-                    <Copy className="h-4 w-4" />
-                    Salin Link
-                  </Button>
-                </AlertDescription>
-              </Alert>
-            ) : null}
-            <DialogFooter>
-              <Button type="submit" loading={invite.isPending}>Buat Undangan</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+            </Button>
+          </div>
+          <div className="flex justify-end">
+            <AlertDialogAction onClick={() => setActivationLink(null)}>Tutup</AlertDialogAction>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
