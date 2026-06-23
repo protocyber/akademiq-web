@@ -88,7 +88,7 @@ describe("DialogContent scrollable base", () => {
     const content = screen.getByTestId("dialog-content");
     // Base content constrains its height so tall modals never exceed the viewport.
     expect(content.className).toContain("max-h-[85vh]");
-    expect(content.className).toContain("overflow-y-auto");
+    expect(content.className).toContain("overflow-hidden");
 
     // Body region is present and scrollable.
     const body = screen.getByTestId("dialog-body");

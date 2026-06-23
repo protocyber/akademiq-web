@@ -59,6 +59,7 @@ vi.mock("@/lib/query/mutations/use-logout", () => ({
 
 vi.mock("@/lib/query/queries/use-academic-ops", () => ({
   useHomerooms: () => ({ data: [], isLoading: false }),
+  useTeachers: () => ({ data: [], isLoading: false }),
   useTeachingAssignments: () => ({ data: [], isLoading: false }),
   useHomeroomRoster: () => ({ data: [], isLoading: false }),
 }));
@@ -68,6 +69,7 @@ vi.mock("@/lib/query/queries/use-grading", () => ({
   useEvaluations: () => ({ data: [], isLoading: false }),
   useReportTypes: () => ({ data: [], isLoading: false }),
   useSubjectReportScoresForTypes: () => ({ data: new Map(), isLoading: false }),
+  useUnmaterializedCount: () => ({ data: { count: 0 }, isLoading: false }),
 }));
 
 function ConsumerComponent() {

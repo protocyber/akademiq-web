@@ -69,20 +69,35 @@ describe("Year form modal tabs (Info / Kebijakan Nilai / Versi Kurikulum)", () =
   });
 });
 
-describe("Semester edit form tabs (Info / Rapor)", () => {
-  it("renders exactly two tabs", () => {
+describe("Semester edit form tabs (Info / Status / Rapor / Evaluasi)", () => {
+  it("renders exactly four tabs", () => {
     render(
       <Tabs defaultValue="info">
         <TabsList>
           <TabsTrigger value="info">Info</TabsTrigger>
+          <TabsTrigger value="status">Status</TabsTrigger>
           <TabsTrigger value="rapor">Rapor</TabsTrigger>
+          <TabsTrigger value="evaluasi">Evaluasi</TabsTrigger>
         </TabsList>
       </Tabs>,
     );
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs).toHaveLength(2);
-    expect(screen.getByRole("tab", { name: "Info" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Rapor" })).toBeInTheDocument();
+    expect(tabs).toHaveLength(4);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Info", "Status", "Rapor", "Evaluasi"]);
+  });
+});
+
+describe("Evaluasi tab apply feedback", () => {
+  it("shows the nudge banner and apply action wording", () => {
+    render(
+      <div>
+        <div>3 penugasan belum punya evaluasi untuk semester ini.</div>
+        <button type="button">Terapkan ke semua penugasan yang belum punya evaluasi</button>
+      </div>,
+    );
+
+    expect(screen.getByText(/3 penugasan belum punya evaluasi/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /terapkan ke semua penugasan/i })).toBeInTheDocument();
   });
 });

@@ -396,9 +396,11 @@ test("term CRUD and status transition flow", async ({ page }) => {
   await page.getByRole("button", { name: /^simpan$/i }).click();
   await expect(page.getByText("Semester 2").first()).toBeVisible();
 
-  // Transition Semester 1 to Active via the edit modal Info tab
   const sem1Row = page.locator("tr").filter({ hasText: /Semester 1/ });
   await sem1Row.getByRole("button", { name: /^edit$/i }).click();
+  const termTabs = page.getByRole("tab");
+  await expect(termTabs).toHaveText(["Info", "Status", "Rapor", "Evaluasi"]);
+  await page.getByRole("tab", { name: "Status" }).click();
   await page.getByRole("combobox", { name: /ubah status ke/i }).selectOption({ label: /aktif/i });
   await page.getByRole("button", { name: /ubah status/i }).click();
   await page.getByLabel(/alasan perubahan status/i).fill("Semester 1 resmi dimulai hari ini");

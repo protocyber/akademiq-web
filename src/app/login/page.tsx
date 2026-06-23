@@ -79,7 +79,7 @@ function LoginForm() {
     if (!oauthError) return;
     const message = getErrorMessage(
       { code: oauthError, message: oauthError },
-      { fallback: "Login dengan Gmail gagal. Coba lagi." },
+      { fallback: "Login dengan Google gagal. Coba lagi." },
     );
     setTopError(message);
     toast.error(message);
@@ -232,12 +232,13 @@ function LoginForm() {
                       <AlertDescription>{topError}</AlertDescription>
                     </Alert>
                   ) : null}
+
                   <FormField
                     control={form.control}
                     name="identifier"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabelRequired>Email atau username</FormLabelRequired>
+                        <FormLabelRequired>Email/username</FormLabelRequired>
                         <div className="relative">
                           <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <FormControl>
@@ -322,9 +323,13 @@ function LoginForm() {
                     <ArrowRight className="h-4 w-4" />
                   </Button>
 
-                  <div className="relative py-1 text-center text-xs text-muted-foreground">
-                    <span className="bg-background px-2">atau</span>
-                    <div className="absolute inset-x-0 top-1/2 -z-10 border-t" />
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-strong"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 text-sm text-foreground bg-card">atau</span>
+                    </div>
                   </div>
 
                   <Button
@@ -334,8 +339,9 @@ function LoginForm() {
                     onClick={handleGoogleLogin}
                   >
                     <GoogleIcon className="h-4 w-4" />
-                    Login dengan Gmail
+                    Login dengan Google
                   </Button>
+
                 </form>
               </Form>
             </CardContent>

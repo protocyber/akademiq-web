@@ -54,9 +54,16 @@ export type Student = {
   updated_at: string;
 };
 
+export type LinkedUser = {
+  user_id: string;
+  username: string;
+  email?: string | null;
+};
+
 export type Teacher = {
   teacher_id: string;
   user_id?: string | null;
+  linked_user?: LinkedUser | null;
   nip: string;
   nik?: string | null;
   full_name: string;

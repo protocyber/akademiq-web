@@ -1,64 +1,98 @@
-import { ApiHttpError } from "@/lib/api/types";
-import { summariseFieldErrors } from "@/lib/forms/apply-server-field-errors";
+import { ApiHttpError } from '@/lib/api/types';
+import { summariseFieldErrors } from '@/lib/forms/apply-server-field-errors';
 
 type ErrorMessageOptions = {
   fallback?: string;
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
-  ACTIVE_YEAR_EXISTS: "Sudah ada tahun ajaran aktif. Arsipkan atau tutup tahun ajaran aktif sebelum mengaktifkan yang lain.",
-  ACTIVE_TERM_EXISTS: "Sudah ada semester aktif untuk tahun ajaran ini. Tutup semester aktif sebelum mengaktifkan yang lain.",
-  BUILT_IN_ROLE_IMMUTABLE: "Role bawaan tidak bisa diubah atau dihapus. Clone ke role custom untuk memodifikasi.",
-  DUPLICATE_NIS: "NIS sudah digunakan siswa lain. Gunakan NIS yang berbeda.",
-  DUPLICATE_NIP: "NIP sudah digunakan guru lain. Gunakan NIP yang berbeda.",
-  EMAIL_ALREADY_EXISTS: "Email sudah terdaftar. Gunakan email lain atau cek daftar pengguna.",
-  EVALUATION_TERM_MISMATCH: "Evaluasi tidak berasal dari semester yang sama dengan jenis rapor.",
-  EXPIRED_ACCESS_TOKEN: "Sesi Anda sudah berakhir. Silakan masuk kembali.",
-  FEATURE_NOT_AVAILABLE: "Fitur ini belum aktif untuk sekolah Anda. Aktifkan modul atau cek paket langganan.",
-  GRADES_LOCKED: "Nilai sudah dikunci karena rapor masuk proses review. Kembalikan rapor ke Draft jika nilai perlu diperbaiki.",
-  GRADING_POLICY_NOT_CONFIGURED: "Kebijakan nilai belum tersinkron. Buka Pengaturan Akademik > Kebijakan Nilai, simpan ulang kebijakan untuk tahun ajaran ini, lalu coba generate draft rapor lagi.",
-  IMPORT_VALIDATION_FAILED: "Import gagal. Periksa error pada baris data yang ditandai.",
-  INVALID_STATE_TRANSITION: "Status sudah berubah atau aksi ini tidak valid untuk status saat ini. Muat ulang halaman lalu coba lagi.",
-  INVALID_TOKEN: "Sesi Anda tidak valid. Silakan masuk kembali.",
-  INVALID_SET_PASSWORD_TOKEN: "Token set password tidak valid atau sudah dipakai. Minta link baru dari admin atau gunakan login dengan Google.",
-  INVALID_MEDIA_TYPE: "Format file tidak didukung. Gunakan JPG, PNG, atau WebP.",
-  MEDIA_TOO_LARGE: "Ukuran file melebihi batas 2MB.",
-  SET_PASSWORD_TOKEN_EXPIRED: "Link set password sudah kedaluwarsa. Minta link baru dari admin atau gunakan login dengan Google.",
-  PASSWORD_NOT_SET: "Akun Anda belum punya password. Silakan set password terlebih dahulu.",
-  LAST_ADMIN: "Tidak bisa menghapus otoritas admin terakhir di tenant ini.",
-  LAST_ROLE: "Tidak bisa menghapus role terakhir pengguna. Gunakan aksi \"Keluarkan dari tenant\" untuk mengeluarkan pengguna.",
-  MEMBERSHIP_ALREADY_EXISTS: "Pengguna ini sudah menjadi anggota tenant. Tidak perlu mengundang ulang.",
-  PENDING_INVITATION_EXISTS: "Email ini sudah memiliki undangan tertunda. Batalkan undangan lama sebelum membuat yang baru.",
-  PRIVILEGE_ESCALATION: "Anda hanya bisa memberi izin yang juga Anda miliki.",
-  ROLE_CODE_EXISTS: "Kode role sudah digunakan.",
-  ROLE_IN_USE: "Role masih dipakai pengguna dan tidak bisa dihapus.",
-  STUDENT_ENROLLED: "Siswa masih memiliki enrollment aktif dan tidak bisa dihapus.",
-  SUBJECT_IN_USE: "Mata pelajaran masih dipakai penugasan mengajar dan tidak bisa dihapus.",
-  SUBJECT_GROUP_IN_USE: "Kelompok masih memiliki mata pelajaran dan tidak bisa dihapus.",
-  CURRICULUM_IN_USE: "Versi kurikulum masih memiliki mata pelajaran dan tidak bisa dihapus.",
-  TEACHER_ASSIGNED: "Guru masih ditugaskan mengajar dan tidak bisa dihapus.",
-  HOMEROOM_NOT_EMPTY: "Kelas masih memiliki siswa aktif dan tidak bisa dihapus.",
-  TERM_IN_USE: "Semester masih digunakan oleh evaluasi atau rapor dan tidak bisa dihapus.",
-  TERM_NAME_EXISTS: "Nama semester sudah digunakan dalam tahun ajaran ini.",
-  TERM_NOT_DELETABLE: "Semester yang sedang Aktif atau Diarsipkan tidak bisa dihapus.",
-  TERM_NOT_EDITABLE: "Semester sudah ditutup atau diarsipkan. Evaluasi hanya bisa dibuat atau diedit pada semester Draft atau Aktif.",
-  TERM_NOT_ACTIVE: "Semester belum aktif. Input nilai hanya diperbolehkan saat semester berstatus Aktif.",
-  TERM_OVERLAP: "Rentang tanggal semester bertumpuk dengan semester lain dalam tahun ajaran ini.",
-  TERM_STILL_ACTIVE: "Tahun ajaran tidak bisa ditutup saat masih ada semester yang aktif. Tutup semua semester terlebih dahulu.",
-  USERNAME_TAKEN: "Username sudah digunakan. Pilih username lain.",
-  exchange_failed: "Login dengan Gmail gagal saat menghubungi Google. Coba lagi.",
-  google_denied: "Login dengan Gmail dibatalkan.",
-  invalid_state: "Sesi Login dengan Gmail sudah kedaluwarsa. Coba lagi.",
-  missing_code: "Respons Login dengan Gmail tidak lengkap. Coba lagi.",
-  missing_identity_token: "Login dengan Gmail tidak menghasilkan token sesi. Coba lagi.",
-  verification_failed: "Akun Google tidak bisa diverifikasi. Coba lagi.",
-  ASSIGNMENT_MISMATCH: "Mata pelajaran dan kelas ini sudah ditugaskan ke guru lain. Hubungi admin jika ada kesalahan penugasan.",
-  NOT_ASSIGNED: "Akun guru belum ditugaskan untuk kelas, mata pelajaran, dan tahun ajaran ini.",
-  STUDENT_NOT_ENROLLED: "Siswa belum terdaftar aktif pada tahun ajaran ini.",
-  TEACHER_ACCOUNT_NOT_LINKED: "Data guru belum terhubung ke akun pengguna. Hubungi admin untuk menghubungkan akun guru.",
-  UNAUTHENTICATED: "Sesi Anda sudah berakhir. Silakan masuk kembali.",
-  VALIDATION_ERROR: "Data belum valid. Periksa kembali isian formulir.",
-  WRONG_APPROVER_ROLE: "Akun Anda belum memiliki peran yang sesuai untuk aksi ini. Hubungi admin untuk mengecek role dan penugasan kelas.",
+  ACTIVE_YEAR_EXISTS:
+    'Sudah ada tahun ajaran aktif. Arsipkan atau tutup tahun ajaran aktif sebelum mengaktifkan yang lain.',
+  ACTIVE_TERM_EXISTS:
+    'Sudah ada semester aktif untuk tahun ajaran ini. Tutup semester aktif sebelum mengaktifkan yang lain.',
+  BUILT_IN_ROLE_IMMUTABLE:
+    'Role bawaan tidak bisa diubah atau dihapus. Clone ke role custom untuk memodifikasi.',
+  DUPLICATE_NIS: 'NIS sudah digunakan siswa lain. Gunakan NIS yang berbeda.',
+  DUPLICATE_NIP: 'NIP sudah digunakan guru lain. Gunakan NIP yang berbeda.',
+  EMAIL_ALREADY_EXISTS:
+    'Email sudah terdaftar. Gunakan email lain atau cek daftar pengguna.',
+  EVALUATION_TERM_MISMATCH:
+    'Evaluasi tidak berasal dari semester yang sama dengan jenis rapor.',
+  EXPIRED_ACCESS_TOKEN: 'Sesi Anda sudah berakhir. Silakan masuk kembali.',
+  FEATURE_NOT_AVAILABLE:
+    'Fitur ini belum aktif untuk sekolah Anda. Aktifkan modul atau cek paket langganan.',
+  GRADES_LOCKED:
+    'Nilai sudah dikunci karena rapor masuk proses review. Kembalikan rapor ke Draft jika nilai perlu diperbaiki.',
+  GRADING_POLICY_NOT_CONFIGURED:
+    'Kebijakan nilai belum tersinkron. Buka Pengaturan Akademik > Kebijakan Nilai, simpan ulang kebijakan untuk tahun ajaran ini, lalu coba generate draft rapor lagi.',
+  IMPORT_VALIDATION_FAILED:
+    'Import gagal. Periksa error pada baris data yang ditandai.',
+  INVALID_STATE_TRANSITION:
+    'Status sudah berubah atau aksi ini tidak valid untuk status saat ini. Muat ulang halaman lalu coba lagi.',
+  INVALID_TOKEN: 'Sesi Anda tidak valid. Silakan masuk kembali.',
+  INVALID_SET_PASSWORD_TOKEN:
+    'Token set password tidak valid atau sudah dipakai. Minta link baru dari admin atau gunakan login dengan Google.',
+  INVALID_MEDIA_TYPE:
+    'Format file tidak didukung. Gunakan JPG, PNG, atau WebP.',
+  MEDIA_TOO_LARGE: 'Ukuran file melebihi batas 2MB.',
+  SET_PASSWORD_TOKEN_EXPIRED:
+    'Link set password sudah kedaluwarsa. Minta link baru dari admin atau gunakan login dengan Google.',
+  PASSWORD_NOT_SET:
+    'Akun Anda belum punya password. Silakan set password terlebih dahulu.',
+  LAST_ADMIN: 'Tidak bisa menghapus otoritas admin terakhir di tenant ini.',
+  LAST_ROLE:
+    'Tidak bisa menghapus role terakhir pengguna. Gunakan aksi "Keluarkan dari tenant" untuk mengeluarkan pengguna.',
+  MEMBERSHIP_ALREADY_EXISTS:
+    'Pengguna ini sudah menjadi anggota tenant. Tidak perlu mengundang ulang.',
+  PENDING_INVITATION_EXISTS:
+    'Email ini sudah memiliki undangan tertunda. Batalkan undangan lama sebelum membuat yang baru.',
+  PRIVILEGE_ESCALATION: 'Anda hanya bisa memberi izin yang juga Anda miliki.',
+  ROLE_CODE_EXISTS: 'Kode role sudah digunakan.',
+  ROLE_IN_USE: 'Role masih dipakai pengguna dan tidak bisa dihapus.',
+  STUDENT_ENROLLED:
+    'Siswa masih memiliki enrollment aktif dan tidak bisa dihapus.',
+  SUBJECT_IN_USE:
+    'Mata pelajaran masih dipakai penugasan mengajar dan tidak bisa dihapus.',
+  SUBJECT_GROUP_IN_USE:
+    'Kelompok masih memiliki mata pelajaran dan tidak bisa dihapus.',
+  CURRICULUM_IN_USE:
+    'Versi kurikulum masih memiliki mata pelajaran dan tidak bisa dihapus.',
+  TEACHER_ASSIGNED: 'Guru masih ditugaskan mengajar dan tidak bisa dihapus.',
+  HOMEROOM_NOT_EMPTY:
+    'Kelas masih memiliki siswa aktif dan tidak bisa dihapus.',
+  TERM_IN_USE:
+    'Semester masih digunakan oleh evaluasi atau rapor dan tidak bisa dihapus.',
+  TERM_NAME_EXISTS: 'Nama semester sudah digunakan dalam tahun ajaran ini.',
+  TERM_NOT_DELETABLE:
+    'Semester yang sedang Aktif atau Diarsipkan tidak bisa dihapus.',
+  TERM_NOT_EDITABLE:
+    'Semester sudah ditutup atau diarsipkan. Evaluasi hanya bisa dibuat atau diedit pada semester Draft atau Aktif.',
+  TERM_NOT_ACTIVE:
+    'Semester belum aktif. Input nilai hanya diperbolehkan saat semester berstatus Aktif.',
+  TERM_OVERLAP:
+    'Rentang tanggal semester bertumpuk dengan semester lain dalam tahun ajaran ini.',
+  TERM_STILL_ACTIVE:
+    'Tahun ajaran tidak bisa ditutup saat masih ada semester yang aktif. Tutup semua semester terlebih dahulu.',
+  USERNAME_TAKEN: 'Username sudah digunakan. Pilih username lain.',
+  exchange_failed:
+    'Login dengan Google gagal saat menghubungi Google. Coba lagi.',
+  google_denied: 'Login dengan Google dibatalkan.',
+  invalid_state: 'Sesi Login dengan Google sudah kedaluwarsa. Coba lagi.',
+  missing_code: 'Respons Login dengan Google tidak lengkap. Coba lagi.',
+  missing_identity_token:
+    'Login dengan Google tidak menghasilkan token sesi. Coba lagi.',
+  verification_failed: 'Akun Google tidak bisa diverifikasi. Coba lagi.',
+  ASSIGNMENT_MISMATCH:
+    'Mata pelajaran dan kelas ini sudah ditugaskan ke guru lain. Hubungi admin jika ada kesalahan penugasan.',
+  NOT_ASSIGNED:
+    'Akun guru belum ditugaskan untuk kelas, mata pelajaran, dan tahun ajaran ini.',
+  STUDENT_NOT_ENROLLED: 'Siswa belum terdaftar aktif pada tahun ajaran ini.',
+  TEACHER_ACCOUNT_NOT_LINKED:
+    'Data guru belum terhubung ke akun pengguna. Hubungi admin untuk menghubungkan akun guru.',
+  UNAUTHENTICATED: 'Sesi Anda sudah berakhir. Silakan masuk kembali.',
+  VALIDATION_ERROR: 'Data belum valid. Periksa kembali isian formulir.',
+  WRONG_APPROVER_ROLE:
+    'Akun Anda belum memiliki peran yang sesuai untuk aksi ini. Hubungi admin untuk mengecek role dan penugasan kelas.',
 };
 
 export function isApiError(error: unknown, code: string): boolean {
@@ -71,7 +105,7 @@ export function isApiError(error: unknown, code: string): boolean {
  * steer the admin to the invitation flow instead of implying a typo.
  */
 export const CREATE_USER_ALREADY_EXISTS_MESSAGE =
-  "Orang ini sudah punya akun. Gunakan alur undangan untuk menambahkannya ke tenant ini.";
+  'Orang ini sudah punya akun. Gunakan alur undangan untuk menambahkannya ke tenant ini.';
 
 /** Confirmation prompt for the explicit remove-from-tenant action. */
 export function removeFromTenantConfirm(name: string): string {
@@ -90,22 +124,34 @@ export function bulkDeleteRolesConfirm(count: number): string {
 
 /** Helper text shown when bulk delete is blocked by a built-in role in the selection. */
 export const BULK_DELETE_BUILTIN_BLOCKED =
-  "Lepaskan role bawaan dari pilihan untuk menghapus.";
+  'Lepaskan role bawaan dari pilihan untuk menghapus.';
 
-export function getErrorMessage(error: unknown, options: ErrorMessageOptions = {}): string {
+export function getErrorMessage(
+  error: unknown,
+  options: ErrorMessageOptions = {},
+): string {
   if (error instanceof ApiHttpError) {
     if (error.fields) {
       const summary = summariseFieldErrors(error.fields);
       if (summary) return summary;
     }
-    return ERROR_MESSAGES[error.code] ?? error.message ?? options.fallback ?? "Terjadi kesalahan. Coba lagi.";
+    return (
+      ERROR_MESSAGES[error.code] ??
+      error.message ??
+      options.fallback ??
+      'Terjadi kesalahan. Coba lagi.'
+    );
   }
   if (error instanceof Error && error.message) {
     return options.fallback ?? error.message;
   }
-  if (error && typeof error === "object" && "code" in error) {
+  if (error && typeof error === 'object' && 'code' in error) {
     const code = String((error as { code: unknown }).code);
-    return ERROR_MESSAGES[code] ?? options.fallback ?? "Terjadi kesalahan. Coba lagi.";
+    return (
+      ERROR_MESSAGES[code] ??
+      options.fallback ??
+      'Terjadi kesalahan. Coba lagi.'
+    );
   }
-  return options.fallback ?? "Terjadi kesalahan. Coba lagi.";
+  return options.fallback ?? 'Terjadi kesalahan. Coba lagi.';
 }

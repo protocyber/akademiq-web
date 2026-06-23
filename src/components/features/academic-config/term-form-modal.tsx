@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
@@ -33,12 +34,24 @@ import {
   useUpdateAcademicTerm,
 } from "@/lib/query/mutations/use-academic-config";
 import {
+  useApplyTermTemplate,
   useCopyReportTypes,
+  useCreateEvaluationTemplate,
   useCreateReportType,
+  useDeleteEvaluationTemplate,
   useDeleteReportType,
+  useUpdateEvaluationTemplate,
   useUpdateReportType,
+  useUpsertFormulaTemplate,
 } from "@/lib/query/mutations/use-grading";
-import { useReportTypes, type ReportType } from "@/lib/query/queries/use-grading";
+import {
+  useEvaluationTemplates,
+  useFormulaTemplatesForTypes,
+  useReportTypes,
+  useUnmaterializedCount,
+  type EvaluationTemplate,
+  type ReportType,
+} from "@/lib/query/queries/use-grading";
 import { type AcademicTerm, useTerms } from "@/lib/query/queries/use-academic-config";
 import { reportTypeCreateSchema, type ReportTypeCreateForm } from "@/lib/schemas/grading";
 import {
@@ -61,7 +74,7 @@ const termNextStatuses: Record<string, string[]> = {
   Archived: [],
 };
 
-type TermTab = "info" | "status" | "rapor";
+type TermTab = "info" | "status" | "rapor" | "evaluasi";
 
 export type TermFormModalProps = {
   open: boolean;
@@ -120,6 +133,7 @@ export function TermFormModal({
               <TabsTrigger value="info">Info</TabsTrigger>
               <TabsTrigger value="status">Status</TabsTrigger>
               <TabsTrigger value="rapor">Rapor</TabsTrigger>
+              <TabsTrigger value="evaluasi">Evaluasi</TabsTrigger>
             </TabsList>
 
             <TabsContent value="info">
@@ -142,6 +156,12 @@ export function TermFormModal({
             <TabsContent value="rapor">
               {term ? (
                 <ReportTypesSection yearId={yearId} termId={term.term_id} canManage={canManage} />
+              ) : null}
+            </TabsContent>
+
+            <TabsContent value="evaluasi">
+              {term ? (
+                <EvaluationTemplatesSection yearId={yearId} termId={term.term_id} canManage={canManage} />
               ) : null}
             </TabsContent>
           </Tabs>
@@ -706,6 +726,380 @@ function ReportTypesSection({
         </Form>
       </div>
     </div>
+  );
+}
+
+function EvaluationTemplatesSection({
+  yearId,
+  termId,
+  canManage,
+}: {
+  yearId: string;
+  termId: string;
+  canManage: boolean;
+}) {
+  const templates = useEvaluationTemplates(termId);
+  const reportTypes = useReportTypes(yearId, termId);
+  const count = useUnmaterializedCount(termId);
+  const create = useCreateEvaluationTemplate(termId);
+  const update = useUpdateEvaluationTemplate(termId);
+  const remove = useDeleteEvaluationTemplate(termId);
+  const apply = useApplyTermTemplate(termId);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<EvaluationTemplate | null>(null);
+  const [newCode, setNewCode] = React.useState("");
+  const [newName, setNewName] = React.useState("");
+
+  const sorted = React.useMemo(
+    () => [...(templates.data ?? [])].sort((a, b) => a.position - b.position),
+    [templates.data],
+  );
+
+  async function onAdd() {
+    const code = newCode.trim();
+    const name = newName.trim();
+    if (!code || !name) return;
+    try {
+      const position = sorted.length > 0 ? Math.max(...sorted.map((item) => item.position)) + 1 : 1;
+      await create.mutateAsync({ term_id: termId, code, name, position });
+      setNewCode("");
+      setNewName("");
+      toast.success("Evaluasi ditambahkan.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menambah evaluasi." }));
+    }
+  }
+
+  async function onReorder(item: EvaluationTemplate, direction: "up" | "down") {
+    const idx = sorted.findIndex((ev) => ev.template_id === item.template_id);
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    const swap = sorted[swapIdx];
+    try {
+      await Promise.all([
+        update.mutateAsync({ templateId: item.template_id, position: swap.position }),
+        update.mutateAsync({ templateId: swap.template_id, position: item.position }),
+      ]);
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa mengubah urutan." }));
+    }
+  }
+
+  async function onDelete() {
+    if (!deleteTarget) return;
+    try {
+      await remove.mutateAsync(deleteTarget.template_id);
+      setDeleteTarget(null);
+      toast.success("Evaluasi dihapus.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menghapus evaluasi." }));
+    }
+  }
+
+  async function onApply() {
+    try {
+      const result = await apply.mutateAsync();
+      toast.success(`${result.evaluations_created} evaluasi dibuat, ${result.weights_created} bobot dibuat.`);
+      await count.refetch();
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menerapkan template evaluasi." }));
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {count.data && count.data.count > 0 ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          {count.data.count} penugasan belum punya evaluasi untuk semester ini.
+        </div>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Daftar ini menjadi master evaluasi semester. Bobot di bawah mengikuti jenis rapor pada tab Rapor.
+        </p>
+        <Button type="button" size="sm" disabled={!canManage || sorted.length === 0} loading={apply.isPending} onClick={() => void onApply()}>
+          Terapkan ke semua penugasan yang belum punya evaluasi
+        </Button>
+      </div>
+
+      {templates.isLoading ? (
+        <Skeleton className="h-20 w-full" />
+      ) : sorted.length === 0 ? (
+        <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+          Belum ada evaluasi semester. Tambahkan mis. UH1, UTS, UAS.
+        </p>
+      ) : (
+        <ul className="divide-y rounded-lg border">
+          {sorted.map((template, idx) => (
+            <EvaluationTemplateRow
+              key={template.template_id}
+              template={template}
+              isFirst={idx === 0}
+              isLast={idx === sorted.length - 1}
+              isEditing={editingId === template.template_id}
+              canManage={canManage}
+              onEdit={() => setEditingId(template.template_id)}
+              onEditDone={() => setEditingId(null)}
+              onDelete={() => setDeleteTarget(template)}
+              onMoveUp={() => onReorder(template, "up")}
+              onMoveDown={() => onReorder(template, "down")}
+              updateMut={update}
+            />
+          ))}
+        </ul>
+      )}
+
+      <div className="grid gap-3 border-t pt-3 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
+        <div>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Kode</p>
+          <Input value={newCode} onChange={(event) => setNewCode(event.target.value)} placeholder="UH1" disabled={!canManage} />
+        </div>
+        <div>
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Nama</p>
+          <Input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="Ulangan Harian 1" disabled={!canManage} />
+        </div>
+        <Button type="button" loading={create.isPending} disabled={!canManage || !newCode.trim() || !newName.trim()} onClick={() => void onAdd()}>
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {sorted.length > 0 ? (
+        <TemplateWeightMatrix reportTypes={reportTypes.data ?? []} templates={sorted} canManage={canManage} />
+      ) : null}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Hapus evaluasi?"
+        description="Bobot template untuk evaluasi ini juga akan dihapus. Evaluasi konkret yang sudah dibuat tidak berubah."
+        confirmLabel="Hapus"
+        destructive
+        loading={remove.isPending}
+        onConfirm={onDelete}
+      />
+    </div>
+  );
+}
+
+function EvaluationTemplateRow({
+  template,
+  isFirst,
+  isLast,
+  isEditing,
+  canManage,
+  onEdit,
+  onEditDone,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  updateMut,
+}: {
+  template: EvaluationTemplate;
+  isFirst: boolean;
+  isLast: boolean;
+  isEditing: boolean;
+  canManage: boolean;
+  onEdit: () => void;
+  onEditDone: () => void;
+  onDelete: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  updateMut: ReturnType<typeof useUpdateEvaluationTemplate>;
+}) {
+  const [editCode, setEditCode] = React.useState(template.code);
+  const [editName, setEditName] = React.useState(template.name);
+
+  React.useEffect(() => {
+    if (isEditing) {
+      setEditCode(template.code);
+      setEditName(template.name);
+    }
+  }, [isEditing, template.code, template.name]);
+
+  async function saveEdit() {
+    try {
+      await updateMut.mutateAsync({
+        templateId: template.template_id,
+        code: editCode.trim() || undefined,
+        name: editName.trim() || undefined,
+      });
+      toast.success("Evaluasi diperbarui.");
+      onEditDone();
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan perubahan." }));
+    }
+  }
+
+  if (isEditing) {
+    return (
+      <li className="flex items-center gap-2 p-3">
+        <Input value={editCode} onChange={(event) => setEditCode(event.target.value)} className="h-8 w-28 text-sm" />
+        <Input value={editName} onChange={(event) => setEditName(event.target.value)} className="h-8 flex-1 text-sm" />
+        <Button size="sm" className="h-8 px-2 text-xs" loading={updateMut.isPending} onClick={() => void saveEdit()}>
+          OK
+        </Button>
+        <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={onEditDone}>
+          Batal
+        </Button>
+      </li>
+    );
+  }
+
+  return (
+    <li className="flex items-center gap-2 p-3 text-sm">
+      <div className="flex flex-col">
+        <Button type="button" variant="ghost" size="sm" disabled={isFirst || !canManage || updateMut.isPending} onClick={onMoveUp} className="h-5 w-5 p-0">
+          <ChevronUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" disabled={isLast || !canManage || updateMut.isPending} onClick={onMoveDown} className="h-5 w-5 p-0">
+          <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">
+          {template.code} <span className="text-muted-foreground">· {template.name}</span>
+        </p>
+      </div>
+      <div className="flex items-center gap-1">
+        <Button size="sm" variant="ghost" disabled={!canManage} onClick={onEdit} className="h-7 w-7 p-0">
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button size="sm" variant="ghost" disabled={!canManage} onClick={onDelete} className="h-7 w-7 p-0 text-destructive hover:text-destructive">
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+function TemplateWeightMatrix({
+  reportTypes,
+  templates,
+  canManage,
+}: {
+  reportTypes: ReportType[];
+  templates: EvaluationTemplate[];
+  canManage: boolean;
+}) {
+  const reportTypeIds = React.useMemo(() => reportTypes.map((type) => type.report_type_id), [reportTypes]);
+  const formulaTemplates = useFormulaTemplatesForTypes(reportTypeIds);
+  const [weights, setWeights] = React.useState<Record<string, Record<string, number>>>({});
+  const [hydrated, setHydrated] = React.useState(false);
+
+  React.useEffect(() => setHydrated(false), [reportTypeIds.join(","), templates.map((item) => item.template_id).join(",")]);
+
+  React.useEffect(() => {
+    if (hydrated || !formulaTemplates.data) return;
+    const next: Record<string, Record<string, number>> = {};
+    for (const reportType of reportTypes) {
+      next[reportType.report_type_id] = {};
+      for (const template of templates) next[reportType.report_type_id][template.template_id] = 0;
+      for (const row of formulaTemplates.data.get(reportType.report_type_id) ?? []) {
+        next[reportType.report_type_id][row.evaluation_template_id] = row.weight;
+      }
+    }
+    setWeights(next);
+    setHydrated(true);
+  }, [formulaTemplates.data, hydrated, reportTypes, templates]);
+
+  if (reportTypes.length === 0) {
+    return (
+      <p className="rounded-lg border border-dashed p-4 text-xs text-muted-foreground">
+        Tambahkan jenis rapor di tab Rapor sebelum mengatur bobot evaluasi.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border p-3">
+      <p className="text-xs font-medium text-muted-foreground">Bobot evaluasi per jenis rapor</p>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px] text-sm">
+          <thead>
+            <tr className="border-b text-left text-xs text-muted-foreground">
+              <th className="py-2 pr-3 font-medium">Evaluasi</th>
+              {reportTypes.map((type) => (
+                <th key={type.report_type_id} className="px-2 py-2 text-center font-medium">{type.code}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {templates.map((template) => (
+              <tr key={template.template_id} className="border-b last:border-0">
+                <td className="py-2 pr-3">{template.code}</td>
+                {reportTypes.map((type) => (
+                  <td key={type.report_type_id} className="px-2 py-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={weights[type.report_type_id]?.[template.template_id] ?? 0}
+                      disabled={!canManage}
+                      onChange={(event) => {
+                        const value = Number(event.target.value || 0);
+                        setWeights((current) => ({
+                          ...current,
+                          [type.report_type_id]: {
+                            ...(current[type.report_type_id] ?? {}),
+                            [template.template_id]: value,
+                          },
+                        }));
+                      }}
+                      className="h-8 text-center"
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr className="font-medium">
+              <td className="py-2 pr-3 text-xs text-muted-foreground">Total</td>
+              {reportTypes.map((type) => {
+                const total = Object.values(weights[type.report_type_id] ?? {}).reduce((sum, value) => sum + value, 0);
+                return (
+                  <td key={type.report_type_id} className={cn("px-2 py-2 text-center", total === 100 ? "text-emerald-600" : "text-destructive")}>
+                    {total}%
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {reportTypes.map((type) => (
+          <TemplateWeightSaveButton key={type.report_type_id} reportType={type} weights={weights[type.report_type_id] ?? {}} canManage={canManage} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TemplateWeightSaveButton({
+  reportType,
+  weights,
+  canManage,
+}: {
+  reportType: ReportType;
+  weights: Record<string, number>;
+  canManage: boolean;
+}) {
+  const save = useUpsertFormulaTemplate(reportType.report_type_id);
+  const total = Object.values(weights).reduce((sum, value) => sum + value, 0);
+
+  async function onSave() {
+    try {
+      await save.mutateAsync({ weights });
+      toast.success(`Bobot ${reportType.code} disimpan.`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa menyimpan bobot." }));
+    }
+  }
+
+  return (
+    <Button type="button" size="sm" variant="outline" disabled={!canManage || total !== 100} loading={save.isPending} onClick={() => void onSave()}>
+      Simpan bobot {reportType.code}
+    </Button>
   );
 }
 

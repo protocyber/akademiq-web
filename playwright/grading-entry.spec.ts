@@ -23,10 +23,20 @@ const EVAL_FIXTURE = {
 };
 
 async function setupCommonRoutes(page: import("@playwright/test").Page) {
+  let requestedTenantUsers = false;
   await page.addInitScript(() => {
     window.localStorage.setItem("akademiq.access_token", "test-access");
     window.localStorage.setItem("akademiq.refresh_token", "test-refresh");
   });
+
+  await page.route("**/api/v1/iam/tenants/me/users", (route) => {
+    requestedTenantUsers = true;
+    return route.fulfill({ status: 403, json: { error: { code: "FORBIDDEN", message: "forbidden" } } });
+  });
+
+  await page.route("**/api/v1/iam/tenants/me/permissions", (route) =>
+    route.fulfill({ json: { data: [{ code: "grade.read", held: true }, { code: "academic.config.read", held: true }], meta: {} } }),
+  );
 
   await page.route("**/api/v1/iam/me", (route) =>
     route.fulfill({
@@ -73,6 +83,10 @@ async function setupCommonRoutes(page: import("@playwright/test").Page) {
     }),
   );
 
+  await page.route("**/api/v1/academic-ops/teachers*", (route) =>
+    route.fulfill({ json: { data: [{ teacher_id: TEACHER_ID, full_name: "Teacher User", email: null, user_id: TEACHER_ID, linked_user: { user_id: TEACHER_ID, username: "teacher_user", email: "teacher@example.test" }, status: "Active" }], meta: {} } }),
+  );
+
   await page.route("**/api/v1/academic-ops/homerooms*", (route) => {
     if (route.request().url().includes("/students")) {
       return route.fulfill({ json: { data: [{ student_id: STUDENT_ID, nis: "S-001", full_name: "Student One" }], meta: {} } });
@@ -92,6 +106,8 @@ async function setupCommonRoutes(page: import("@playwright/test").Page) {
       },
     });
   });
+
+  return { requestedTenantUsers: () => requestedTenantUsers };
 }
 
 async function selectScope(page: import("@playwright/test").Page) {
@@ -104,8 +120,8 @@ async function selectScope(page: import("@playwright/test").Page) {
   await page.getByRole("option", { name: "Matematika" }).click();
 }
 
-test("evaluation columns appear and grade cell auto-saves on blur", async ({ page }) => {
-  await setupCommonRoutes(page);
+test("evaluation columns appear and grade cell auto-saves on blur without admin IAM call", async ({ page }) => {
+  const routeState = await setupCommonRoutes(page);
 
   await page.route("**/api/v1/grading/evaluations*", (route) =>
     route.fulfill({ json: { data: [EVAL_FIXTURE], meta: {} } }),
@@ -129,6 +145,11 @@ test("evaluation columns appear and grade cell auto-saves on blur", async ({ pag
   });
 
   await selectScope(page);
+
+  expect(routeState.requestedTenantUsers()).toBe(false);
+  await expect(page.getByText("Teacher User")).toBeVisible();
+  await expect(page.getByText("teacher@example.test")).toBeVisible();
+  await expect(page.getByText("akun belum terhubung")).toHaveCount(0);
 
   // Evaluation column header should appear
   await expect(page.getByRole("columnheader", { name: "UH1" })).toBeVisible();

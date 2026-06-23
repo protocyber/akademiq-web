@@ -37,6 +37,7 @@ async function mockApis(page: Page) {
     const ok = (data: unknown, status = 200) => route.fulfill({ status, headers: { ...corsHeaders, "Content-Type": "application/json" }, body: JSON.stringify({ data, meta: {} }) });
 
     if (path === "/api/v1/iam/me") return ok({ user_id: "99999999-9999-4999-8999-999999999999", email: "admin@akademiq.test", full_name: "Tenant Admin", status: "active", memberships: [{ tenant_id: tenantId, role_code: "tenant_admin" }] });
+    if (path === "/api/v1/iam/tenants/me/permissions") return ok([{ code: "academic.ops.manage", description: "", held: true }, { code: "academic.config.write", description: "", held: true }]);
     if (path === "/api/v1/billing/tenants/me") return ok({ tenant_id: tenantId, school_name: "Playwright School", status: "active", current_plan: { plan_id: "88888888-8888-4888-8888-888888888888", code: "starter", name: "Starter" }, modules: [{ feature_code: "academic_ops", plan_entitled: true, enabled: true }, { feature_code: "academic_config", plan_entitled: true, enabled: true }] });
     if (path === "/api/v1/academic-config/academic-years") return ok([{ academic_year_id: yearId, tenant_id: tenantId, name: "2026/2027", start_date: "2026-07-01", end_date: "2027-06-30", status: "Active" }]);
     if (path === `/api/v1/academic-config/academic-years/${yearId}/curriculum-versions`) return ok([{ curriculum_version_id: curriculumId, tenant_id: tenantId, academic_year_id: yearId, name: "Kurikulum" }]);

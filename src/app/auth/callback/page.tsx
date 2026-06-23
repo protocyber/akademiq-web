@@ -53,7 +53,7 @@ function AuthCallbackContent() {
         router.replace("/tenant-select");
       })
       .catch((err) => {
-        const message = getErrorMessage(err, { fallback: "Login dengan Gmail gagal. Coba lagi." });
+        const message = getErrorMessage(err, { fallback: "Login dengan Google gagal. Coba lagi." });
         toast.error(message);
         router.replace(`/login?oauth_error=${encodeURIComponent(message)}`);
       });

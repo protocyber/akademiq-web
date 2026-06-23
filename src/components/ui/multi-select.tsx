@@ -1,13 +1,5 @@
 "use client";
 
-/**
- * Uses PopoverPrimitive.Content directly (no Portal) with modal={false} to
- * avoid focus/pointer-event conflicts when rendered inside a Radix Dialog.
- * The shared PopoverContent wraps in a Portal which renders outside the
- * Dialog's DOM subtree, causing the CommandInput to be unfocusable. Skipping
- * the portal keeps the popover inside the Dialog's event context.
- */
-
 import * as React from "react";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 
@@ -130,39 +122,42 @@ export function MultiSelect({
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Content
-        className="z-[60] w-[--radix-popover-trigger-width] rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
-        align="start"
-        sideOffset={4}
-        onWheel={(e) => e.stopPropagation()}
-      >
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup>
-              {options.map((option) => {
-                const checked = value.includes(option.value);
-                return (
-                  <CommandItem
-                    key={option.value}
-                    value={option.label}
-                    onSelect={() => toggle(option.value)}
-                  >
-                    <Check
-                      className={cn(
-                        "h-4 w-4",
-                        checked ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    {option.label}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverPrimitive.Content>
+      <PopoverPrimitive.Portal>
+        <PopoverPrimitive.Content
+          className="z-[60] w-[--radix-popover-trigger-width] rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+          align="start"
+          sideOffset={4}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+          onWheel={(e) => e.stopPropagation()}
+        >
+          <Command>
+            <CommandInput placeholder={searchPlaceholder} autoFocus />
+            <CommandList>
+              <CommandEmpty>{emptyText}</CommandEmpty>
+              <CommandGroup>
+                {options.map((option) => {
+                  const checked = value.includes(option.value);
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      value={option.label}
+                      onSelect={() => toggle(option.value)}
+                    >
+                      <Check
+                        className={cn(
+                          "h-4 w-4",
+                          checked ? "opacity-100" : "opacity-0",
+                        )}
+                      />
+                      {option.label}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverPrimitive.Content>
+      </PopoverPrimitive.Portal>
     </PopoverPrimitive.Root>
   );
 }

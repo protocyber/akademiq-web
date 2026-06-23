@@ -32,30 +32,48 @@
   }
 
   .dark {
-    --background: 221 55% 10%;
-    --foreground: 226 92% 93%;
-    --card: 224 38% 15%;
-    --card-foreground: 226 92% 93%;
-    --popover: 224 38% 15%;
-    --popover-foreground: 226 92% 93%;
-    --primary: 155 68% 59%;
-    --primary-foreground: 158 100% 11%;
-    --secondary: 157 71% 57%;
-    --secondary-foreground: 159 100% 11%;
-    --muted: 222 41% 13%;
-    --muted-foreground: 136 12% 76%;
-    --accent: 222 28% 19%;
-    --accent-foreground: 155 68% 59%;
-    --destructive: 6 100% 84%;
-    --destructive-foreground: 357 100% 21%;
-    --border: 144 10% 26%;
-    --input: 144 10% 26%;
-    --ring: 155 68% 59%;
-    --chart-1: 155 68% 59%;
-    --chart-2: 210 80% 65%;
-    --chart-3: 38 92% 60%;
-    --chart-4: 340 75% 60%;
-    --chart-5: 270 70% 65%;
+    /* Base */
+    --background: 220 27% 8%; /* #0d1117 */
+    --foreground: 210 17% 92%; /* #e6edf3 */
+
+    /* Surface */
+    --card: 215 20% 13%; /* #161b22 */
+    --card-foreground: 210 17% 92%;
+
+    --popover: 215 20% 13%;
+    --popover-foreground: 210 17% 92%;
+
+    /* Primary (GitHub green) */
+    --primary: 137 58% 33%; /* #238636 */
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary */
+    --secondary: 215 14% 18%; /* #21262d */
+    --secondary-foreground: 210 17% 92%;
+
+    /* Muted */
+    --muted: 215 14% 18%;
+    --muted-foreground: 215 8% 65%; /* #8b949e */
+
+    /* Accent / hover */
+    --accent: 215 14% 18%;
+    --accent-foreground: 137 58% 50%;
+
+    /* Danger */
+    --destructive: 0 72% 51%; /* #da3633 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & input */
+    --border: 215 14% 23%; /* #30363d */
+    --input: 215 14% 23%;
+    --ring: 137 58% 33%;
+
+    /* Charts */
+    --chart-1: 137 58% 33%;
+    --chart-2: 207 90% 54%;
+    --chart-3: 40 90% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 0 72% 55%;
   }
 }
 

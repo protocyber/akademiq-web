@@ -388,7 +388,7 @@ function DeleteConfirm({
   );
 }
 
-function RowDelete({ assignmentId, canManage, onDelete }: { assignmentId: string; canManage: boolean; onDelete: () => void; }) {
+function RowDelete({ canManage, onDelete }: { assignmentId: string; canManage: boolean; onDelete: () => void; }) {
   return (
     <DropdownMenuItem
       disabled={!canManage}

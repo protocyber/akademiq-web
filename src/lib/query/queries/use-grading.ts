@@ -10,6 +10,7 @@ export type Evaluation = {
   homeroom_id: string;
   subject_id: string;
   academic_year_id: string;
+  term_id: string;
   code: string;
   name: string;
   position: number;
@@ -331,5 +332,100 @@ export function useSubjectReportScoresForTypes(reportTypeIds: string[], homeroom
       return new Map<string, SubjectReportScore[]>(entries);
     },
     enabled: Boolean(homeroomId && subjectId && reportTypeIds.length > 0),
+  });
+}
+
+// ── Evaluation template queries (per-term master) ─────────────────────────────
+
+export type EvaluationTemplate = {
+  template_id: string;
+  tenant_id: string;
+  term_id: string;
+  code: string;
+  name: string;
+  position: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ReportFormulaTemplate = {
+  report_type_id: string;
+  evaluation_template_id: string;
+  weight: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export const evaluationTemplatesQueryKey = (termId?: string) =>
+  ["grading", "evaluation-templates", termId] as const;
+
+export function useEvaluationTemplates(termId?: string) {
+  return useQuery({
+    queryKey: evaluationTemplatesQueryKey(termId),
+    queryFn: () =>
+      apiFetch<EvaluationTemplate[]>({
+        service: "grading",
+        path: `/api/v1/grading/evaluation-templates?term_id=${termId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(termId),
+  });
+}
+
+export const formulaTemplatesQueryKey = (reportTypeId?: string) =>
+  ["grading", "formula-templates", reportTypeId] as const;
+
+export function useFormulaTemplates(reportTypeId?: string) {
+  return useQuery({
+    queryKey: formulaTemplatesQueryKey(reportTypeId),
+    queryFn: () =>
+      apiFetch<ReportFormulaTemplate[]>({
+        service: "grading",
+        path: `/api/v1/grading/report-types/${reportTypeId}/formula-templates`,
+        authenticated: true,
+      }),
+    enabled: Boolean(reportTypeId),
+  });
+}
+
+/**
+ * Formula-template weight rows for several report types, keyed by
+ * `report_type_id`. Used by the Evaluasi tab weight matrix.
+ */
+export function useFormulaTemplatesForTypes(reportTypeIds: string[]) {
+  return useQuery({
+    queryKey: ["grading", "formula-templates", "multi", reportTypeIds.join(",")] as const,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        reportTypeIds.map(async (reportTypeId) => {
+          const rows = await apiFetch<ReportFormulaTemplate[]>({
+            service: "grading",
+            path: `/api/v1/grading/report-types/${reportTypeId}/formula-templates`,
+            authenticated: true,
+          });
+          return [reportTypeId, rows] as const;
+        }),
+      );
+      return new Map<string, ReportFormulaTemplate[]>(entries);
+    },
+    enabled: reportTypeIds.length > 0,
+  });
+}
+
+// ── Unmaterialized-assignment count ──────────────────────────────────────────
+
+export const unmaterializedCountQueryKey = (termId?: string) =>
+  ["grading", "unmaterialized-count", termId] as const;
+
+export function useUnmaterializedCount(termId?: string) {
+  return useQuery({
+    queryKey: unmaterializedCountQueryKey(termId),
+    queryFn: () =>
+      apiFetch<{ count: number }>({
+        service: "grading",
+        path: `/api/v1/grading/evaluation-templates/unmaterialized-count?term_id=${termId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(termId),
   });
 }

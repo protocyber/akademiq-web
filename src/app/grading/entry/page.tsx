@@ -33,12 +33,12 @@ import {
 } from "@/lib/query/mutations/use-grading";
 import { useSubjects } from "@/lib/query/queries/use-academic-config";
 import { useHomeroomRoster, useHomerooms, useTeachers, useTeachingAssignments, type Teacher } from "@/lib/query/queries/use-academic-ops";
-import { useClassGrades, useEvaluations, useReportTypes, useSubjectReportScoresForTypes, type Evaluation, type Grade } from "@/lib/query/queries/use-grading";
+import { useClassGrades, useEvaluations, useReportTypes, useSubjectReportScoresForTypes, useUnmaterializedCount, type Evaluation, type Grade } from "@/lib/query/queries/use-grading";
 import { useReportFormulasForTypes } from "@/lib/query/queries/use-grading";
 import { useUpsertReportFormula } from "@/lib/query/mutations/use-grading";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
-import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-users";
+
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { gradeCellSchema } from "@/lib/schemas/grading";
 
@@ -95,13 +95,13 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
   const subjects = useSubjects(curriculumId ?? undefined);
   const assignments = useTeachingAssignments(homeroomId);
   const teachers = useTeachers();
-  const tenantUsers = useTenantUsers({ page: 1, page_size: 100, sort: "name" });
   const roster = useHomeroomRoster(homeroomId);
   const evaluations = useEvaluations(homeroomId, subjectId, yearId ?? undefined, termId ?? undefined);
   const grades = useClassGrades(homeroomId, subjectId, yearId ?? undefined);
   const reportTypes = useReportTypes(yearId ?? undefined, termId ?? undefined);
   const reportTypeIds = (reportTypes.data ?? []).map((t) => t.report_type_id);
   const reportScores = useSubjectReportScoresForTypes(reportTypeIds, homeroomId, subjectId);
+  const unmaterializedCount = useUnmaterializedCount(termId ?? undefined);
 
   const filteredHomerooms = (homerooms.data ?? []).filter((room) => !yearId || room.academic_year_id === yearId);
   const assignedSubjectIds = new Set(
@@ -116,11 +116,6 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
     () => new Map((teachers.data ?? []).map((t) => [t.teacher_id, t])),
     [teachers.data],
   );
-  const userById = React.useMemo(
-    () => new Map((tenantUsers.data?.data ?? []).map((u) => [u.user_id, u])),
-    [tenantUsers.data],
-  );
-
   const assignedTeachers = React.useMemo(
     () =>
       (assignments.data ?? [])
@@ -210,11 +205,22 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
         {homeroomId && subjectId && (
           <TeacherInfoBar
             assignedTeachers={assignedTeachers}
-            userById={userById}
-            isLoading={teachers.isLoading || assignments.isLoading || tenantUsers.isLoading}
+            isLoading={teachers.isLoading || assignments.isLoading}
             isAssignedUser={isAssignedUser}
           />
         )}
+
+        {scopeReady && unmaterializedCount.data && unmaterializedCount.data.count > 0 ? (
+          <div className="border-b bg-amber-50 px-4 py-3 text-xs text-amber-900">
+            {unmaterializedCount.data.count} penugasan pada semester aktif belum punya evaluasi. Minta admin menerapkan template evaluasi semester.
+          </div>
+        ) : null}
+
+        {scopeReady && reportTypes.data && reportTypes.data.length === 0 ? (
+          <div className="border-b bg-amber-50 px-4 py-3 text-xs text-amber-900">
+            Belum ada jenis rapor untuk semester ini. Nilai tetap bisa diisi, tetapi kolom rapor belum tersedia.
+          </div>
+        ) : null}
 
         {!scopeReady && (
           <p className="p-6 text-sm text-muted-foreground">
@@ -261,12 +267,10 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
 
 function TeacherInfoBar({
   assignedTeachers,
-  userById,
   isLoading,
   isAssignedUser,
 }: {
   assignedTeachers: Teacher[];
-  userById: Map<string, TenantUser>;
   isLoading: boolean;
   isAssignedUser: boolean;
 }) {
@@ -282,21 +286,19 @@ function TeacherInfoBar({
   return (
     <div className="flex flex-wrap justify-between gap-x-4 gap-y-1.5 border-b px-4 py-2.5">
       <div className="flex flex-wrap items-center gap-x-4">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Guru</span>
         {assignedTeachers.length === 0 ? (
           <span className="text-xs text-muted-foreground">Belum ada guru yang ditugaskan</span>
         ) : (
           assignedTeachers.map((teacher) => {
-            const user = teacher.user_id ? userById.get(teacher.user_id) : undefined;
-            const accountLabel = user ? (user.email ?? user.username) : null;
+            const accountLabel = teacher.linked_user?.email ?? teacher.linked_user?.username ?? null;
+            const accountText = accountLabel ?? (teacher.user_id ? "akun terhubung" : "akun belum terhubung");
             return (
               <Badge key={teacher.teacher_id} variant="secondary" className="gap-1.5">
-                <UserRound className="h-3 w-3" />
+                Guru: <UserRound className="h-3 w-3" />
                 {teacher.full_name}
-                {accountLabel ?
-                  <span className="text-secondary-foreground/70 font-normal">· {accountLabel}</span>
-                  : <span className="text-secondary-warning/70 font-normal">(akun belum terhubung)</span>
-                }
+                <span className="text-secondary-foreground/70 font-normal">
+                  {accountLabel ? `· ${accountText}` : `(${accountText})`}
+                </span>
               </Badge>
             );
           })
@@ -873,6 +875,8 @@ export function WeightMatrix({
     );
   }
 
+  const driftedTypes = types.filter((type) => Math.abs(columnTotal(type.report_type_id) - 100) >= 1e-9);
+
   return (
     <div className="space-y-2 border-t pt-4">
       <div>
@@ -881,6 +885,11 @@ export function WeightMatrix({
           Atur kontribusi tiap evaluasi ke tiap jenis rapor. Kolom harus berjumlah tepat 100% sebelum disimpan.
         </p>
       </div>
+      {driftedTypes.length > 0 ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+          Bobot {driftedTypes.map((type) => type.code).join(", ")} belum berjumlah 100%. Nilai tetap bisa diisi, tetapi skor rapor dapat kosong sampai bobot diperbaiki.
+        </div>
+      ) : null}
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-sm">
           <thead>

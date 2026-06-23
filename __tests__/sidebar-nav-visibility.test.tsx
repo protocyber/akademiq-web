@@ -30,6 +30,7 @@ vi.mock("@/lib/query/queries/use-academic-config", () => ({
   useAcademicYears: vi.fn(() => ({ data: [], isLoading: false })),
   useCurriculumVersions: vi.fn(() => ({ data: [], isLoading: false })),
   useSubjects: vi.fn(() => ({ data: [], isLoading: false })),
+  useTerms: vi.fn(() => ({ data: [], isLoading: false })),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -102,6 +103,8 @@ describe("SidebarContent nav visibility", () => {
         { code: "user.read", held: true },
         { code: "role.read", held: true },
         { code: "academic.config.read", held: true },
+        { code: "academic.config.write", held: true },
+        { code: "academic.ops.manage", held: true },
         { code: "grade.read", held: true },
         { code: "report.read", held: true },
         { code: "billing.view", held: true },
@@ -119,7 +122,7 @@ describe("SidebarContent nav visibility", () => {
     expect(screen.getByText("Akademik")).toBeInTheDocument();
   });
 
-  it("hides Pengaturan group for teacher without user.read/role.read/billing.view/academic_config module", () => {
+  it("hides Pengaturan and Operasional groups for teacher without admin permissions", () => {
     vi.mocked(useTenantMe).mockReturnValue({
       data: {
         tenant_id: "t1",
@@ -141,10 +144,8 @@ describe("SidebarContent nav visibility", () => {
 
     // Dashboard always visible
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
-    // Pengaturan hidden: no billing.view, user.read, role.read, or academic_config module
     expect(screen.queryByText("Pengaturan")).not.toBeInTheDocument();
-    // Operasional visible because academic_ops module is enabled
-    expect(screen.getByText("Operasional")).toBeInTheDocument();
+    expect(screen.queryByText("Operasional")).not.toBeInTheDocument();
     // Akademik visible: teacher has grading module + grade.read/report.read
     expect(screen.getByText("Akademik")).toBeInTheDocument();
   });
@@ -177,7 +178,7 @@ describe("SidebarContent nav visibility", () => {
     expect(screen.getByText("Akademik")).toBeInTheDocument();
   });
 
-  it("shows only Dashboard and Operasional for ops-only (academic_ops module, no other permissions)", () => {
+  it("hides Operasional for ops-only without academic.ops.manage", () => {
     vi.mocked(useTenantMe).mockReturnValue({
       data: {
         tenant_id: "t1",
@@ -197,8 +198,7 @@ describe("SidebarContent nav visibility", () => {
     expect(screen.getByText("Dashboard")).toBeInTheDocument();
     // Pengaturan hidden (no permissions)
     expect(screen.queryByText("Pengaturan")).not.toBeInTheDocument();
-    // Operasional visible
-    expect(screen.getByText("Operasional")).toBeInTheDocument();
+    expect(screen.queryByText("Operasional")).not.toBeInTheDocument();
     // Akademik hidden (grading module not enabled, so no children visible)
     expect(screen.queryByText("Akademik")).not.toBeInTheDocument();
   });
@@ -219,10 +219,8 @@ describe("SidebarContent nav visibility", () => {
 
     render(<SidebarContent pathname="/dashboard" />);
 
-    // Pengaturan heading hidden when no children visible
-    expect(screen.queryByText("Pengaturan")).not.toBeInTheDocument();
-    // Operasional still visible
-    expect(screen.getByText("Operasional")).toBeInTheDocument();
+      expect(screen.queryByText("Pengaturan")).not.toBeInTheDocument();
+      expect(screen.queryByText("Operasional")).not.toBeInTheDocument();
     // Akademik hidden (grading module enabled but no grade.read or report.read)
     expect(screen.queryByText("Akademik")).not.toBeInTheDocument();
   });

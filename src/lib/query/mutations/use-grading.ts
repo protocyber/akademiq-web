@@ -16,10 +16,14 @@ import type {
 import {
   classGradesQueryKey,
   evaluationsQueryKey,
+  evaluationTemplatesQueryKey,
+  formulaTemplatesQueryKey,
   reportCardsQueryKey,
   reportFormulasQueryKey,
   reportTypesQueryKey,
+  unmaterializedCountQueryKey,
   type Evaluation,
+  type EvaluationTemplate,
   type Grade,
   type ReportCard,
   type ReportType,
@@ -248,5 +252,103 @@ export function useBulkTransitionReportCards(reportTypeId?: string, homeroomId?:
       qc.invalidateQueries({ queryKey: ["grading", "report-card"] });
       qc.invalidateQueries({ queryKey: reportCardsQueryKey(reportTypeId, homeroomId) });
     },
+  });
+}
+
+// ── Evaluation template mutations ────────────────────────────────────────────
+
+export type EvaluationTemplateForm = {
+  term_id: string;
+  code: string;
+  name: string;
+  position: number;
+};
+
+export type EvaluationTemplateUpdateForm = {
+  code?: string;
+  name?: string;
+  position?: number;
+};
+
+export function useCreateEvaluationTemplate(termId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: EvaluationTemplateForm) =>
+      apiFetch<EvaluationTemplate>({
+        service: "grading",
+        path: "/api/v1/grading/evaluation-templates",
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationTemplatesQueryKey(termId) }),
+  });
+}
+
+export function useUpdateEvaluationTemplate(termId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ templateId, ...body }: EvaluationTemplateUpdateForm & { templateId: string }) =>
+      apiFetch<EvaluationTemplate>({
+        service: "grading",
+        path: `/api/v1/grading/evaluation-templates/${templateId}`,
+        method: "PATCH",
+        authenticated: true,
+        body,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationTemplatesQueryKey(termId) }),
+  });
+}
+
+export function useDeleteEvaluationTemplate(termId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (templateId: string) =>
+      apiFetch<void>({
+        service: "grading",
+        path: `/api/v1/grading/evaluation-templates/${templateId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: evaluationTemplatesQueryKey(termId) }),
+  });
+}
+
+// ── Weight template mutations ────────────────────────────────────────────────
+
+export function useUpsertFormulaTemplate(reportTypeId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ weights }: { weights: Record<string, number> }) =>
+      apiFetch<void>({
+        service: "grading",
+        path: `/api/v1/grading/report-types/${reportTypeId}/formula-templates`,
+        method: "PUT",
+        authenticated: true,
+        body: { weights },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: formulaTemplatesQueryKey(reportTypeId) }),
+  });
+}
+
+// ── Apply (backfill) mutation ────────────────────────────────────────────────
+
+export type ApplyTermTemplateResult = {
+  evaluations_created: number;
+  weights_created: number;
+};
+
+export function useApplyTermTemplate(termId?: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      apiFetch<ApplyTermTemplateResult>({
+        service: "grading",
+        path: "/api/v1/grading/evaluation-templates/apply",
+        method: "POST",
+        authenticated: true,
+        body: { term_id: termId },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: unmaterializedCountQueryKey(termId) }),
   });
 }

@@ -206,9 +206,13 @@ function SignupForm() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
 
-                <div className="relative py-1 text-center text-xs text-muted-foreground">
-                  <span className="bg-background px-2">atau</span>
-                  <div className="absolute inset-x-0 top-1/2 -z-10 border-t" />
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-strong"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 text-sm text-foreground bg-card">atau</span>
+                  </div>
                 </div>
 
                 <Button
@@ -218,7 +222,7 @@ function SignupForm() {
                   onClick={handleGoogleLogin}
                 >
                   <GoogleIcon className="h-4 w-4" />
-                  Login dengan Gmail
+                  Login dengan Google
                 </Button>
               </form>
             </Form>

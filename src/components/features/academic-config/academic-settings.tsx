@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AuthGuard } from "@/components/features/auth-guard";
+import { PermissionGuard } from "@/components/features/permission-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import type { AcademicYear } from "@/lib/query/queries/use-academic-config";
 import { useLogout } from "@/lib/query/mutations/use-logout";
@@ -41,9 +42,11 @@ export function AcademicSettingsPage({
 }) {
   return (
     <AuthGuard fallback={<AcademicPageSkeleton />}>
-      <AcademicSettingsContent title={title} description={description}>
-        {children}
-      </AcademicSettingsContent>
+      <PermissionGuard fallback={<AcademicPageSkeleton />} permission="academic.config.write">
+        <AcademicSettingsContent title={title} description={description}>
+          {children}
+        </AcademicSettingsContent>
+      </PermissionGuard>
     </AuthGuard>
   );
 }
