@@ -191,15 +191,15 @@ export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: bool
   if (isResolving) {
     return (
       <div className={isSidebar ? "flex w-full flex-col gap-2" : "flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"}>
-        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
-        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
-        <div className="h-10 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800 sm:w-[180px]" />
+        <div className="h-10 w-full animate-pulse rounded bg-[#eaeef2] dark:bg-[#21262d] sm:w-[180px]" />
+        <div className="h-10 w-full animate-pulse rounded bg-[#eaeef2] dark:bg-[#21262d] sm:w-[180px]" />
+        <div className="h-10 w-full animate-pulse rounded bg-[#eaeef2] dark:bg-[#21262d] sm:w-[180px]" />
       </div>
     );
   }
 
   const triggerClass = isSidebar
-    ? "bg-slate-800 border-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-slate-700 focus:ring-offset-slate-900 hover:bg-slate-800/80 hover:text-white"
+    ? "bg-[#ffffff] border-[#d0d7de] text-[#24292f] placeholder:text-[#57606a] focus:ring-[#1f883d] hover:bg-[#f6f8fa] hover:text-[#24292f] dark:bg-[#21262d] dark:border-[#30363d] dark:text-[#e6edf3] dark:placeholder:text-[#484f58] dark:focus:ring-primary dark:focus:ring-offset-background dark:hover:bg-[#30363d]"
     : "";
   const wrapperClass = isSidebar
     ? "flex w-full flex-col gap-2"
@@ -304,8 +304,8 @@ export function SidebarLayout({
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background">
-      <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-slate-800 bg-slate-900 text-slate-100 lg:flex">
+    <div className="min-h-screen bg-background">
+      <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-[#d0d7de] bg-[#f6f8fa] text-[#24292f] lg:flex dark:bg-[#0d1117] dark:border-[#30363d] dark:text-[#e6edf3]">
         <SidebarContent pathname={pathname} />
       </aside>
 
@@ -428,7 +428,7 @@ export function SidebarLayout({
           </main>
         </div>
 
-        <SheetContent side="left" className="w-72 border-slate-800 bg-slate-900 p-0 text-slate-100 sm:max-w-80">
+        <SheetContent side="left" className="w-72 border-[#d0d7de] bg-[#f6f8fa] p-0 text-[#24292f] sm:max-w-80 dark:bg-[#0d1117] dark:border-[#30363d] dark:text-[#e6edf3]">
           <SheetTitle className="sr-only">Navigasi utama</SheetTitle>
           <SheetDescription className="sr-only">
             Menu navigasi aplikasi AcademiQ.
@@ -503,19 +503,19 @@ export function SidebarContent({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 border-b border-slate-800 p-6">
+      <div className="flex items-center gap-3 border-b border-[#d0d7de] p-6 dark:border-[#30363d]">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
           <GraduationCap className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="font-display text-lg font-bold leading-none text-white">AcademiQ</h1>
-          <p className="mt-0.5 text-xs text-slate-400">Sekolah Console</p>
+          <h1 className="font-display text-lg font-bold leading-none text-[#24292f] dark:text-white">AcademiQ</h1>
+          <p className="mt-0.5 text-xs text-[#57606a] dark:text-[#8b949e]">Sekolah Console</p>
         </div>
       </div>
 
       {/* Mobile Academic Scope Selector */}
-      <div className="border-b border-slate-800 p-4 lg:hidden">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <div className="border-b border-[#d0d7de] p-4 lg:hidden dark:border-[#30363d]">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#57606a] dark:text-[#8b949e]">
           Scope Akademik
         </p>
         <AcademicScopeSelectors isSidebar />
@@ -533,7 +533,7 @@ export function SidebarContent({
                 variant="ghost"
                 className={`w-full justify-start gap-3 rounded-md px-4 py-2.5 text-sm transition-all ${active
                   ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
-                  : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                  : "text-[#57606a] hover:bg-[#eaeef2] hover:text-[#24292f] dark:text-[#8b949e] dark:hover:bg-[#21262d] dark:hover:text-[#e6edf3]"
                   }`}
               >
                 <Link href={entry.item.href}>
@@ -556,7 +556,7 @@ export function SidebarContent({
               <Button
                 variant="ghost"
                 onClick={() => toggleGroup(group.label)}
-                className="flex w-full justify-between rounded-md px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-300"
+                className="flex w-full justify-between rounded-md px-4 py-2 text-xs font-semibold uppercase tracking-wider text-[#57606a] transition-colors hover:bg-[#eaeef2] hover:text-[#24292f] dark:text-[#8b949e] dark:hover:bg-[#21262d] dark:hover:text-[#e6edf3]"
               >
                 <span className="flex items-center gap-3">
                   <GroupIcon className="h-4 w-4" />
@@ -579,7 +579,7 @@ export function SidebarContent({
                         variant="ghost"
                         className={`w-full justify-start gap-3 rounded-md px-4 py-2 text-sm transition-all ${active
                           ? "bg-primary font-semibold text-primary-foreground hover:bg-primary/95 hover:text-primary-foreground"
-                          : "text-slate-400 hover:bg-slate-800/60 hover:text-white"
+                          : "text-[#57606a] hover:bg-[#eaeef2] hover:text-[#24292f] dark:text-[#8b949e] dark:hover:bg-[#21262d] dark:hover:text-[#e6edf3]"
                           }`}
                       >
                         <Link href={child.href}>

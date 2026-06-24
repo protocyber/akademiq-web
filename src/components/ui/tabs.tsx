@@ -105,12 +105,10 @@ const TabsList = React.forwardRef<
     <TabsPrimitive.List
       ref={ref}
       className={cn(
-        "inline-flex h-12 items-center justify-center text-primary/80 transition-all duration-200 gap-1",
+        "inline-flex h-12 items-center justify-center text-foreground transition-all duration-200 gap-1",
         variant === "underline"
-          ? "w-full h-10 justify-start rounded-none border-b border-primary/20 dark:border-primary/10 bg-transparent p-0 mt-2 gap-6"
-          : variant === "tinted"
-            ? "rounded-md bg-primary/5 dark:bg-primary/5 border border-primary/10 p-1"
-            : "rounded-md bg-primary/10 dark:bg-primary/5 border border-primary/20 dark:border-primary/10 p-1",
+          ? "w-full h-10 justify-start rounded-none border-b border-border bg-transparent p-0 mt-2 gap-6"
+          : "rounded-md bg-muted border border-border p-1",
         scrollable && "min-w-max justify-start",
         className,
       )}
@@ -162,14 +160,14 @@ const TabsTrigger = React.forwardRef<
     <TabsPrimitive.Trigger
       ref={ref}
       className={cn(
-        "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-1 dark:focus-visible:ring-ring dark:focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50",
         // Base badge style for nested spans
         "[&_span]:ml-1.5 [&_span]:rounded-full [&_span]:min-w-6 [&_span]:py-0.5 [&_span]:text-[10px] [&_span]:font-semibold [&_span]:transition-colors",
         variant === "underline"
-          ? "rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 text-primary/70 dark:text-primary/60 hover:text-primary dark:hover:text-primary data-[state=active]:border-primary data-[state=active]:text-primary font-medium data-[state=active]:font-semibold [&_span]:bg-primary [&_span]:text-primary-foreground dark:[&_span]:bg-primary/20 [&[data-state=active]_span]:bg-primary [&[data-state=active]_span]:text-primary-foreground dark:data-[state=active]:text-primary-foreground dark:[&_span]:text-primary dark:hover:bg-primary/70 dark:[&[data-state=active]_span]:bg-primary-foreground/30"
+          ? "rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 text-muted-foreground hover:text-foreground data-[state=active]:border-[#fd8c73] dark:data-[state=active]:border-[#f78166] data-[state=active]:text-foreground font-medium data-[state=active]:font-semibold [&_span]:bg-muted [&_span]:text-muted-foreground [&[data-state=active]_span]:bg-muted-foreground/20 [&[data-state=active]_span]:text-foreground"
           : variant === "tinted"
-            ? "rounded-md px-3 py-1.5 text-primary/70 dark:text-primary/60 hover:text-primary dark:hover:text-primary hover:bg-primary/5 dark:hover:bg-primary/30 dark:data-[state=active]:hover:text-primary/70 data-[state=active]:bg-primary/15 data-[state=active]:text-primary dark:data-[state=active]:bg-primary/20 [&_span]:bg-primary [&_span]:text-primary-foreground dark:[&_span]:bg-primary/20 [&[data-state=active]_span]:bg-primary [&[data-state=active]_span]:text-primary-foreground dark:data-[state=active]:text-primary-foreground dark:[&_span]:text-primary dark:[&[data-state=active]_span]:bg-primary-foreground/30"
-            : "rounded-md px-3 py-1.5 text-primary/70 dark:text-primary/60 hover:text-primary dark:hover:text-primary hover:bg-primary/5 dark:hover:bg-primary/30 dark:data-[state=active]:hover:text-primary/70 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:shadow-primary/10 [&_span]:bg-primary [&_span]:text-primary-foreground dark:[&_span]:bg-primary/20 [&[data-state=active]_span]:bg-primary-foreground/30 [&[data-state=active]_span]:text-primary-foreground dark:data-[state=active]:text-primary-foreground dark:[&_span]:text-primary dark:[&[data-state=active]_span]:bg-primary-foreground/30",
+            ? "rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 data-[state=active]:bg-muted data-[state=active]:text-foreground [&_span]:bg-background [&_span]:text-muted-foreground [&[data-state=active]_span]:bg-muted-foreground/20 [&[data-state=active]_span]:text-foreground"
+            : "rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:shadow-primary/10 dark:data-[state=active]:shadow-none [&_span]:bg-background [&_span]:text-muted-foreground [&[data-state=active]_span]:bg-primary-foreground/30 [&[data-state=active]_span]:text-primary-foreground",
         className,
       )}
       {...props}

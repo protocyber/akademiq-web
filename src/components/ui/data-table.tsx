@@ -115,7 +115,7 @@ export function DataTable<TData, TValue>({
               <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
-                className={cn(classOverrides?.row, classNames?.row, (i % 2 == 0) ? "bg-background/60" : "")}
+                className={cn(classOverrides?.row, classNames?.row, (i % 2 == 0) ? "bg-muted dark:bg-background/60" : "")}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id} className={cn(classOverrides?.cell, classNames?.cell)}>
