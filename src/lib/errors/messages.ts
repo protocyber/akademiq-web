@@ -32,8 +32,11 @@ const ERROR_MESSAGES: Record<string, string> = {
   INVALID_TOKEN: 'Sesi Anda tidak valid. Silakan masuk kembali.',
   INVALID_SET_PASSWORD_TOKEN:
     'Token set password tidak valid atau sudah dipakai. Minta link baru dari admin atau gunakan login dengan Google.',
+  INVALID_FILE_TYPE:
+    'Format file tidak didukung. Gunakan JPG, PNG, atau WebP.',
   INVALID_MEDIA_TYPE:
     'Format file tidak didukung. Gunakan JPG, PNG, atau WebP.',
+  FILE_TOO_LARGE: 'Ukuran file melebihi batas 2MB.',
   MEDIA_TOO_LARGE: 'Ukuran file melebihi batas 2MB.',
   SET_PASSWORD_TOKEN_EXPIRED:
     'Link set password sudah kedaluwarsa. Minta link baru dari admin atau gunakan login dengan Google.',

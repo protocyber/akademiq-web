@@ -10,6 +10,7 @@ import { Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { FileDropzone } from "@/components/ui/file-dropzone";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -74,6 +75,7 @@ function SchoolProfileContent() {
   const uploadLogo = useUploadSchoolLogo();
   const logout = useLogout();
   const [editOpen, setEditOpen] = React.useState(false);
+  const [logoFile, setLogoFile] = React.useState<File | null>(null);
 
   if (tenant.isLoading || me.isLoading || profile.isLoading || media.isLoading) {
     return <SchoolProfileSkeleton />;
@@ -104,11 +106,11 @@ function SchoolProfileContent() {
     );
   }
 
-  async function onLogoUpload(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  async function onLogoUpload() {
+    if (!logoFile) return;
     try {
-      await uploadLogo.mutateAsync(file);
+      await uploadLogo.mutateAsync(logoFile);
+      setLogoFile(null);
       toast.success("Logo sekolah berhasil diunggah");
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Gagal mengunggah logo" }));
@@ -168,17 +170,24 @@ function SchoolProfileContent() {
                   <ImageIcon className="h-8 w-8 text-muted-foreground" />
                 </div>
               )}
-              <div className="flex-1">
-                <Input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={onLogoUpload}
+              <div className="flex-1 space-y-2">
+                <FileDropzone
+                  value={logoFile}
+                  onChange={setLogoFile}
+                  accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
+                  maxSize={2 * 1024 * 1024}
                   disabled={uploadLogo.isPending}
-                  className="max-w-xs"
+                  prompt="Tarik logo ke sini atau klik untuk memilih"
+                  hint="JPG, PNG, atau WebP. Maksimal 2MB."
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  JPG, PNG, atau WebP. Maksimal 2MB.
-                </p>
+                <Button
+                  variant="outline"
+                  onClick={onLogoUpload}
+                  loading={uploadLogo.isPending}
+                  disabled={!logoFile}
+                >
+                  Unggah Logo
+                </Button>
               </div>
             </div>
           </CardContent>

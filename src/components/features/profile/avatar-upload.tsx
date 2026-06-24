@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { toast } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ApiHttpError } from "@/lib/api/types";
+import { FileDropzone } from "@/components/ui/file-dropzone";
+import { getErrorMessage } from "@/lib/errors/messages";
 import {
   useUploadAvatar,
   useDeleteAvatar,
@@ -17,45 +17,18 @@ type AvatarUploadProps = {
 };
 
 export function AvatarUpload({ user }: AvatarUploadProps) {
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const uploadAvatar = useUploadAvatar();
   const deleteAvatar = useDeleteAvatar();
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!validTypes.includes(file.type)) {
-      toast.error("Format file harus JPG, PNG, atau WebP");
-      return;
-    }
-
-    // Validate file size (2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error("Ukuran file maksimal 2MB");
-      return;
-    }
-
+  const handleUpload = async () => {
+    if (!selectedFile) return;
     try {
-      await uploadAvatar.mutateAsync({ file });
+      await uploadAvatar.mutateAsync({ file: selectedFile });
+      setSelectedFile(null);
       toast.success("Avatar berhasil diunggah");
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
     } catch (error: unknown) {
-      if (error instanceof ApiHttpError) {
-        if (error.code === "FILE_TOO_LARGE") {
-          toast.error("Ukuran file maksimal 2MB");
-        } else if (error.code === "INVALID_FILE_TYPE") {
-          toast.error("Format file harus JPG, PNG, atau WebP");
-        } else {
-          toast.error("Gagal mengunggah avatar");
-        }
-      } else {
-        toast.error("Gagal mengunggah avatar");
-      }
+      toast.error(getErrorMessage(error, { fallback: "Gagal mengunggah avatar" }));
     }
   };
 
@@ -83,11 +56,9 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
       <CardContent className="space-y-4">
         <div className="flex items-center gap-4">
           {user.avatar_url ? (
-            <Image
+            <img
               src={user.avatar_url}
               alt={user.full_name}
-              width={96}
-              height={96}
               className="h-24 w-24 rounded-full object-cover"
             />
           ) : (
@@ -95,35 +66,35 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
               {initials}
             </div>
           )}
-          <div className="flex flex-col gap-2">
-            {/* eslint-disable-next-line react/forbid-elements */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
+          <div className="flex flex-1 flex-col gap-2">
+            <FileDropzone
+              value={selectedFile}
+              onChange={setSelectedFile}
+              accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
+              maxSize={2 * 1024 * 1024}
               disabled={uploadAvatar.isPending}
-            >
-              {uploadAvatar.isPending
-                ? "Mengunggah..."
-                : user.avatar_url
-                ? "Ganti Avatar"
-                : "Unggah Avatar"}
-            </Button>
-            {user.avatar_url && (
+              prompt="Tarik avatar ke sini atau klik untuk memilih"
+              hint="JPG, PNG, atau WebP. Maksimal 2MB."
+            />
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
-                onClick={handleDelete}
-                disabled={deleteAvatar.isPending}
+                onClick={handleUpload}
+                loading={uploadAvatar.isPending}
+                disabled={!selectedFile}
               >
-                {deleteAvatar.isPending ? "Menghapus..." : "Hapus Avatar"}
+                {user.avatar_url ? "Ganti Avatar" : "Unggah Avatar"}
               </Button>
-            )}
+              {user.avatar_url && (
+                <Button
+                  variant="outline"
+                  onClick={handleDelete}
+                  loading={deleteAvatar.isPending}
+                >
+                  Hapus Avatar
+                </Button>
+              )}
+            </div>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">

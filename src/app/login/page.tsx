@@ -234,11 +234,7 @@ function LoginForm() {
           </div>
 
           <Card className="border border-border shadow-sm">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-xl">Masuk</CardTitle>
-              <CardDescription>Akses dasbor sekolah Anda.</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <Form {...form}>
                 <form onSubmit={onSubmit} className="space-y-4" noValidate>
                   {topError ? (
@@ -247,6 +243,25 @@ function LoginForm() {
                       <AlertDescription>{topError}</AlertDescription>
                     </Alert>
                   ) : null}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={handleGoogleLogin}
+                  >
+                    <GoogleIcon className="h-4 w-4" />
+                    Login dengan Google
+                  </Button>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-strong"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 text-sm text-foreground bg-card">atau</span>
+                    </div>
+                  </div>
 
                   <FormField
                     control={form.control}
@@ -345,25 +360,6 @@ function LoginForm() {
                   >
                     Masuk
                     <ArrowRight className="h-4 w-4" />
-                  </Button>
-
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-strong"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-2 text-sm text-foreground bg-card">atau</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={handleGoogleLogin}
-                  >
-                    <GoogleIcon className="h-4 w-4" />
-                    Login dengan Google
                   </Button>
 
                 </form>

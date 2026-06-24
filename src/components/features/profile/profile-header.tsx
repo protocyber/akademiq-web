@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { MeView } from "@/lib/query/queries/use-me";
@@ -22,11 +21,9 @@ export function ProfileHeader({ user }: ProfileHeaderProps) {
     <Card>
       <CardContent className="flex items-center gap-4 p-6">
         {user.avatar_url ? (
-          <Image
+          <img
             src={user.avatar_url}
             alt={user.full_name}
-            width={96}
-            height={96}
             className="h-24 w-24 rounded-full object-cover"
           />
         ) : (

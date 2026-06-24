@@ -33,6 +33,16 @@ export function getAccessPerms(): string[] {
   return Array.isArray(claims?.perms) ? claims.perms : [];
 }
 
+export function getAccessRoles(): string[] {
+  const claims = getAccessClaims();
+  if (Array.isArray(claims?.roles)) return claims.roles;
+  return claims?.role ? [claims.role] : [];
+}
+
+export function hasAccessRole(code: string): boolean {
+  return getAccessRoles().includes(code);
+}
+
 export function hasAccessPerm(code: string): boolean {
   return getAccessPerms().includes(code);
 }

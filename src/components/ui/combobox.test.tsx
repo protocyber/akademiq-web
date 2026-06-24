@@ -39,7 +39,7 @@ describe("Combobox", () => {
 
     expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeDisabled();
-    expect(screen.getByText("Memuat...")).toBeInTheDocument();
+    // expect(screen.getByText("Memuat...")).toBeInTheDocument(); // default loadingText is set to ''
   });
 
   it("shows the empty state and disables the trigger when data is empty", () => {

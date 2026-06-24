@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
 import { DataTable } from "@/components/ui/data-table";
-import { DataTableCard, DataTablePagination, DataTableToolbar } from "@/components/ui/data-table-card";
+import { DataTableCard, DataTableToolbar } from "@/components/ui/data-table-card";
 import {
   Dialog,
   DialogContent,
@@ -62,7 +62,6 @@ const LABELS: Record<ReportCardStatus, string> = {
   Archived: "Arsip",
 };
 
-const PAGE_SIZE = 10;
 
 type TransitionAction = "submit" | "homeroom-approve" | "return" | "principal-approve" | "reject";
 
@@ -233,7 +232,6 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
   const roster = useHomeroomRoster(homeroomId);
   const [activeStatus, setActiveStatus] = React.useState<ReportCardStatus>("Draft");
   const [selection, setSelection] = React.useState<RowSelectionState>({});
-  const [page, setPage] = React.useState(1);
   const [detailCardId, setDetailCardId] = React.useState<string | null>(null);
 
   const studentNameById = React.useMemo(
@@ -254,15 +252,9 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
   }, [cards.data]);
 
   const statusData = byStatus[activeStatus];
-  const pageCount = Math.max(1, Math.ceil(statusData.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const pagedData = React.useMemo(
-    () => statusData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [statusData, currentPage],
-  );
 
   const selectWithinPage = useSelectWithinPage({
-    rows: pagedData,
+    rows: statusData,
     rowSelection: selection,
     getRowId: (c) => c.report_card_id,
     onRowSelectionChange: setSelection,
@@ -341,7 +333,6 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
             value={activeStatus}
             onValueChange={(value) => {
               setActiveStatus(value as ReportCardStatus);
-              setPage(1);
               setSelection({});
             }}
           >
@@ -362,7 +353,7 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
       ) : (
         <DataTable
           columns={columns}
-          data={pagedData}
+          data={statusData}
           getRowId={(row) => row.report_card_id}
           rowSelection={selection}
           onRowSelectionChange={setSelection}
@@ -370,16 +361,6 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
           classNames={{ wrapper: "rounded-none border-x-0" }}
         />
       )}
-
-      <DataTablePagination
-        page={currentPage}
-        pageCount={pageCount}
-        total={statusData.length}
-        label="siswa"
-        onPrev={() => setPage(currentPage - 1)}
-        onNext={() => setPage(currentPage + 1)}
-        className="py-2"
-      />
 
       <Dialog open={detailCardId !== null} onOpenChange={(open) => { if (!open) setDetailCardId(null); }}>
         <DialogContent className="max-w-3xl">

@@ -11,7 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useSubjectsForYear } from "@/lib/query/queries/use-academic-config";
 import { useReportCardDetail } from "@/lib/query/queries/use-grading";
-import { useHomeroomRoster, useTeachers, useHomerooms, useTeachingAssignments } from "@/lib/query/queries/use-academic-ops";
+import { useHomeroomRoster, useTeachers, useHomerooms, useTeachingAssignments, useMediaAssets } from "@/lib/query/queries/use-academic-ops";
 
 // Number to Indonesian words (terbilang) helper for grade score
 function scoreToIndonesianWords(score: number): string {
@@ -49,10 +49,13 @@ function PrintReportCardShell() {
   const homerooms = useHomerooms();
   const subjects = useSubjectsForYear(card?.academic_year_id);
   const assignments = useTeachingAssignments(card?.homeroom_id);
+  const student = (roster.data ?? []).find((s) => s.student_id === card?.student_id);
+  const studentMedia = useMediaAssets("student", student?.student_id);
+  const studentPhoto = studentMedia.data?.find((asset) => asset.is_active) ?? studentMedia.data?.[0];
 
   // Auto trigger print when page finishes loading
   React.useEffect(() => {
-    const isLoaded = !tenant.isLoading && !detail.isLoading && !roster.isLoading && !teachers.isLoading && !homerooms.isLoading && !subjects.isLoading && !assignments.isLoading;
+    const isLoaded = !tenant.isLoading && !detail.isLoading && !roster.isLoading && !teachers.isLoading && !homerooms.isLoading && !subjects.isLoading && !assignments.isLoading && !studentMedia.isLoading;
     const isSuccess = !tenant.error && !detail.error && tenant.data && detail.data && card;
 
     if (isLoaded && isSuccess) {
@@ -61,7 +64,7 @@ function PrintReportCardShell() {
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [tenant.isLoading, detail.isLoading, roster.isLoading, teachers.isLoading, homerooms.isLoading, subjects.isLoading, assignments.isLoading, tenant.error, detail.error, tenant.data, detail.data, card]);
+  }, [tenant.isLoading, detail.isLoading, roster.isLoading, teachers.isLoading, homerooms.isLoading, subjects.isLoading, assignments.isLoading, studentMedia.isLoading, tenant.error, detail.error, tenant.data, detail.data, card]);
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.opener) {
@@ -71,7 +74,7 @@ function PrintReportCardShell() {
     }
   };
 
-  if (tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading || subjects.isLoading || assignments.isLoading) {
+  if (tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading || subjects.isLoading || assignments.isLoading || studentMedia.isLoading) {
     return <PageSkeleton />;
   }
 
@@ -86,7 +89,6 @@ function PrintReportCardShell() {
     );
   }
 
-  const student = (roster.data ?? []).find((s) => s.student_id === card.student_id);
   const homeroomName = (homerooms.data ?? []).find((h) => h.homeroom_id === card.homeroom_id)?.name;
   
   const teacherNameByUserId = new Map((teachers.data ?? []).flatMap((teacher) => teacher.user_id ? [[teacher.user_id, teacher.full_name] as const] : []));
@@ -260,28 +262,26 @@ function PrintReportCardShell() {
 
           {/* Right Column: Photo, Student Info & Scale */}
           <div className="flex flex-col items-end gap-6">
-            {/* Custom SVG Photo frame (Aesthetic mountain/sun placeholder) */}
             <div className="w-[130px] h-[173px] border-2 border-black bg-gray-50 flex items-center justify-center relative overflow-hidden shadow-inner select-none">
-              <svg viewBox="0 0 130 173" className="w-full h-full">
-                {/* Sky */}
-                <rect x="0" y="0" width="130" height="173" fill="#e0f2fe" />
-                <circle cx="100" cy="40" r="14" fill="#fef08a" />
-                {/* Clouds */}
-                <circle cx="35" cy="65" r="15" fill="white" opacity="0.9" />
-                <circle cx="55" cy="65" r="20" fill="white" opacity="0.9" />
-                <circle cx="75" cy="68" r="14" fill="white" opacity="0.9" />
-                {/* Mountain/Hills */}
-                <path d="M -20,173 L 40,110 L 90,145 L 160,95 L 160,173 Z" fill="#84cc16" />
-                <path d="M -10,173 L 70,125 L 150,173 Z" fill="#65a30d" opacity="0.85" />
-                <path d="M 20,173 L 110,135 L 160,173 Z" fill="#4d7c0f" opacity="0.75" />
-                {/* Frame border inner shadow */}
-                <rect x="0" y="0" width="130" height="173" fill="none" stroke="black" strokeWidth="2" />
-                {/* Centered label */}
-                <rect x="25" y="75" width="80" height="24" rx="4" fill="black" fillOpacity="0.45" />
-                <text x="65" y="90" fontFamily="Arial" fontSize="9" fontWeight="bold" fill="white" textAnchor="middle" letterSpacing="1">
-                  FOTO 3 X 4
-                </text>
-              </svg>
+              {studentPhoto?.file_url ? (
+                <img src={studentPhoto.file_url} alt="Foto siswa" className="h-full w-full object-cover" />
+              ) : (
+                <svg viewBox="0 0 130 173" className="w-full h-full">
+                  <rect x="0" y="0" width="130" height="173" fill="#e0f2fe" />
+                  <circle cx="100" cy="40" r="14" fill="#fef08a" />
+                  <circle cx="35" cy="65" r="15" fill="white" opacity="0.9" />
+                  <circle cx="55" cy="65" r="20" fill="white" opacity="0.9" />
+                  <circle cx="75" cy="68" r="14" fill="white" opacity="0.9" />
+                  <path d="M -20,173 L 40,110 L 90,145 L 160,95 L 160,173 Z" fill="#84cc16" />
+                  <path d="M -10,173 L 70,125 L 150,173 Z" fill="#65a30d" opacity="0.85" />
+                  <path d="M 20,173 L 110,135 L 160,173 Z" fill="#4d7c0f" opacity="0.75" />
+                  <rect x="0" y="0" width="130" height="173" fill="none" stroke="black" strokeWidth="2" />
+                  <rect x="25" y="75" width="80" height="24" rx="4" fill="black" fillOpacity="0.45" />
+                  <text x="65" y="90" fontFamily="Arial" fontSize="9" fontWeight="bold" fill="white" textAnchor="middle" letterSpacing="1">
+                    FOTO 3 X 4
+                  </text>
+                </svg>
+              )}
             </div>
 
             {/* Student Info Lines */}

@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Combobox } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
+import { hasAccessPerm, hasAccessRole } from "@/lib/auth/access-claims";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import {
@@ -105,8 +106,9 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
   const previousYearId = React.useRef(yearId);
 
   React.useEffect(() => {
-    if (previousYearId.current === yearId) return;
+    const previous = previousYearId.current;
     previousYearId.current = yearId;
+    if (!previous || !yearId || previous === yearId) return;
     if (homeroomId || subjectId) onParamsChange({});
   }, [yearId, homeroomId, subjectId, onParamsChange]);
 
@@ -143,8 +145,10 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
     [assignments.data, subjectId, yearId, teacherById],
   );
   const isAssignedUser = assignedTeachers.some((t) => t.user_id === meUserId);
+  const isTenantAdmin = hasAccessRole("tenant_admin");
 
-  const canManageEvaluations = canWrite && scopeReady && assignedSubjects.length > 0 && isAssignedUser;
+  const canManageEvaluations = canWrite && scopeReady && assignedSubjects.length > 0 && (isTenantAdmin || isAssignedUser) && hasAccessPerm("grade.evaluation.manage");
+  const canEditGrades = canWrite && assignedSubjects.length > 0 && isAssignedUser;
 
   // Build grade index: `studentId:evaluationId` → Grade
   const gradeIndex = React.useMemo(() => {
@@ -266,7 +270,8 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
             homeroomId={homeroomId}
             subjectId={subjectId}
             yearId={yearId}
-            canWrite={canWrite && assignedSubjects.length > 0 && isAssignedUser}
+            canManageEvaluations={canManageEvaluations}
+            canEditGrades={canEditGrades}
             onOpenKelola={() => setKelolOpen(true)}
           />
         )}
@@ -350,7 +355,8 @@ function EvaluationGrid({
   homeroomId,
   subjectId,
   yearId,
-  canWrite,
+  canManageEvaluations,
+  canEditGrades,
   onOpenKelola,
 }: {
   students: Student[];
@@ -361,14 +367,15 @@ function EvaluationGrid({
   homeroomId: string;
   subjectId: string;
   yearId: string;
-  canWrite: boolean;
+  canManageEvaluations: boolean;
+  canEditGrades: boolean;
   onOpenKelola: () => void;
 }) {
   if (evaluations.length === 0) {
     return (
       <div className="p-8 text-center">
         <p className="text-sm font-medium text-muted-foreground">Belum ada evaluasi untuk kelas+mapel ini.</p>
-        {canWrite && (
+        {canManageEvaluations && (
           <Button size="sm" className="mt-3" onClick={onOpenKelola}>
             <Plus className="mr-1.5 h-4 w-4" />
             Tambah Evaluasi
@@ -393,6 +400,9 @@ function EvaluationGrid({
         <thead>
           <tr className="bg-muted/60">
             <th className="sticky left-0 z-10 bg-muted/60 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              No
+            </th>
+            <th className="sticky left-14 z-10 bg-muted/60 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Siswa
             </th>
             {evaluations.map((ev) => (
@@ -412,9 +422,12 @@ function EvaluationGrid({
           </tr>
         </thead>
         <tbody>
-          {students.map((student) => (
+          {students.map((student, index) => (
             <tr key={student.student_id} className="border-t">
-              <td className="sticky left-0 z-10 px-4 py-2.5">
+              <td className="sticky left-0 z-10 px-4 py-2.5 text-muted-foreground tabular-nums">
+                {index + 1}
+              </td>
+              <td className="sticky left-14 z-10 px-4 py-2.5">
                 <p className="font-medium">{student.full_name ?? "Nama belum tersinkronisasi"}</p>
                 <p className="text-xs text-muted-foreground">{student.nis ?? "NIS belum tersinkronisasi"}</p>
               </td>
@@ -427,7 +440,7 @@ function EvaluationGrid({
                     homeroomId={homeroomId}
                     subjectId={subjectId}
                     yearId={yearId}
-                    canWrite={canWrite}
+                    canWrite={canEditGrades}
                   />
                 </td>
               ))}
@@ -631,6 +644,7 @@ function KelolEvaluasiModal({
     try {
       await deleteMut.mutateAsync(deleteTarget.evaluation_id);
       setDeleteTarget(null);
+      onOpenChange(false);
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Gagal menghapus evaluasi." }));
     }
@@ -668,7 +682,10 @@ function KelolEvaluasiModal({
                     isEditing={editingId === ev.evaluation_id}
                     onEdit={() => setEditingId(ev.evaluation_id)}
                     onEditDone={() => setEditingId(null)}
-                    onDelete={() => setDeleteTarget(ev)}
+                    onDelete={(event) => {
+                      event.currentTarget.blur();
+                      setDeleteTarget(ev);
+                    }}
                     onMoveUp={() => void handleReorder(ev, "up")}
                     onMoveDown={() => void handleReorder(ev, "down")}
                     updateMut={updateMut}
@@ -761,7 +778,7 @@ function EvaluationRow({
   isEditing: boolean;
   onEdit: () => void;
   onEditDone: () => void;
-  onDelete: () => void;
+  onDelete: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   updateMut: ReturnType<typeof useUpdateEvaluation>;

@@ -44,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
+import { FileDropzone } from "@/components/ui/file-dropzone";
 import { Input } from "@/components/ui/input";
 import {
   Combobox,
@@ -55,6 +56,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
 import { ImportDialog } from "@/components/features/academic-ops/import-dialog";
+import { PhotoUpload } from "@/components/features/academic-ops/photo-upload";
 import { DatePicker } from "@/components/ui/date-picker";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
@@ -70,6 +72,7 @@ import {
   useUnlinkStudentAccount,
   useLinkGuardian,
   useUnlinkGuardian,
+  useUploadMedia,
 } from "@/lib/query/mutations/use-academic-ops";
 import { useStudentsTable, useStudentEnrollmentsByYear, type Student, useStudentGuardians } from "@/lib/query/queries/use-academic-ops";
 import { useAcademicYears } from "@/lib/query/queries/use-academic-config";
@@ -576,6 +579,8 @@ function StudentDialog({
   const setOpen = onOpenChange ?? setInternalOpen;
   const create = useCreateStudent();
   const update = useUpdateStudent(student?.student_id ?? "");
+  const uploadPhoto = useUploadMedia();
+  const [pendingPhoto, setPendingPhoto] = React.useState<File | null>(null);
   const defaultValues = React.useMemo<StudentForm>(
     () => ({
       nis: student?.nis ?? "",
@@ -600,7 +605,7 @@ function StudentDialog({
     form.reset(defaultValues);
   }, [defaultValues, form]);
 
-  const loading = create.isPending || update.isPending;
+  const loading = create.isPending || update.isPending || uploadPhoto.isPending;
 
   async function onSubmit(values: StudentForm) {
     try {
@@ -608,7 +613,11 @@ function StudentDialog({
         await update.mutateAsync(values);
         toast.success("Siswa diperbarui.");
       } else {
-        await create.mutateAsync(values);
+        const created = await create.mutateAsync(values);
+        if (pendingPhoto) {
+          await uploadPhoto.mutateAsync({ ownerType: "student", ownerId: created.student_id, file: pendingPhoto });
+          setPendingPhoto(null);
+        }
         toast.success("Siswa ditambahkan.");
         form.reset({ nis: "", full_name: "", gender: "female", birth_date: "" });
       }
@@ -800,6 +809,23 @@ function StudentDialog({
                   </FormItem>
                 )}
               />
+            </div>
+            <div className="space-y-2">
+              <FormLabel>Foto siswa</FormLabel>
+              {student ? (
+                <PhotoUpload ownerType="student" ownerId={student.student_id} disabled={!canManage} />
+              ) : (
+                <>
+                  <FileDropzone
+                    value={pendingPhoto}
+                    onChange={setPendingPhoto}
+                    accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
+                    maxSize={2 * 1024 * 1024}
+                    prompt="Tarik foto ke sini atau klik untuk memilih"
+                    hint="JPG, PNG, atau WebP. Maksimal 2MB. Foto diunggah setelah siswa disimpan."
+                  />
+                </>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <FormField

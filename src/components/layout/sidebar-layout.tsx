@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
@@ -349,11 +348,9 @@ export function SidebarLayout({
                     className="relative h-8 w-8 rounded-full p-0 overflow-hidden focus-visible:ring-1 focus-visible:ring-ring"
                   >
                     {avatarUrl ? (
-                      <Image
+                      <img
                         src={avatarUrl}
                         alt={userName}
-                        width={32}
-                        height={32}
                         className="h-8 w-8 rounded-full object-cover"
                       />
                     ) : (
