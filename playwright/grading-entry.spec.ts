@@ -87,10 +87,11 @@ async function setupCommonRoutes(page: import("@playwright/test").Page) {
     route.fulfill({ json: { data: [{ teacher_id: TEACHER_ID, full_name: "Teacher User", email: null, user_id: TEACHER_ID, linked_user: { user_id: TEACHER_ID, username: "teacher_user", email: "teacher@example.test" }, status: "Active" }], meta: {} } }),
   );
 
+  await page.route("**/api/v1/grading/homerooms/*/roster*", (route) =>
+    route.fulfill({ json: { data: [{ student_id: STUDENT_ID, nis: "S-001", full_name: "Student One" }], meta: {} } }),
+  );
+
   await page.route("**/api/v1/academic-ops/homerooms*", (route) => {
-    if (route.request().url().includes("/students")) {
-      return route.fulfill({ json: { data: [{ student_id: STUDENT_ID, nis: "S-001", full_name: "Student One" }], meta: {} } });
-    }
     if (route.request().url().includes("/teaching-assignments")) {
       return route.fulfill({
         json: {
@@ -213,6 +214,24 @@ test("empty evaluation state shows hint and opens Kelola Evaluasi", async ({ pag
 
   // Evaluation should now appear in modal list
   await expect(page.getByRole("dialog").getByText("UH1")).toBeVisible();
+});
+
+test("empty grading roster shows syncing state", async ({ page }) => {
+  await setupCommonRoutes(page);
+
+  await page.route("**/api/v1/grading/homerooms/*/roster*", (route) =>
+    route.fulfill({ json: { data: [], meta: {} } }),
+  );
+  await page.route("**/api/v1/grading/evaluations*", (route) =>
+    route.fulfill({ json: { data: [EVAL_FIXTURE], meta: {} } }),
+  );
+  await page.route("**/api/v1/grading/grades?*", (route) =>
+    route.fulfill({ json: { data: [], meta: {} } }),
+  );
+
+  await selectScope(page);
+
+  await expect(page.getByText("Roster kelas sedang tersinkronisasi.")).toBeVisible();
 });
 
 test("invalid score shows inline error and does not submit", async ({ page }) => {

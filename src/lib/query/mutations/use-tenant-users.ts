@@ -2,13 +2,14 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { apiFetch, clearAllTokens, setTokens } from "@/lib/api/client";
+import { apiFetch, clearAllTokens, clearTokens, setTokens } from "@/lib/api/client";
 import { serializeTenantUsersParams, type TenantUsersParams } from "@/lib/schemas/tenant-users-params";
 import {
   TENANT_INVITATIONS_QUERY_KEY,
   TENANT_USERS_QUERY_KEY,
 } from "@/lib/query/queries/use-tenant-users";
 import { TENANT_ROLES_QUERY_KEY } from "@/lib/query/queries/use-tenant-roles";
+import { ME_QUERY_KEY } from "@/lib/query/queries/use-me";
 import type {
   AcceptInvitationForm,
   CreateTenantUserForm,
@@ -38,6 +39,15 @@ export type AcceptInvitationResult = {
 export type SetPasswordInput = {
   password: string;
   token?: string;
+};
+
+export type ResendSetPasswordInput = {
+  identifier?: string;
+};
+
+export type ResendSetPasswordResult = {
+  accepted: boolean;
+  set_password_token: string | null;
 };
 
 export function useInviteTenantUser() {
@@ -162,13 +172,30 @@ export function useAcceptInvitation() {
 }
 
 export function useSetPassword() {
+  const qc = useQueryClient();
   return useMutation<void, unknown, SetPasswordInput>({
     mutationFn: (input) =>
       apiFetch<void>({
         service: "iam",
         path: "/api/v1/iam/auth/set-password",
         method: "POST",
-        authenticated: true,
+        authenticated: !input.token,
+        body: input,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ME_QUERY_KEY });
+      clearTokens();
+    },
+  });
+}
+
+export function useResendSetPassword() {
+  return useMutation<ResendSetPasswordResult, unknown, ResendSetPasswordInput>({
+    mutationFn: (input) =>
+      apiFetch<ResendSetPasswordResult>({
+        service: "iam",
+        path: "/api/v1/iam/auth/set-password/resend",
+        method: "POST",
         body: input,
       }),
   });

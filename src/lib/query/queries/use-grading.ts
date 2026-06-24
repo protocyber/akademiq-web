@@ -29,6 +29,12 @@ export type Grade = {
   updated_at: string;
 };
 
+export type GradingRosterStudent = {
+  student_id: string;
+  full_name: string | null;
+  nis: string | null;
+};
+
 export type ReportCardStatus = "Draft" | "HomeroomReview" | "PrincipalApproval" | "Published" | "Archived";
 
 export type ReportCard = {
@@ -143,6 +149,22 @@ export function useClassGrades(homeroomId?: string, subjectId?: string, academic
         authenticated: true,
       }),
     enabled: Boolean(homeroomId && subjectId && academicYearId),
+  });
+}
+
+export const gradingRosterQueryKey = (homeroomId?: string, academicYearId?: string) =>
+  ["grading", "homeroom-roster", homeroomId, academicYearId] as const;
+
+export function useGradingRoster(homeroomId?: string, academicYearId?: string) {
+  return useQuery({
+    queryKey: gradingRosterQueryKey(homeroomId, academicYearId),
+    queryFn: () =>
+      apiFetch<GradingRosterStudent[]>({
+        service: "grading",
+        path: `/api/v1/grading/homerooms/${homeroomId}/roster?academic_year_id=${academicYearId}`,
+        authenticated: true,
+      }),
+    enabled: Boolean(homeroomId && academicYearId),
   });
 }
 

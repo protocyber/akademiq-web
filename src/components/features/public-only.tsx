@@ -23,7 +23,7 @@ export function PublicOnly({
   suppressIdentityRedirect?: boolean;
 }) {
   const router = useRouter();
-  const { isLoading, isAuthenticated, hasScopedToken } = useAuth();
+  const { isLoading, isAuthenticated, hasScopedToken, needsPassword } = useAuth();
   const [bootChecked, setBootChecked] = React.useState(false);
 
   React.useEffect(() => {
@@ -35,12 +35,12 @@ export function PublicOnly({
           ? new URLSearchParams(window.location.search).get("next")
           : null;
       if (hasScopedToken) {
-        router.replace(next && next.startsWith("/") ? next : "/dashboard");
+        router.replace(needsPassword ? "/set-password" : next && next.startsWith("/") ? next : "/dashboard");
       } else if (!suppressIdentityRedirect) {
         router.replace("/tenant-select");
       }
     }
-  }, [isAuthenticated, hasScopedToken, isLoading, router, suppressIdentityRedirect]);
+  }, [isAuthenticated, hasScopedToken, isLoading, needsPassword, router, suppressIdentityRedirect]);
 
   if (!bootChecked) return null;
   // Keep the page mounted while an in-flight login submit holds only an

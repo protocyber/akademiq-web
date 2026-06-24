@@ -21,7 +21,7 @@ export function AuthGuard({
   fallback?: React.ReactNode;
 }) {
   const router = useRouter();
-  const { isLoading, isAuthenticated, hasScopedToken } = useAuth();
+  const { isLoading, isAuthenticated, hasScopedToken, needsPassword } = useAuth();
   const [bootChecked, setBootChecked] = React.useState(false);
 
   React.useEffect(() => {
@@ -34,13 +34,14 @@ export function AuthGuard({
           : "/dashboard";
       router.replace(`/login?next=${encodeURIComponent(path)}`);
     } else if (!hasScopedToken) {
-      // Authenticated but hasn't entered a tenant yet.
       router.replace("/tenant-select");
+    } else if (needsPassword) {
+      router.replace("/set-password");
     }
-  }, [isAuthenticated, hasScopedToken, isLoading, router]);
+  }, [isAuthenticated, hasScopedToken, isLoading, needsPassword, router]);
 
   if (!bootChecked) return <>{fallback}</>;
-  if (!isAuthenticated || !hasScopedToken) return <>{fallback}</>;
+  if (!isAuthenticated || !hasScopedToken || needsPassword) return <>{fallback}</>;
   return <>{children}</>;
 }
 

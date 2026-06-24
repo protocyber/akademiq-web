@@ -7,10 +7,9 @@ import { getAccessToken, getIdentityToken } from "@/lib/api/client";
 
 export type AuthSnapshot = {
   isLoading: boolean;
-  /** True if the user holds any valid token (identity or scoped). */
   isAuthenticated: boolean;
-  /** True if the user holds a tenant-scoped access token (has entered a tenant). */
   hasScopedToken: boolean;
+  needsPassword: boolean;
   user: ReturnType<typeof useMe>["data"];
 };
 
@@ -47,6 +46,7 @@ export function useAuth(): AuthSnapshot {
     isLoading: hasToken && me.isLoading,
     isAuthenticated: hasToken && !!me.data,
     hasScopedToken,
+    needsPassword: hasScopedToken && me.data?.password_set === false,
     user: me.data,
   };
 }

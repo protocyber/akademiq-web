@@ -47,6 +47,11 @@ import {
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import {
+  parseReportCardsParams,
+  serializeReportCardsParams,
+  type ReportCardsParams,
+} from "@/lib/schemas/report-cards-params";
 
 const STATUSES: ReportCardStatus[] = ["Draft", "HomeroomReview", "PrincipalApproval", "Published", "Archived"];
 const LABELS: Record<ReportCardStatus, string> = {
@@ -126,17 +131,19 @@ function ReportCardsBoard() {
 
   const reportTypes = useReportTypes(yearId ?? undefined, termId ?? undefined);
   const homerooms = useHomerooms();
+  const params = parseReportCardsParams(searchParams);
+  const reportTypeId = params.report_type_id ?? "";
+  const homeroomId = params.homeroom_id ?? "";
 
-  const [reportTypeId, setReportTypeId] = React.useState<string>(searchParams.get("report_type_id") ?? "");
-  const [homeroomId, setHomeroomId] = React.useState<string>(searchParams.get("homeroom_id") ?? "");
-
-  React.useEffect(() => {
-    const next = new URLSearchParams();
-    if (reportTypeId) next.set("report_type_id", reportTypeId);
-    if (homeroomId) next.set("homeroom_id", homeroomId);
-    const query = next.toString();
-    router.replace(query ? `/grading/report-cards?${query}` : "/grading/report-cards", { scroll: false });
-  }, [reportTypeId, homeroomId, router]);
+  const onParamsChange = React.useCallback(
+    (nextParams: ReportCardsParams) => {
+      const query = serializeReportCardsParams(nextParams);
+      router.replace(query ? `/grading/report-cards?${query}` : "/grading/report-cards", {
+        scroll: false,
+      });
+    },
+    [router],
+  );
 
   const bothSelected = Boolean(reportTypeId && homeroomId);
 
@@ -150,7 +157,10 @@ function ReportCardsBoard() {
       toolbar={{
         filters: (
           <>
-            <Select value={reportTypeId || undefined} onValueChange={setReportTypeId}>
+            <Select
+              value={reportTypeId || undefined}
+              onValueChange={(value) => onParamsChange({ ...params, report_type_id: value })}
+            >
               <SelectTrigger className="w-full sm:w-56">
                 <SelectValue placeholder="Jenis Rapor" />
               </SelectTrigger>
@@ -162,7 +172,10 @@ function ReportCardsBoard() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={homeroomId || undefined} onValueChange={setHomeroomId}>
+            <Select
+              value={homeroomId || undefined}
+              onValueChange={(value) => onParamsChange({ ...params, homeroom_id: value })}
+            >
               <SelectTrigger className="w-full sm:w-56">
                 <SelectValue placeholder="Kelas" />
               </SelectTrigger>

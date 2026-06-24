@@ -29,6 +29,10 @@ export const setPasswordSchema = z
     path: ["confirm"],
   });
 
+export const resendSetPasswordSchema = z.object({
+  identifier: z.string().trim().min(1, "Email atau username wajib diisi"),
+});
+
 export const roleChangeSchema = z.object({
   role: z.enum(tenantAssignableRoles),
 });
@@ -64,6 +68,7 @@ export const updateTenantUserSchema = z.object({
 export type InviteTenantUserForm = z.infer<typeof inviteTenantUserSchema>;
 export type AcceptInvitationForm = z.infer<typeof acceptInvitationSchema>;
 export type SetPasswordForm = z.infer<typeof setPasswordSchema>;
+export type ResendSetPasswordForm = z.infer<typeof resendSetPasswordSchema>;
 export type RoleChangeForm = z.infer<typeof roleChangeSchema>;
 export type CreateTenantUserForm = z.infer<typeof createTenantUserSchema>;
 export type UpdateTenantUserForm = z.infer<typeof updateTenantUserSchema>;

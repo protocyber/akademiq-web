@@ -2,7 +2,7 @@
 
 import { useMutation } from "@tanstack/react-query";
 
-import { apiFetch, setIdentityToken, setTokens } from "@/lib/api/client";
+import { apiFetch, clearAllTokens, setIdentityToken, setTokens } from "@/lib/api/client";
 
 const IAM_BASE = process.env.NEXT_PUBLIC_IAM_BASE_URL ?? "http://localhost:8081";
 
@@ -34,6 +34,7 @@ export type TenantEntry = {
 export function useLogin() {
   return useMutation<LoginResult, unknown, LoginInput>({
     mutationFn: async (input) => {
+      clearAllTokens();
       const data = await apiFetch<LoginResult>({
         service: "iam",
         path: "/api/v1/iam/auth/login",

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ChevronDown, ChevronUp, Pencil, Plus, Trash2, UserRound } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
@@ -32,8 +32,8 @@ import {
   useUpsertGrade,
 } from "@/lib/query/mutations/use-grading";
 import { useSubjects } from "@/lib/query/queries/use-academic-config";
-import { useHomeroomRoster, useHomerooms, useTeachers, useTeachingAssignments, type Teacher } from "@/lib/query/queries/use-academic-ops";
-import { useClassGrades, useEvaluations, useReportTypes, useSubjectReportScoresForTypes, useUnmaterializedCount, type Evaluation, type Grade } from "@/lib/query/queries/use-grading";
+import { useHomerooms, useTeachers, useTeachingAssignments, type Teacher } from "@/lib/query/queries/use-academic-ops";
+import { useClassGrades, useEvaluations, useGradingRoster, useReportTypes, useSubjectReportScoresForTypes, useUnmaterializedCount, type Evaluation, type Grade } from "@/lib/query/queries/use-grading";
 import { useReportFormulasForTypes } from "@/lib/query/queries/use-grading";
 import { useUpsertReportFormula } from "@/lib/query/mutations/use-grading";
 import { useMe } from "@/lib/query/queries/use-me";
@@ -41,6 +41,11 @@ import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { gradeCellSchema } from "@/lib/schemas/grading";
+import {
+  parseGradingEntryParams,
+  serializeGradingEntryParams,
+  type GradingEntryParams,
+} from "@/lib/schemas/grading-entry-params";
 
 export default function GradeEntryPage() {
   return <AuthGuard fallback={<EntrySkeleton />}><GradeEntryShell /></AuthGuard>;
@@ -81,21 +86,34 @@ function GradeEntryShell() {
 
 function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: string | undefined; }) {
   const { yearId, curriculumId, termId } = useAcademicScope();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const params = parseGradingEntryParams(searchParams);
+  const homeroomId = params.homeroom_id ?? "";
+  const subjectId = params.subject_id ?? "";
   const homerooms = useHomerooms();
-  const [homeroomId, setHomeroomId] = React.useState("");
-  const [subjectId, setSubjectId] = React.useState("");
   const [kelolOpen, setKelolOpen] = React.useState(false);
 
-  // Reset local selection when year changes
+  const onParamsChange = React.useCallback(
+    (nextParams: GradingEntryParams) => {
+      const query = serializeGradingEntryParams(nextParams);
+      router.replace(query ? `/grading/entry?${query}` : "/grading/entry", { scroll: false });
+    },
+    [router],
+  );
+
+  const previousYearId = React.useRef(yearId);
+
   React.useEffect(() => {
-    setHomeroomId("");
-    setSubjectId("");
-  }, [yearId]);
+    if (previousYearId.current === yearId) return;
+    previousYearId.current = yearId;
+    if (homeroomId || subjectId) onParamsChange({});
+  }, [yearId, homeroomId, subjectId, onParamsChange]);
 
   const subjects = useSubjects(curriculumId ?? undefined);
   const assignments = useTeachingAssignments(homeroomId);
   const teachers = useTeachers();
-  const roster = useHomeroomRoster(homeroomId);
+  const roster = useGradingRoster(homeroomId, yearId ?? undefined);
   const evaluations = useEvaluations(homeroomId, subjectId, yearId ?? undefined, termId ?? undefined);
   const grades = useClassGrades(homeroomId, subjectId, yearId ?? undefined);
   const reportTypes = useReportTypes(yearId ?? undefined, termId ?? undefined);
@@ -148,7 +166,13 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
     return map;
   }, [reportScores.data]);
 
-  function changeHomeroom(id: string) { setHomeroomId(id); setSubjectId(""); }
+  function changeHomeroom(id: string) {
+    onParamsChange({ homeroom_id: id || undefined });
+  }
+
+  function changeSubject(id: string) {
+    onParamsChange({ ...params, subject_id: id || undefined });
+  }
 
   if (!yearId) {
     return (
@@ -194,7 +218,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
             items={assignedSubjects}
             isLoading={subjects.isLoading || assignments.isLoading}
             value={subjectId}
-            onValueChange={setSubjectId}
+            onValueChange={changeSubject}
             getValue={(s) => s.subject_id}
             getLabel={(s) => s.name}
             placeholder="Pilih mapel"
@@ -315,7 +339,7 @@ function TeacherInfoBar({
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
 
-type Student = { student_id: string; full_name: string; nis: string; };
+type Student = { student_id: string; full_name: string | null; nis: string | null; };
 
 function EvaluationGrid({
   students,
@@ -355,7 +379,12 @@ function EvaluationGrid({
   }
 
   if (students.length === 0) {
-    return <p className="rounded-lg border p-4 text-sm text-muted-foreground">Roster kelas kosong.</p>;
+    return (
+      <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Roster kelas sedang tersinkronisasi.</p>
+        <p className="mt-1">Tunggu beberapa saat atau hubungi admin jika siswa belum muncul.</p>
+      </div>
+    );
   }
 
   return (
@@ -386,8 +415,8 @@ function EvaluationGrid({
           {students.map((student) => (
             <tr key={student.student_id} className="border-t">
               <td className="sticky left-0 z-10 px-4 py-2.5">
-                <p className="font-medium">{student.full_name}</p>
-                <p className="text-xs text-muted-foreground">{student.nis}</p>
+                <p className="font-medium">{student.full_name ?? "Nama belum tersinkronisasi"}</p>
+                <p className="text-xs text-muted-foreground">{student.nis ?? "NIS belum tersinkronisasi"}</p>
               </td>
               {evaluations.map((ev) => (
                 <td key={ev.evaluation_id} className="px-2 py-2 text-center">

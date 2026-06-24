@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "@/components/icons/google-icon";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,10 +29,14 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
 import { googleLoginStartUrl, useLogin, useMyTenants, useEnterTenant } from "@/lib/query/mutations/use-login";
+import { useResendSetPassword } from "@/lib/query/mutations/use-tenant-users";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
-import { isApiError } from "@/lib/errors/messages";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { loginSchema, type LoginFormValues } from "@/lib/schemas/login";
+import {
+  resendSetPasswordSchema,
+  type ResendSetPasswordForm,
+} from "@/lib/schemas/tenant-user-management";
 
 export default function LoginPage() {
   return (
@@ -63,15 +68,22 @@ function LoginForm() {
   const next = params.get("next") || "/dashboard";
   const oauthError = params.get("oauth_error");
   const [showPassword, setShowPassword] = React.useState(false);
+  const [recoveryOpen, setRecoveryOpen] = React.useState(false);
+  const [recoveryConfirmed, setRecoveryConfirmed] = React.useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { identifier: "", password: "", remember_device: false },
   });
+  const recoveryForm = useForm<ResendSetPasswordForm>({
+    resolver: zodResolver(resendSetPasswordSchema),
+    defaultValues: { identifier: "" },
+  });
 
   const login = useLogin();
   const myTenants = useMyTenants();
   const enterTenant = useEnterTenant();
+  const resendSetPassword = useResendSetPassword();
   const [topError, setTopError] = React.useState<string | null>(null);
   const [navigating, setNavigating] = React.useState(false);
 
@@ -88,6 +100,18 @@ function LoginForm() {
   function handleGoogleLogin() {
     window.location.href = googleLoginStartUrl();
   }
+
+  const onRecoverySubmit = recoveryForm.handleSubmit(async (values) => {
+    try {
+      await resendSetPassword.mutateAsync({ identifier: values.identifier });
+      setRecoveryConfirmed(true);
+      toast.success("Jika akun ditemukan, link set password baru sudah dibuat.");
+    } catch (err) {
+      const applied = applyServerFieldErrors(recoveryForm, err);
+      if (applied.length > 0) return;
+      toast.error(getErrorMessage(err, { fallback: "Tidak bisa meminta link baru." }));
+    }
+  });
 
   const onSubmit = form.handleSubmit(async (values) => {
     setTopError(null);
@@ -118,15 +142,6 @@ function LoginForm() {
       }
     } catch (err) {
       setNavigating(false);
-      // PASSWORD_NOT_SET: the account exists but has no password. Route the
-      // user to the authenticated set-password screen instead of showing a
-      // generic error.
-      if (isApiError(err, "PASSWORD_NOT_SET")) {
-        toast.info("Akun Anda belum punya password. Silakan set password terlebih dahulu.");
-        setNavigating(true);
-        router.push("/set-password");
-        return;
-      }
       const applied = applyServerFieldErrors(form, err);
       if (applied.length > 0) return;
       const message = getErrorMessage(err, { fallback: "Tidak bisa masuk. Coba lagi." });
@@ -262,9 +277,18 @@ function LoginForm() {
                       <FormItem>
                         <div className="flex justify-between items-center">
                           <FormLabelRequired>Password</FormLabelRequired>
-                          <Link className="text-xs text-primary hover:underline" href="#">
+                          <Button
+                            type="button"
+                            variant="link"
+                            className="h-auto p-0 text-xs"
+                            onClick={() => {
+                              setRecoveryConfirmed(false);
+                              recoveryForm.setValue("identifier", form.getValues("identifier"));
+                              setRecoveryOpen(true);
+                            }}
+                          >
                             Lupa Password?
-                          </Link>
+                          </Button>
                         </div>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -352,6 +376,45 @@ function LoginForm() {
               </Link>
             </CardFooter>
           </Card>
+
+          <Dialog open={recoveryOpen} onOpenChange={setRecoveryOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Minta Link Set Password</DialogTitle>
+                <DialogDescription>
+                  Masukkan email atau username. Jika akun ditemukan, link set password baru akan dibuat.
+                </DialogDescription>
+              </DialogHeader>
+              <Form {...recoveryForm}>
+                <form onSubmit={onRecoverySubmit} className="space-y-4" noValidate>
+                  {recoveryConfirmed ? (
+                    <Alert>
+                      <AlertTitle>Permintaan diterima</AlertTitle>
+                      <AlertDescription>
+                        Jika akun ditemukan, link set password baru sudah dibuat.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+                  <FormField
+                    control={recoveryForm.control}
+                    name="identifier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabelRequired>Email/username</FormLabelRequired>
+                        <FormControl>
+                          <Input type="text" autoComplete="username" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" loading={resendSetPassword.isPending}>
+                    Kirim Link Baru
+                  </Button>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
 
           <footer className="text-center space-y-4 pt-4 text-xs text-muted-foreground">
             <div className="flex justify-center gap-4">
