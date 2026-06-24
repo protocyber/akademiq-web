@@ -253,8 +253,13 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
 
   const statusData = byStatus[activeStatus];
 
+  const sortedStatusData = React.useMemo(() => {
+    const name = (c: ReportCard) => studentNameById.get(c.student_id) ?? "";
+    return [...statusData].sort((a, b) => name(a).localeCompare(name(b), "id", { sensitivity: "base" }));
+  }, [statusData, studentNameById]);
+
   const selectWithinPage = useSelectWithinPage({
-    rows: statusData,
+    rows: sortedStatusData,
     rowSelection: selection,
     getRowId: (c) => c.report_card_id,
     onRowSelectionChange: setSelection,
@@ -353,7 +358,7 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
       ) : (
         <DataTable
           columns={columns}
-          data={statusData}
+          data={sortedStatusData}
           getRowId={(row) => row.report_card_id}
           rowSelection={selection}
           onRowSelectionChange={setSelection}

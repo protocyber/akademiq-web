@@ -162,13 +162,13 @@ export function useCopyReportTypes(academicYearId?: string, targetTermId?: strin
   });
 }
 
-export function useUpsertReportFormula(reportTypeId?: string) {
+export function useUpsertReportFormula(reportTypeId?: string, homeroomId?: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ subjectId, weights }: { subjectId: string; weights: Record<string, number> }) =>
       apiFetch<void>({
         service: "grading",
-        path: `/api/v1/grading/report-types/${reportTypeId}/formulas/${subjectId}`,
+        path: `/api/v1/grading/report-types/${reportTypeId}/homerooms/${homeroomId}/formulas/${subjectId}`,
         method: "PUT",
         authenticated: true,
         body: { weights },

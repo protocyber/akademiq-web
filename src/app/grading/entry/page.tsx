@@ -144,6 +144,10 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
         .filter((t): t is Teacher => t !== undefined),
     [assignments.data, subjectId, yearId, teacherById],
   );
+  const selectedHomeroom = filteredHomerooms.find((r) => r.homeroom_id === homeroomId);
+  const walikelas = selectedHomeroom?.homeroom_teacher_id
+    ? teacherById.get(selectedHomeroom.homeroom_teacher_id) ?? undefined
+    : undefined;
   const isAssignedUser = assignedTeachers.some((t) => t.user_id === meUserId);
   const isTenantAdmin = hasAccessRole("tenant_admin");
 
@@ -208,32 +212,63 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
       </CardHeader>
       <CardContent className="p-0">
         <div className="grid gap-3 md:grid-cols-2 border-b p-4">
-          <Combobox
-            items={filteredHomerooms}
-            isLoading={homerooms.isLoading}
-            value={homeroomId}
-            onValueChange={changeHomeroom}
-            getOptionValue={(r) => r.homeroom_id}
-            getOptionLabel={(r) => r.name}
-            placeholder="Pilih kelas"
-            emptyText="Belum ada kelas"
-          />
-          <Combobox
-            items={assignedSubjects}
-            isLoading={subjects.isLoading || assignments.isLoading}
-            value={subjectId}
-            onValueChange={changeSubject}
-            getOptionValue={(s) => s.subject_id}
-            getOptionLabel={(s) => s.name}
-            placeholder="Pilih mapel"
-            emptyText="Penugasan belum tersinkron"
-          />
+          <div>
+            <Combobox
+              items={filteredHomerooms}
+              isLoading={homerooms.isLoading}
+              value={homeroomId}
+              onValueChange={changeHomeroom}
+              getOptionValue={(r) => r.homeroom_id}
+              getOptionLabel={(r) => r.name}
+              placeholder="Pilih kelas"
+              emptyText="Belum ada kelas"
+            />
+            {homeroomId && (
+              <div className="mt-1 space-y-1">
+                {teachers.isLoading ? (
+                  <Skeleton className="h-5 w-40" />
+                ) : walikelas ? (
+                  <TeacherBadge teacher={walikelas} label="Walikelas" />
+                ) : (
+                  <Badge variant="secondary" className="text-muted-foreground">
+                    Walikelas belum ditetapkan
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
+          <div>
+            <Combobox
+              items={assignedSubjects}
+              isLoading={subjects.isLoading || assignments.isLoading}
+              value={subjectId}
+              onValueChange={changeSubject}
+              getOptionValue={(s) => s.subject_id}
+              getOptionLabel={(s) => s.name}
+              placeholder="Pilih mapel"
+              emptyText="Penugasan belum tersinkron"
+            />
+            {subjectId && (
+              <div className="mt-1 space-y-1">
+                {teachers.isLoading || assignments.isLoading ? (
+                  <Skeleton className="h-5 w-40" />
+                ) : assignedTeachers.length > 0 ? (
+                  assignedTeachers.map((teacher) => (
+                    <TeacherBadge key={teacher.teacher_id} teacher={teacher} label="Guru" />
+                  ))
+                ) : (
+                  <Badge variant="secondary" className="text-muted-foreground">
+                    Belum ada guru ditugaskan
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {homeroomId && subjectId && (
           <TeacherInfoBar
             assignedTeachers={assignedTeachers}
-            isLoading={teachers.isLoading || assignments.isLoading}
             isAssignedUser={isAssignedUser}
           />
         )}
@@ -294,52 +329,37 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
 
 // ── Teacher Info Bar ───────────────────────────────────────────────────────────
 
+function TeacherBadge({ teacher, label }: { teacher: Teacher; label: string; }) {
+  const accountLabel = teacher.linked_user?.email ?? teacher.linked_user?.username ?? null;
+  const accountText = accountLabel ?? (teacher.user_id ? "akun terhubung" : "akun belum terhubung");
+  return (
+    <Badge variant="secondary" className="gap-1.5">
+      {label}: <UserRound className="h-3 w-3" />
+      {teacher.full_name}
+      <span className="text-secondary-foreground/70 font-normal">
+        {accountLabel ? `· ${accountText}` : `(${accountText})`}
+      </span>
+    </Badge>
+  );
+}
+
 function TeacherInfoBar({
   assignedTeachers,
-  isLoading,
   isAssignedUser,
 }: {
   assignedTeachers: Teacher[];
-  isLoading: boolean;
   isAssignedUser: boolean;
 }) {
-  if (isLoading) {
+  if (!isAssignedUser && assignedTeachers.length > 0) {
     return (
-      <div className="flex items-center gap-2 border-b px-4 py-2.5">
-        <Skeleton className="h-5 w-24" />
-        <Skeleton className="h-5 w-32" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-wrap justify-between gap-x-4 gap-y-1.5 border-b px-4 py-2.5">
-      <div className="flex flex-wrap items-center gap-x-4">
-        {assignedTeachers.length === 0 ? (
-          <span className="text-xs text-muted-foreground">Belum ada guru yang ditugaskan</span>
-        ) : (
-          assignedTeachers.map((teacher) => {
-            const accountLabel = teacher.linked_user?.email ?? teacher.linked_user?.username ?? null;
-            const accountText = accountLabel ?? (teacher.user_id ? "akun terhubung" : "akun belum terhubung");
-            return (
-              <Badge key={teacher.teacher_id} variant="secondary" className="gap-1.5">
-                Guru: <UserRound className="h-3 w-3" />
-                {teacher.full_name}
-                <span className="text-secondary-foreground/70 font-normal">
-                  {accountLabel ? `· ${accountText}` : `(${accountText})`}
-                </span>
-              </Badge>
-            );
-          })
-        )}
-      </div>
-      {!isAssignedUser && assignedTeachers.length > 0 && (
+      <div className="flex justify-center border-b px-4 py-2.5">
         <Badge variant="destructive">
           Anda bukan pengajar di kelas ini — nilai dinonaktifkan.
         </Badge>
-      )}
-    </div>
-  );
+      </div>
+    );
+  }
+  return null;
 }
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
@@ -371,6 +391,56 @@ function EvaluationGrid({
   canEditGrades: boolean;
   onOpenKelola: () => void;
 }) {
+  const gridRef = React.useRef<HTMLDivElement>(null);
+
+  const sortedStudents = React.useMemo(() => {
+    const name = (s: Student) => s.full_name ?? "";
+    return [...students].sort((a, b) => name(a).localeCompare(name(b), "id", { sensitivity: "base" }));
+  }, [students]);
+
+  const focusAdjacent = React.useCallback((row: number, col: number, delta: number) => {
+    const el = gridRef.current?.querySelector<HTMLInputElement>(
+      `input[data-row="${row + delta}"][data-col="${col}"]`,
+    );
+    if (el) {
+      el.focus();
+      el.select();
+    }
+    return Boolean(el);
+  }, []);
+
+  // Committed-score averages per evaluation column (skip empty cells).
+  const evalAverages = React.useMemo(() => {
+    return evaluations.map((ev) => {
+      let sum = 0;
+      let count = 0;
+      for (const student of sortedStudents) {
+        const g = gradeIndex.get(`${student.student_id}:${ev.evaluation_id}`);
+        if (g?.score != null) {
+          sum += g.score;
+          count += 1;
+        }
+      }
+      return count > 0 ? sum / count : null;
+    });
+  }, [evaluations, sortedStudents, gradeIndex]);
+
+  // Committed-score averages per report-type column (skip empty cells).
+  const reportAverages = React.useMemo(() => {
+    return reportTypes.map((rt) => {
+      let sum = 0;
+      let count = 0;
+      for (const student of sortedStudents) {
+        const score = reportScoreIndex.get(`${rt.report_type_id}:${student.student_id}`);
+        if (score != null) {
+          sum += score;
+          count += 1;
+        }
+      }
+      return count > 0 ? sum / count : null;
+    });
+  }, [reportTypes, sortedStudents, reportScoreIndex]);
+
   if (evaluations.length === 0) {
     return (
       <div className="p-8 text-center">
@@ -395,7 +465,7 @@ function EvaluationGrid({
   }
 
   return (
-    <div className="overflow-x-auto rounded-b-md">
+    <div ref={gridRef} className="overflow-x-auto rounded-b-md">
       <table className="w-full text-sm bg-card">
         <thead>
           <tr className="bg-muted/60">
@@ -422,7 +492,7 @@ function EvaluationGrid({
           </tr>
         </thead>
         <tbody>
-          {students.map((student, index) => (
+          {sortedStudents.map((student, index) => (
             <tr key={student.student_id} className="border-t">
               <td className="sticky left-0 z-10 px-4 py-2.5 text-muted-foreground tabular-nums">
                 {index + 1}
@@ -431,7 +501,7 @@ function EvaluationGrid({
                 <p className="font-medium">{student.full_name ?? "Nama belum tersinkronisasi"}</p>
                 <p className="text-xs text-muted-foreground">{student.nis ?? "NIS belum tersinkronisasi"}</p>
               </td>
-              {evaluations.map((ev) => (
+              {evaluations.map((ev, evalIndex) => (
                 <td key={ev.evaluation_id} className="px-2 py-2 text-center">
                   <GradeCell
                     studentId={student.student_id}
@@ -441,6 +511,9 @@ function EvaluationGrid({
                     subjectId={subjectId}
                     yearId={yearId}
                     canWrite={canEditGrades}
+                    rowIndex={index}
+                    colIndex={evalIndex}
+                    focusAdjacent={focusAdjacent}
                   />
                 </td>
               ))}
@@ -455,6 +528,24 @@ function EvaluationGrid({
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className="border-t bg-muted/40">
+            <td className="sticky left-0 z-10 bg-muted/60 px-4 py-2.5" />
+            <td className="sticky left-14 z-10 bg-muted/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Rata-Rata
+            </td>
+            {evalAverages.map((avg, i) => (
+              <td key={evaluations[i]?.evaluation_id ?? i} className="px-3 py-2.5 text-center text-sm font-semibold tabular-nums">
+                {avg == null ? <span className="text-xs text-muted-foreground">—</span> : avg.toFixed(1)}
+              </td>
+            ))}
+            {reportAverages.map((avg, i) => (
+              <td key={reportTypes[i]?.report_type_id ?? i} className="border-l px-3 py-2.5 text-center text-sm font-semibold tabular-nums">
+                {avg == null ? <span className="text-xs text-muted-foreground">—</span> : avg.toFixed(1)}
+              </td>
+            ))}
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
@@ -472,6 +563,9 @@ function GradeCell({
   subjectId,
   yearId,
   canWrite,
+  rowIndex,
+  colIndex,
+  focusAdjacent,
 }: {
   studentId: string;
   evaluationId: string;
@@ -480,19 +574,27 @@ function GradeCell({
   subjectId: string;
   yearId: string;
   canWrite: boolean;
+  rowIndex: number;
+  colIndex: number;
+  focusAdjacent: (row: number, col: number, delta: number) => boolean;
 }) {
   const [value, setValue] = React.useState(existingGrade?.score != null ? String(existingGrade.score) : "");
   const [savedValue, setSavedValue] = React.useState(value);
   const [status, setStatus] = React.useState<CellStatus>("idle");
   const [validationError, setValidationError] = React.useState("");
+  const savedTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const upsert = useUpsertGrade(homeroomId, subjectId, yearId);
+
+  React.useEffect(() => () => {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+  }, []);
 
   React.useEffect(() => {
     const next = existingGrade?.score != null ? String(existingGrade.score) : "";
     setValue(next);
     setSavedValue(next);
-    setStatus("idle");
     setValidationError("");
+    if (!savedTimer.current) setStatus("idle");
   }, [existingGrade?.score, existingGrade?.grade_id]);
 
   async function trySave() {
@@ -507,7 +609,12 @@ function GradeCell({
     try {
       await upsert.mutateAsync({ student_id: studentId, evaluation_id: evaluationId, score: parsed.data });
       setSavedValue(value);
+      if (savedTimer.current) clearTimeout(savedTimer.current);
       setStatus("saved");
+      savedTimer.current = setTimeout(() => {
+        savedTimer.current = null;
+        setStatus("idle");
+      }, 800);
     } catch (err) {
       setStatus("error");
       toast.error(getErrorMessage(err, { fallback: "Gagal menyimpan nilai." }));
@@ -528,16 +635,35 @@ function GradeCell({
           type="text"
           inputMode="decimal"
           value={value}
+          data-row={rowIndex}
+          data-col={colIndex}
           onChange={(e) => {
             setValue(e.target.value);
+            if (savedTimer.current) {
+              clearTimeout(savedTimer.current);
+              savedTimer.current = null;
+            }
             setStatus("idle");
             setValidationError("");
           }}
           onBlur={() => void trySave()}
           onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-            e.preventDefault();
-            void trySave();
+            if (e.key === "Enter") {
+              e.preventDefault();
+              if (!focusAdjacent(rowIndex, colIndex, 1)) void trySave();
+              return;
+            }
+            if (e.key === "Tab") {
+              if (focusAdjacent(rowIndex, colIndex, e.shiftKey ? -1 : 1)) e.preventDefault();
+              return;
+            }
+            if (e.key === "ArrowUp") {
+              if (focusAdjacent(rowIndex, colIndex, -1)) e.preventDefault();
+              return;
+            }
+            if (e.key === "ArrowDown") {
+              if (focusAdjacent(rowIndex, colIndex, 1)) e.preventDefault();
+            }
           }}
           disabled={!canWrite || status === "saving"}
           placeholder="—"
@@ -740,7 +866,7 @@ function KelolEvaluasiModal({
           )}
 
           {sorted.length > 0 && (
-            <WeightMatrix yearId={yearId} termId={termId ?? undefined} subjectId={subjectId} evaluations={sorted} />
+            <WeightMatrix yearId={yearId} termId={termId ?? undefined} homeroomId={homeroomId} subjectId={subjectId} evaluations={sorted} />
           )}
         </DialogContent>
       </Dialog>
@@ -866,11 +992,13 @@ function EvaluationRow({
 export function WeightMatrix({
   yearId,
   termId,
+  homeroomId,
   subjectId,
   evaluations,
 }: {
   yearId: string;
   termId?: string;
+  homeroomId: string;
   subjectId: string;
   evaluations: Evaluation[];
 }) {
@@ -997,7 +1125,7 @@ export function WeightMatrix({
       </div>
       <div className="flex flex-wrap gap-2">
         {types.map((rt) => (
-          <WeightColumnSave key={rt.report_type_id} reportTypeId={rt.report_type_id} reportTypeCode={rt.code} subjectId={subjectId} weights={weights[rt.report_type_id] ?? {}} evaluations={evaluations} />
+          <WeightColumnSave key={rt.report_type_id} reportTypeId={rt.report_type_id} reportTypeCode={rt.code} homeroomId={homeroomId} subjectId={subjectId} weights={weights[rt.report_type_id] ?? {}} evaluations={evaluations} />
         ))}
       </div>
     </div>
@@ -1007,17 +1135,19 @@ export function WeightMatrix({
 function WeightColumnSave({
   reportTypeId,
   reportTypeCode,
+  homeroomId,
   subjectId,
   weights,
   evaluations,
 }: {
   reportTypeId: string;
   reportTypeCode: string;
+  homeroomId: string;
   subjectId: string;
   weights: Record<string, number>;
   evaluations: Evaluation[];
 }) {
-  const upsert = useUpsertReportFormula(reportTypeId);
+  const upsert = useUpsertReportFormula(reportTypeId, homeroomId);
   const total = Object.values(weights).reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
   const valid = evaluations.length > 0 && Math.abs(total - 100) < 1e-9;
   async function save() {

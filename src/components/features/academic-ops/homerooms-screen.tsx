@@ -58,6 +58,7 @@ import {
   useAvailableRosterStudents,
   useHomeroomEnrollments,
   useHomeroomsTable,
+  useTeachers,
   type Homeroom,
 } from "@/lib/query/queries/use-academic-ops";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
@@ -215,6 +216,12 @@ function HomeroomsTable({
 }) {
   const [editing, setEditing] = React.useState<Homeroom | null>(null);
   const [roster, setRoster] = React.useState<Homeroom | null>(null);
+  const teachers = useTeachers();
+  const teacherNameById = React.useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of teachers.data ?? []) map.set(t.teacher_id, t.full_name);
+    return map;
+  }, [teachers.data]);
 
   function toggleSort(field: keyof typeof SORT_FIELDS) {
     const { asc, desc } = SORT_FIELDS[field];
@@ -277,6 +284,16 @@ function HomeroomsTable({
           {row.original.enrolled_count} / {row.original.capacity}
         </span>
       ),
+    },
+    {
+      id: "homeroom_teacher",
+      header: () => <span>Wali Kelas</span>,
+      cell: ({ row }) => {
+        const teacherId = row.original.homeroom_teacher_id;
+        if (!teacherId) return <span className="text-muted-foreground text-sm">Belum ditentukan</span>;
+        const name = teacherNameById.get(teacherId);
+        return <span className="text-sm">{name ?? teacherId}</span>;
+      },
     },
     {
       id: "roster",
@@ -657,6 +674,15 @@ function HomeroomDialog({
   const setOpen = onOpenChange ?? setInternalOpen;
   const create = useCreateHomeroom();
   const update = useUpdateHomeroom(homeroom?.homeroom_id ?? "");
+  const teachers = useTeachers();
+  const teacherOptions = React.useMemo(
+    () => (teachers.data ?? []).map((t) => ({ value: t.teacher_id, label: t.full_name })),
+    [teachers.data],
+  );
+  const CLEAR_OPTION = { value: "__clear__", label: "Kosongkan (tidak ada wali kelas)" };
+  const [homeroomTeacherId, setHomeroomTeacherId] = React.useState<string | null>(
+    homeroom?.homeroom_teacher_id ?? null,
+  );
   const defaultValues = React.useMemo<HomeroomForm>(
     () => ({
       name: homeroom?.name ?? "",
@@ -670,7 +696,8 @@ function HomeroomDialog({
 
   React.useEffect(() => {
     form.reset(defaultValues);
-  }, [defaultValues, form]);
+    setHomeroomTeacherId(homeroom?.homeroom_teacher_id ?? null);
+  }, [defaultValues, form, homeroom]);
 
   const loading = create.isPending || update.isPending;
 
@@ -681,10 +708,13 @@ function HomeroomDialog({
     }
     try {
       if (homeroom) {
+        const resolvedTeacherId =
+          homeroomTeacherId === "__clear__" ? null : homeroomTeacherId;
         await update.mutateAsync({
           name: values.name,
           grade_level: values.grade_level,
           capacity: values.capacity,
+          homeroom_teacher_id: resolvedTeacherId,
         });
         toast.success("Kelas diperbarui.");
       } else {
@@ -694,6 +724,7 @@ function HomeroomDialog({
         });
         toast.success("Kelas dibuat.");
         form.reset({ name: "", grade_level: "", capacity: 32, academic_year_id: yearId ?? "" });
+        setHomeroomTeacherId(null);
       }
       setOpen(false);
     } catch (err) {
@@ -755,6 +786,22 @@ function HomeroomDialog({
                 </FormItem>
               )}
             />
+            {homeroom && canManage ? (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium leading-none">Wali Kelas</label>
+                <Combobox
+                  searchable
+                  items={[CLEAR_OPTION, ...teacherOptions]}
+                  value={homeroomTeacherId ?? ""}
+                  onValueChange={(val) => setHomeroomTeacherId(val === "" ? null : val)}
+                  placeholder={teachers.isLoading ? "Memuat..." : "Pilih wali kelas"}
+                  searchPlaceholder="Cari guru..."
+                  emptyText="Belum ada guru"
+                  disabled={teachers.isLoading}
+                  popoverModal
+                />
+              </div>
+            ) : null}
             <DialogFooter>
               <GuardedButton enabled={canManage} message={upgradeMessage} loading={loading}>
                 {homeroom ? "Simpan" : "Buat Kelas"}

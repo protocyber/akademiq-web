@@ -221,20 +221,23 @@ function LoginForm() {
       <section className="w-full md:w-1/2 lg:w-2/5 flex flex-col justify-center items-center p-8">
         <div className="w-full max-w-md space-y-6">
           <div className="space-y-2 text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2.5 mb-2">
+            <div className="flex items-center justify-center gap-2.5 mb-2">
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-md">
                 <GraduationCap className="h-6 w-6" />
               </div>
-              <span className="text-2xl font-bold font-display text-primary tracking-tight">AcademiQ</span>
+              {/* <span className="text-2xl font-bold font-display text-primary tracking-tight">AcademiQ</span> */}
             </div>
-            <h2 className="text-2xl font-bold font-display text-foreground">Selamat Datang</h2>
+            {/* <h2 className="text-2xl font-bold font-display text-foreground">Selamat Datang</h2>
             <p className="text-muted-foreground text-sm">
               Silakan masukkan email atau username Anda untuk masuk ke dasbor.
-            </p>
+            </p> */}
           </div>
 
           <Card className="border border-border shadow-sm">
-            <CardContent className="pt-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl text-center">Masuk ke AcademiQ</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-2">
               <Form {...form}>
                 <form onSubmit={onSubmit} className="space-y-4" noValidate>
                   {topError ? (

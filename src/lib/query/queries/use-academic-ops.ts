@@ -141,7 +141,7 @@ export type MediaAsset = {
 };
 
 export type Guardian = { tenant_id: string; user_id: string; student_id: string; created_at: string };
-export type Homeroom = { homeroom_id: string; name: string; grade_level: string; capacity: number; academic_year_id: string; enrolled_count: number };
+export type Homeroom = { homeroom_id: string; name: string; grade_level: string; capacity: number; academic_year_id: string; enrolled_count: number; homeroom_teacher_id?: string | null };
 export type TeachingAssignment = { assignment_id: string; teacher_id: string; subject_id: string; homeroom_id: string; academic_year_id: string; created_at: string };
 
 export type Paginated<T> = {

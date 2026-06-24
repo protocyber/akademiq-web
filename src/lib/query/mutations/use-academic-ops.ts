@@ -107,10 +107,12 @@ export function useCreateHomeroom() {
   return useMutation({ mutationFn: (input: HomeroomForm) => apiFetch<Homeroom>({ service: "academic-ops", path: "/api/v1/academic-ops/homerooms", method: "POST", authenticated: true, body: input }), onSuccess: () => qc.invalidateQueries({ queryKey: HOMEROOMS_QUERY_KEY }) });
 }
 
+type UpdateHomeroomInput = Partial<HomeroomForm> & { homeroom_teacher_id?: string | null };
+
 export function useUpdateHomeroom(homeroomId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: Partial<HomeroomForm>) => apiFetch<Homeroom>({ service: "academic-ops", path: `/api/v1/academic-ops/homerooms/${homeroomId}`, method: "PATCH", authenticated: true, body: input }),
+    mutationFn: (input: UpdateHomeroomInput) => apiFetch<Homeroom>({ service: "academic-ops", path: `/api/v1/academic-ops/homerooms/${homeroomId}`, method: "PATCH", authenticated: true, body: input }),
     onSuccess: () => qc.invalidateQueries({ queryKey: HOMEROOMS_QUERY_KEY }),
   });
 }

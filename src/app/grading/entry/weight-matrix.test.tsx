@@ -51,7 +51,7 @@ describe("Bobot per Jenis Rapor (WeightMatrix)", () => {
   beforeEach(() => mutateAsync.mockReset());
 
   it("disables the column save until weights total exactly 100", () => {
-    render(<WeightMatrix yearId="y1" subjectId="s1" evaluations={evaluations} />);
+    render(<WeightMatrix yearId="y1" homeroomId="h1" subjectId="s1" evaluations={evaluations} />);
 
     const save = screen.getByRole("button", { name: /simpan rapor uts/i });
     expect(save).toBeDisabled();
@@ -67,7 +67,7 @@ describe("Bobot per Jenis Rapor (WeightMatrix)", () => {
   });
 
   it("saves the (report_type, subject) weights when the column totals 100", async () => {
-    render(<WeightMatrix yearId="y1" subjectId="s1" evaluations={evaluations} />);
+    render(<WeightMatrix yearId="y1" homeroomId="h1" subjectId="s1" evaluations={evaluations} />);
 
     const inputs = screen.getAllByRole("spinbutton") as HTMLInputElement[];
     act(() => {
@@ -87,7 +87,7 @@ describe("Bobot per Jenis Rapor (WeightMatrix)", () => {
   });
 
   it("flags a column total that is not 100 and keeps save disabled", () => {
-    render(<WeightMatrix yearId="y1" subjectId="s1" evaluations={evaluations} />);
+    render(<WeightMatrix yearId="y1" homeroomId="h1" subjectId="s1" evaluations={evaluations} />);
 
     const inputs = screen.getAllByRole("spinbutton") as HTMLInputElement[];
     act(() => {
