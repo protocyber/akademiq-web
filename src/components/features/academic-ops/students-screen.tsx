@@ -46,6 +46,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
+  Combobox,
   Select,
   SelectContent,
   SelectItem,
@@ -80,8 +81,6 @@ import {
   type StudentsSort,
 } from "@/lib/schemas/students-params";
 import { useTenantUsers, type TenantUser } from "@/lib/query/queries/use-tenant-users";
-import { QueryCombobox } from "@/components/ui/query-combobox";
-import { QuerySelect } from "@/components/ui/query-select";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -1009,18 +1008,20 @@ function LinkAccountDialog({
             Pilih akun pengguna bertipe siswa untuk menghubungkan dengan profil siswa ini.
           </DialogDescription>
         </DialogHeader>
-        <QueryCombobox
+        <Combobox
+          searchable
           items={studentUsers}
           isLoading={users.isLoading}
           isSearchLoading={users.isFetching}
           value={userId}
           onValueChange={setUserId}
-          getValue={(user) => user.user_id}
-          getLabel={(user) => `${user.full_name} (${user.email ?? user.username})`}
+          getOptionValue={(user) => user.user_id}
+          getOptionLabel={(user) => `${user.full_name} (${user.email ?? user.username})`}
           placeholder="Pilih akun siswa"
           searchPlaceholder="Cari akun siswa..."
           emptyText="Belum ada akun siswa"
           onSearchChange={setSearch}
+          popoverModal
         />
         <DialogFooter>
           <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>
@@ -1140,15 +1141,16 @@ function GuardiansManagerDialog({
               <h4 className="text-sm font-semibold">Tautkan Wali Baru</h4>
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <QuerySelect
+                  <Combobox
                     items={availableUsers}
                     isLoading={usersLoading}
                     value={selectedUserId}
                     onValueChange={setSelectedUserId}
-                    getValue={(user) => user.user_id}
-                    getLabel={(user) => `${user.full_name} (${user.email ?? user.username})`}
+                    getOptionValue={(user) => user.user_id}
+                    getOptionLabel={(user) => `${user.full_name} (${user.email ?? user.username})`}
                     placeholder="Pilih akun wali murid"
                     emptyText="Tidak ada akun wali yang tersedia"
+                    popoverModal
                   />
                 </div>
                 <Button

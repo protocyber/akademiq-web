@@ -20,7 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QuerySelect } from "@/components/ui/query-select";
+import { Combobox } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { getErrorMessage } from "@/lib/errors/messages";
@@ -204,23 +204,23 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
       </CardHeader>
       <CardContent className="p-0">
         <div className="grid gap-3 md:grid-cols-2 border-b p-4">
-          <QuerySelect
+          <Combobox
             items={filteredHomerooms}
             isLoading={homerooms.isLoading}
             value={homeroomId}
             onValueChange={changeHomeroom}
-            getValue={(r) => r.homeroom_id}
-            getLabel={(r) => r.name}
+            getOptionValue={(r) => r.homeroom_id}
+            getOptionLabel={(r) => r.name}
             placeholder="Pilih kelas"
             emptyText="Belum ada kelas"
           />
-          <QuerySelect
+          <Combobox
             items={assignedSubjects}
             isLoading={subjects.isLoading || assignments.isLoading}
             value={subjectId}
             onValueChange={changeSubject}
-            getValue={(s) => s.subject_id}
-            getLabel={(s) => s.name}
+            getOptionValue={(s) => s.subject_id}
+            getOptionLabel={(s) => s.name}
             placeholder="Pilih mapel"
             emptyText="Penugasan belum tersinkron"
           />

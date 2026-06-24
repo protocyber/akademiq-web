@@ -366,7 +366,7 @@ function ReportCardsTable({ reportTypeId, homeroomId }: { reportTypeId: string; 
           getRowId={(row) => row.report_card_id}
           rowSelection={selection}
           onRowSelectionChange={setSelection}
-          emptyText={`Belum ada kartu "${LABELS[activeStatus]}". Jalankan Generate Draft.`}
+          emptyText={`Belum ada rapor "${LABELS[activeStatus]}". Jalankan Generate Draft.`}
           classNames={{ wrapper: "rounded-none border-x-0" }}
         />
       )}

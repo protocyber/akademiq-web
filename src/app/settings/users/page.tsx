@@ -58,8 +58,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { MultiSelect } from "@/components/ui/multi-select";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/toaster";
@@ -679,12 +678,15 @@ function CreateUserDialog({ roles }: { roles: TenantRole[]; }) {
                 <FormItem>
                   <FormLabelRequired>Role</FormLabelRequired>
                   <FormControl>
-                    <MultiSelect
-                      options={roleOptions(roles)}
+                    <Combobox
+                      multiple
+                      searchable
+                      items={roleOptions(roles)}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       placeholder="Pilih role"
                       aria-invalid={Boolean(form.formState.errors.roles)}
+                      popoverModal
                     />
                   </FormControl>
                   <FormMessage />
@@ -1124,12 +1126,15 @@ function InviteDialog({ roles }: { roles: TenantRole[]; }) {
                   <FormItem>
                     <FormLabelRequired>Role</FormLabelRequired>
                     <FormControl>
-                      <MultiSelect
-                        options={roleOptions(roles)}
+                      <Combobox
+                        multiple
+                        searchable
+                        items={roleOptions(roles)}
                         value={field.value}
-                        onChange={field.onChange}
+                        onValueChange={field.onChange}
                         placeholder="Pilih role"
                         aria-invalid={Boolean(form.formState.errors.roles)}
+                        popoverModal
                       />
                     </FormControl>
                     <FormMessage />

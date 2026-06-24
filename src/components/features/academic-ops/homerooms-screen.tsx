@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { QueryMultiSelect } from "@/components/ui/query-multi-select";
+import { Combobox } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/toaster";
@@ -523,16 +523,19 @@ function RosterDialog({
         <div className="space-y-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="min-w-[14rem] flex-1">
-              <QueryMultiSelect
+              <Combobox
+                multiple
+                searchable
                 value={selectedIds}
-                onChange={setSelectedIds}
-                options={availableOptions}
+                onValueChange={setSelectedIds}
+                items={availableOptions}
                 onSearchChange={setAvailableSearch}
                 placeholder="Cari dan pilih siswa"
                 searchPlaceholder="Cari siswa..."
                 emptyText="Semua siswa sudah dienroll"
                 disabled={!canManage || available.isLoading}
-                loading={available.isLoading}
+                isSearchLoading={available.isLoading}
+                popoverModal
               />
             </div>
             <Button

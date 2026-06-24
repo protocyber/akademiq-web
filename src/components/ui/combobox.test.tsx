@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { QuerySelect } from "@/components/ui/query-select";
+import { Combobox } from "@/components/ui/select";
 
 interface Item {
   id: string;
@@ -10,15 +10,22 @@ interface Item {
 
 const items: Item[] = [{ id: "one", label: "Option One" }];
 
-function renderQuerySelect(props: Partial<React.ComponentProps<typeof QuerySelect<Item>>> = {}) {
+function renderCombobox(
+  props: Partial<{
+    items: Item[];
+    isLoading: boolean;
+    value: string;
+    onValueChange: (value: string) => void;
+  }> = {},
+) {
   return render(
-    <QuerySelect
+    <Combobox
       items={props.items ?? items}
       isLoading={props.isLoading ?? false}
       value={props.value}
       onValueChange={props.onValueChange ?? (() => undefined)}
-      getValue={(item) => item.id}
-      getLabel={(item) => item.label}
+      getOptionValue={(item) => item.id}
+      getOptionLabel={(item) => item.label}
       placeholder="Choose item"
       emptyText="No items"
       {...props}
@@ -26,9 +33,9 @@ function renderQuerySelect(props: Partial<React.ComponentProps<typeof QuerySelec
   );
 }
 
-describe("QuerySelect", () => {
+describe("Combobox", () => {
   it("shows a spinner and disables the trigger while loading", () => {
-    renderQuerySelect({ isLoading: true, items: [] });
+    renderCombobox({ isLoading: true, items: [] });
 
     expect(screen.getByRole("status", { name: "Loading" })).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeDisabled();
@@ -36,14 +43,14 @@ describe("QuerySelect", () => {
   });
 
   it("shows the empty state and disables the trigger when data is empty", () => {
-    renderQuerySelect({ items: [] });
+    renderCombobox({ items: [] });
 
     expect(screen.getByRole("combobox")).toBeDisabled();
     expect(screen.getByText("No items")).toBeInTheDocument();
   });
 
   it("enables the trigger when data is present", () => {
-    renderQuerySelect();
+    renderCombobox();
 
     expect(screen.getByRole("combobox")).toBeEnabled();
     expect(screen.getByText("Choose item")).toBeInTheDocument();

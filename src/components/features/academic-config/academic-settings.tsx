@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { QuerySelect } from "@/components/ui/query-select";
+import { Combobox } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -205,13 +205,13 @@ export function YearPicker({
   disabled?: boolean;
 }) {
   return (
-    <QuerySelect
+    <Combobox
       items={years}
       isLoading={Boolean(isLoading)}
       value={value}
       onValueChange={onChange}
-      getValue={(year) => year.academic_year_id}
-      getLabel={(year) => `${year.name} (${year.status})`}
+      getOptionValue={(year) => year.academic_year_id}
+      getOptionLabel={(year) => `${year.name} (${year.status})`}
       placeholder="Pilih tahun ajaran"
       emptyText="Belum ada tahun ajaran"
       disabled={disabled}

@@ -16,7 +16,7 @@ import { useTenantPermissions } from "@/lib/query/queries/use-tenant-roles";
 import { EmailVerifiedBadge } from "@/components/ui/email-verified-badge";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { useAcademicYears, useCurriculumVersions, useTerms } from "@/lib/query/queries/use-academic-config";
-import { QuerySelect } from "@/components/ui/query-select";
+import { Combobox } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -211,13 +211,13 @@ export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: bool
     <div className={wrapperClass}>
       <div className="flex flex-col gap-1">
         <div className={selectWidthClass}>
-          <QuerySelect
+          <Combobox
             items={years}
             isLoading={yearsQuery.isLoading}
             value={yearId ?? undefined}
             onValueChange={(val) => setYearId(val)}
-            getValue={(y) => y.academic_year_id}
-            getLabel={(y) => y.name}
+            getOptionValue={(y) => y.academic_year_id}
+            getOptionLabel={(y) => y.name}
             placeholder="Pilih Tahun Ajaran"
             emptyText="Belum ada tahun"
             className={triggerClass}
@@ -232,13 +232,13 @@ export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: bool
 
       <div className="flex flex-col gap-1">
         <div className={selectWidthClass}>
-          <QuerySelect
+          <Combobox
             items={terms}
             isLoading={termsQuery.isLoading}
             value={termId ?? undefined}
             onValueChange={(val) => setTermId(val)}
-            getValue={(t) => t.term_id}
-            getLabel={(t) => t.name}
+            getOptionValue={(t) => t.term_id}
+            getOptionLabel={(t) => t.name}
             placeholder="Pilih Semester"
             emptyText="Belum ada semester"
             disabled={!yearId || terms.length === 0}
@@ -256,13 +256,13 @@ export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: bool
 
       {showCurriculum ? (
         <div className={selectWidthClass}>
-          <QuerySelect
+          <Combobox
             items={curriculums}
             isLoading={curriculumsQuery.isLoading}
             value={curriculumId ?? undefined}
             onValueChange={(val) => setCurriculumId(val)}
-            getValue={(c) => c.curriculum_version_id}
-            getLabel={(c) => c.name}
+            getOptionValue={(c) => c.curriculum_version_id}
+            getOptionLabel={(c) => c.name}
             placeholder="Pilih Kurikulum"
             emptyText="Belum ada kurikulum"
             disabled={!yearId}

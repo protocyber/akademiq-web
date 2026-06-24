@@ -46,8 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { QueryCombobox } from "@/components/ui/query-combobox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
 import { ImportDialog } from "@/components/features/academic-ops/import-dialog";
@@ -543,18 +542,20 @@ function LinkAccountDialog({
             Pilih akun pengguna bertipe guru untuk menghubungkan dengan profil guru ini.
           </DialogDescription>
         </DialogHeader>
-        <QueryCombobox
+        <Combobox
+          searchable
           items={teacherUsers}
           isLoading={users.isLoading}
           isSearchLoading={users.isFetching}
           value={userId}
           onValueChange={setUserId}
-          getValue={(user) => user.user_id}
-          getLabel={(user) => `${user.full_name} (${user.email ?? user.username})`}
+          getOptionValue={(user) => user.user_id}
+          getOptionLabel={(user) => `${user.full_name} (${user.email ?? user.username})`}
           placeholder="Pilih akun guru"
           searchPlaceholder="Cari akun guru..."
           emptyText="Belum ada akun guru"
           onSearchChange={setSearch}
+          popoverModal
         />
         <DialogFooter>
           <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>

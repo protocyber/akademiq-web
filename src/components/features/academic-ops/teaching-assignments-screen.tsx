@@ -30,9 +30,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { MultiSelect } from "@/components/ui/multi-select";
 import { SearchInput } from "@/components/ui/search-input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
 import { getErrorMessage } from "@/lib/errors/messages";
@@ -484,15 +483,18 @@ function AssignmentDialog({
                 <FormItem>
                   <FormLabel>Guru</FormLabel>
                   <FormControl>
-                    <MultiSelect
-                      options={teacherOptions}
+                    <Combobox
+                      multiple
+                      searchable
+                      items={teacherOptions}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       placeholder={teachers.isLoading ? "Memuat..." : "Pilih guru"}
                       searchPlaceholder="Cari guru..."
                       emptyText="Belum ada guru"
                       disabled={teachers.isLoading || teacherOptions.length === 0}
                       aria-invalid={Boolean(form.formState.errors.teacher_ids)}
+                      popoverModal
                     />
                   </FormControl>
                   <FormMessage />
@@ -506,15 +508,18 @@ function AssignmentDialog({
                 <FormItem>
                   <FormLabel>Mata pelajaran</FormLabel>
                   <FormControl>
-                    <MultiSelect
-                      options={subjectOptions}
+                    <Combobox
+                      multiple
+                      searchable
+                      items={subjectOptions}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       placeholder={subjects.isLoading ? "Memuat..." : "Pilih mata pelajaran"}
                       searchPlaceholder="Cari mata pelajaran..."
                       emptyText="Belum ada mata pelajaran"
                       disabled={subjects.isLoading || subjectOptions.length === 0}
                       aria-invalid={Boolean(form.formState.errors.subject_ids)}
+                      popoverModal
                     />
                   </FormControl>
                   <FormMessage />
@@ -528,15 +533,18 @@ function AssignmentDialog({
                 <FormItem>
                   <FormLabel>Kelas</FormLabel>
                   <FormControl>
-                    <MultiSelect
-                      options={homeroomOptions}
+                    <Combobox
+                      multiple
+                      searchable
+                      items={homeroomOptions}
                       value={field.value}
-                      onChange={field.onChange}
+                      onValueChange={field.onChange}
                       placeholder={homerooms.isLoading ? "Memuat..." : "Pilih kelas"}
                       searchPlaceholder="Cari kelas..."
                       emptyText="Belum ada kelas"
                       disabled={homerooms.isLoading || homeroomOptions.length === 0}
                       aria-invalid={Boolean(form.formState.errors.homeroom_ids)}
+                      popoverModal
                     />
                   </FormControl>
                   <FormMessage />
