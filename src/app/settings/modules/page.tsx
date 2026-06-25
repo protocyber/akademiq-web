@@ -28,22 +28,24 @@ export default function ModulesPage() {
 
 function ModulesSkeleton() {
   return (
-    <main className="container mx-auto max-w-3xl space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-40" />
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-32" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <Skeleton className="h-5 w-40" />
-              <Skeleton className="h-6 w-11 rounded-full" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </main>
+    <SidebarLayout>
+      <main className="container mx-auto max-w-3xl space-y-6 px-4 py-10">
+        <Skeleton className="h-9 w-40" />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-6 w-11 rounded-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </main>
+    </SidebarLayout>
   );
 }
 

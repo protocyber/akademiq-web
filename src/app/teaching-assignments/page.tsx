@@ -1,12 +1,12 @@
 "use client";
 
-import { AcademicOpsPage } from "@/components/features/academic-ops/academic-ops-page";
+import { AcademicOpsPage, OpsSkeleton } from "@/components/features/academic-ops/academic-ops-page";
 import { TeachingAssignmentsScreen } from "@/components/features/academic-ops/teaching-assignments-screen";
 import { PermissionGuard } from "@/components/features/permission-guard";
 
 export default function TeachingAssignmentsPage() {
   return (
-    <PermissionGuard permission="academic.ops.manage">
+    <PermissionGuard permission="academic.ops.manage" fallback={<OpsSkeleton />}>
       <AcademicOpsPage title="Penugasan Mengajar" description="Assign guru ke mata pelajaran dan kelas untuk tahun ajaran aktif.">
         {(ctx) => <TeachingAssignmentsScreen {...ctx} />}
       </AcademicOpsPage>

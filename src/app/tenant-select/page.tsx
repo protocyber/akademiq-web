@@ -206,11 +206,13 @@ function ZeroTenantState({ onLogout }: { onLogout: () => void }) {
 
 function TenantSelectSkeleton() {
   return (
-    <main className="container mx-auto flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-lg space-y-4">
-        {[0, 1].map((i) => (
-          <div key={i} className="h-20 rounded-lg border bg-muted animate-pulse" />
-        ))}
+    <main className="container mx-auto flex min-h-screen flex-col items-center justify-center px-4 py-12">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="text-center">
+          <h3 className="font-bold text-lg text-foreground">Memuat Halaman</h3>
+          <p className="text-sm text-muted-foreground mt-1">Mohon tunggu sebentar, menyiapkan daftar sekolah...</p>
+        </div>
       </div>
     </main>
   );

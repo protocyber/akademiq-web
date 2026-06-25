@@ -47,22 +47,24 @@ export default function SchoolProfilePage() {
 
 function SchoolProfileSkeleton() {
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-40" />
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-32" />
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </main>
+    <SidebarLayout>
+      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
+        <Skeleton className="h-9 w-40" />
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-32" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </main>
+    </SidebarLayout>
   );
 }
 

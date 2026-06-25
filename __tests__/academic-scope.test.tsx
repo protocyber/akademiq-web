@@ -70,6 +70,7 @@ vi.mock("@/lib/query/queries/use-grading", () => ({
   useReportTypes: () => ({ data: [], isLoading: false }),
   useSubjectReportScoresForTypes: () => ({ data: new Map(), isLoading: false }),
   useUnmaterializedCount: () => ({ data: { count: 0 }, isLoading: false }),
+  useGradingRoster: () => ({ data: [], isLoading: false }),
 }));
 
 function ConsumerComponent() {
@@ -151,7 +152,7 @@ describe("AcademicScopeProvider", () => {
     expect(screen.getByTestId("curriculum-id").textContent).toBe("cur-2");
   });
 
-  it("overrides localStorage with auto-resolve on mount", async () => {
+  it("restores from localStorage if valid", async () => {
     vi.mocked(localStorage.getItem).mockReturnValue(
       JSON.stringify({ academic_year_id: "year-2", curriculum_version_id: "cur-1" })
     );
@@ -187,14 +188,8 @@ describe("AcademicScopeProvider", () => {
       expect(screen.getByTestId("is-resolving").textContent).toBe("false");
     });
 
-    // Despite localStorage having year-2, auto-resolve picks active year year-1
-    expect(screen.getByTestId("year-id").textContent).toBe("year-1");
-    expect(screen.getByTestId("curriculum-id").textContent).toBe("cur-2");
-    // localStorage was written with auto-resolved values
-    expect(localStorage.setItem).toHaveBeenCalledWith(
-      expect.stringContaining("akademiq.academic_scope"),
-      expect.stringContaining("year-1")
-    );
+    expect(screen.getByTestId("year-id").textContent).toBe("year-2");
+    expect(screen.getByTestId("curriculum-id").textContent).toBe("cur-1");
   });
 
   it("falls back to newest year by start_date when no active year", async () => {

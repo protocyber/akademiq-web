@@ -26,7 +26,7 @@ export default function DashboardPage() {
   );
 }
 
-function DashboardSkeleton() {
+function DashboardSkeletonInner() {
   return (
     <main className="container mx-auto max-w-7xl space-y-6 px-4 py-10">
       <Skeleton className="h-10 w-72" />
@@ -41,6 +41,14 @@ function DashboardSkeleton() {
         <Skeleton className="h-[350px] lg:col-span-2 rounded-xl" />
       </div>
     </main>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <SidebarLayout>
+      <DashboardSkeletonInner />
+    </SidebarLayout>
   );
 }
 
@@ -114,7 +122,7 @@ function DashboardContent() {
         {!yearId ? (
           <EmptyStateNoYear />
         ) : stats.isLoading || !stats.data ? (
-          <DashboardSkeleton />
+          <DashboardSkeletonInner />
         ) : stats.error ? (
           <Alert variant="destructive">
             <AlertTitle>Gagal memuat statistik</AlertTitle>

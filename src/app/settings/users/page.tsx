@@ -141,7 +141,7 @@ export default function SettingsUsersPage() {
   );
 }
 
-function UsersSkeleton() {
+function UsersSkeletonInner() {
   return (
     <main className="container mx-auto w-full space-y-6 px-4 py-10">
       <Skeleton className="h-9 w-56" />
@@ -153,6 +153,14 @@ function UsersSkeleton() {
         </CardContent>
       </Card>
     </main>
+  );
+}
+
+function UsersSkeleton() {
+  return (
+    <SidebarLayout>
+      <UsersSkeletonInner />
+    </SidebarLayout>
   );
 }
 
@@ -195,8 +203,27 @@ function UsersContent() {
   React.useEffect(() => {
     setSelected({});
   }, [paramsKey]);
-  if (tenant.isLoading || me.isLoading || users.isLoading || roles.isLoading || invitations.isLoading) {
+
+  if (tenant.isLoading || me.isLoading) {
     return <UsersSkeleton />;
+  }
+
+  if (users.isLoading || roles.isLoading || invitations.isLoading) {
+    return (
+      <SidebarLayout
+        schoolName={tenant.data?.school_name}
+        userName={me.data?.full_name}
+        userEmail={me.data?.email}
+        isLoggingOut={logout.isPending}
+        onLogout={async () => {
+          await logout.mutateAsync();
+          router.push("/login");
+        }}
+        className="mx-auto w-full"
+      >
+        <UsersSkeletonInner />
+      </SidebarLayout>
+    );
   }
 
   const layoutError = tenant.error || me.error;

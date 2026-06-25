@@ -114,10 +114,12 @@ function OpsShell({
 
 export function OpsSkeleton() {
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-56" />
-      <Skeleton className="h-40 w-full" />
-    </main>
+    <SidebarLayout>
+      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-40 w-full" />
+      </main>
+    </SidebarLayout>
   );
 }
 

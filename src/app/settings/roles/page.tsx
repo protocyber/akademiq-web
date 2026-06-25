@@ -74,16 +74,18 @@ export default function SettingsRolesPage() {
 
 function RolesSkeleton() {
   return (
-    <main className="container mx-auto max-w-5xl space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-56" />
-      <Card>
-        <CardContent className="space-y-3 pt-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    </main>
+    <SidebarLayout>
+      <main className="container mx-auto max-w-5xl space-y-6 px-4 py-10">
+        <Skeleton className="h-9 w-56" />
+        <Card>
+          <CardContent className="space-y-3 pt-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      </main>
+    </SidebarLayout>
   );
 }
 

@@ -111,22 +111,29 @@ export function DataTable<TData, TValue>({
         </TableHeader>
         <TableBody className={cn(classOverrides?.body, classNames?.body)}>
           {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row, i) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                className={cn(classOverrides?.row, classNames?.row, (i % 2 == 0) ? "bg-muted dark:bg-background/60" : "")}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className={cn(classOverrides?.cell, classNames?.cell)}>
-                    {flexRender(
-                      cell.column.columnDef.cell,
-                      cell.getContext(),
-                    )}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
+            table.getRowModel().rows.map((row, i) => {
+              const isSelected = row.getIsSelected();
+              return (
+                <TableRow
+                  key={row.id}
+                  data-state={isSelected && "selected"}
+                  className={cn(
+                    classOverrides?.row,
+                    classNames?.row,
+                    (i % 2 == 0 && !isSelected) ? "bg-muted/60 dark:bg-background/35" : ""
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className={cn(classOverrides?.cell, classNames?.cell)}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })
           ) : (
             <TableRow>
               <TableCell

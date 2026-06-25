@@ -2,10 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { GraduationCap } from "lucide-react";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toaster";
 import { storeIdentityToken, useEnterTenant, useMyTenants } from "@/lib/query/mutations/use-login";
 import { getErrorMessage } from "@/lib/errors/messages";
@@ -64,19 +61,14 @@ function AuthCallbackContent() {
 
 function AuthCallbackSkeleton() {
   return (
-    <main className="container mx-auto flex min-h-screen items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader className="items-center">
-          <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <GraduationCap className="h-6 w-6" />
-          </div>
-          <CardTitle>Menyelesaikan Login Gmail</CardTitle>
-          <CardDescription>Memeriksa akun dan sekolah Anda...</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center pb-8">
-          <Spinner />
-        </CardContent>
-      </Card>
+    <main className="container mx-auto flex min-h-screen flex-col items-center justify-center px-4 py-12">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="text-center">
+          <h3 className="font-bold text-lg text-foreground">Menyelesaikan Login Gmail</h3>
+          <p className="text-sm text-muted-foreground mt-1">Mohon tunggu sebentar, memeriksa akun dan sekolah Anda...</p>
+        </div>
+      </div>
     </main>
   );
 }

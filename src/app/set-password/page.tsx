@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 import { toast } from "@/components/ui/toaster";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
@@ -34,16 +33,14 @@ export default function SetPasswordPage() {
 
 function SetPasswordSkeleton() {
   return (
-    <main className="container mx-auto flex min-h-screen items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Set Password</CardTitle>
-          <CardDescription>Memuat...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Spinner />
-        </CardContent>
-      </Card>
+    <main className="container mx-auto flex min-h-screen flex-col items-center justify-center px-4 py-12">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="text-center">
+          <h3 className="font-bold text-lg text-foreground">Memuat Halaman</h3>
+          <p className="text-sm text-muted-foreground mt-1">Mohon tunggu sebentar, sedang menyiapkan pengaturan kata sandi...</p>
+        </div>
+      </div>
     </main>
   );
 }

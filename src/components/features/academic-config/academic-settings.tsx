@@ -147,25 +147,27 @@ function AcademicSettingsContent({
 
 export function AcademicPageSkeleton() {
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-56" />
-      <div className="flex gap-2">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-9 w-28" />
-        ))}
-      </div>
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-4 w-64" />
-        </CardHeader>
-        <CardContent className="space-y-3">
+    <SidebarLayout>
+      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
+        <Skeleton className="h-9 w-56" />
+        <div className="flex gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
+            <Skeleton key={i} className="h-9 w-28" />
           ))}
-        </CardContent>
-      </Card>
-    </main>
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-64" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      </main>
+    </SidebarLayout>
   );
 }
 

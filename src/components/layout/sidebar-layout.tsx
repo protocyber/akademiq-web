@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck, ChevronDown, Settings, UserRound, DoorOpen, Sun, Moon, Monitor, Check } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck, ChevronDown, Settings, UserRound, DoorOpen, Sun, Moon, Monitor, Check, Palette } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
@@ -16,6 +16,8 @@ import { EmailVerifiedBadge } from "@/components/ui/email-verified-badge";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { useAcademicYears, useCurriculumVersions, useTerms } from "@/lib/query/queries/use-academic-config";
 import { Combobox } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -275,21 +277,24 @@ export function AcademicScopeSelectors({ isSidebar = false }: { isSidebar?: bool
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
-  schoolName: string;
-  userName: string;
-  userEmail: string | null;
-  isLoggingOut: boolean;
-  onLogout: () => void;
+  schoolName?: string;
+  userName?: string;
+  userEmail?: string | null;
+  isLoggingOut?: boolean;
+  onLogout?: () => void;
   className?: string;
 }
 
+// Persist the sidebar state across client-side page transitions to prevent flashing layout shifts.
+let globalDesktopSidebarOpen: boolean | null = null;
+
 export function SidebarLayout({
   children,
-  schoolName,
-  userName,
-  userEmail,
-  isLoggingOut,
-  onLogout,
+  schoolName = "",
+  userName = "",
+  userEmail = null,
+  isLoggingOut = false,
+  onLogout = () => { },
   className,
 }: SidebarLayoutProps) {
   const pathname = usePathname();
@@ -299,18 +304,49 @@ export function SidebarLayout({
   const avatarUrl = me.data?.avatar_url;
   const { theme, resolvedTheme, setTheme } = useTheme();
 
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = React.useState(() => {
+    if (typeof window !== "undefined" && globalDesktopSidebarOpen !== null) {
+      return globalDesktopSidebarOpen;
+    }
+    return true;
+  });
+
+  React.useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    const isCollapsed = saved === "true";
+    if (globalDesktopSidebarOpen === null) {
+      globalDesktopSidebarOpen = !isCollapsed;
+      setDesktopSidebarOpen(!isCollapsed);
+    }
+  }, []);
+
+  const handleToggleSidebar = () => {
+    setDesktopSidebarOpen((prev) => {
+      const next = !prev;
+      globalDesktopSidebarOpen = next;
+      localStorage.setItem("sidebar-collapsed", (!next).toString());
+      return next;
+    });
+  };
+
   React.useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-[#d0d7de] bg-[#f6f8fa] text-[#24292f] lg:flex dark:bg-[#0d1117] dark:border-[#30363d] dark:text-[#e6edf3]">
+      <aside className={cn(
+        "fixed left-0 top-0 z-40 hidden h-full w-64 flex-col border-r border-[#d0d7de] bg-[#f6f8fa] text-[#24292f] lg:flex dark:bg-[#0d1117] dark:border-[#30363d] dark:text-[#e6edf3]",
+        desktopSidebarOpen ? "lg:flex" : "lg:hidden"
+      )}>
         <SidebarContent pathname={pathname} />
       </aside>
 
       <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-        <div className="flex min-h-screen flex-col lg:pl-64">
+        <div className={cn(
+          "flex min-h-screen flex-col transition-all duration-200",
+          desktopSidebarOpen ? "lg:pl-64" : "lg:pl-0"
+        )}>
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-border/80 bg-card/95 px-4 backdrop-blur">
             <div className="flex min-w-0 items-center gap-3">
               <SheetTrigger asChild>
@@ -323,13 +359,26 @@ export function SidebarLayout({
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 hidden lg:flex text-muted-foreground hover:text-foreground"
+                onClick={handleToggleSidebar}
+                aria-label="Toggle navigasi"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
               <div className="flex min-w-0 items-center gap-2">
                 <span className="hidden text-sm font-semibold text-muted-foreground sm:inline">
                   Institusi:
                 </span>
-                <span className="truncate rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
-                  {schoolName}
-                </span>
+                {schoolName ? (
+                  <span className="truncate rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
+                    {schoolName}
+                  </span>
+                ) : (
+                  <Skeleton className="h-7 w-28 rounded-full" />
+                )}
               </div>
               {/* Desktop Academic Scope Selector */}
               <div className="hidden lg:flex lg:items-center lg:gap-3">
@@ -346,6 +395,7 @@ export function SidebarLayout({
                   <Button
                     variant="ghost"
                     className="relative h-8 w-8 rounded-full p-0 overflow-hidden focus-visible:ring-1 focus-visible:ring-ring"
+                    disabled={!userName}
                   >
                     {avatarUrl ? (
                       <img
@@ -353,77 +403,77 @@ export function SidebarLayout({
                         alt={userName}
                         className="h-8 w-8 rounded-full object-cover"
                       />
-                    ) : (
+                    ) : userName ? (
                       <div className="flex h-8 w-8 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-semibold text-primary">
                         {userName.charAt(0).toUpperCase()}
                       </div>
+                    ) : (
+                      <Skeleton className="h-8 w-8 rounded-full" />
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1.5">
-                      <p className="text-sm font-medium leading-none text-foreground">{userName}</p>
-                      {userEmail && (
-                        <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
-                      )}
-                      {me.data && (
-                        <div className="pt-0.5">
-                          <EmailVerifiedBadge verified={emailVerified ?? false} className="w-fit scale-90 origin-left" />
-                        </div>
-                      )}
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Profil Saya</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
-                      {resolvedTheme === "dark" ? (
-                        <Moon className="h-4 w-4" />
-                      ) : (
-                        <Sun className="h-4 w-4" />
-                      )}
-                      <span>Tema</span>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2 cursor-pointer">
-                        <Sun className="h-4 w-4" />
-                        <span className="flex-1">Terang</span>
-                        {resolvedTheme === "light" && <Check className="h-4 w-4" />}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2 cursor-pointer">
-                        <Moon className="h-4 w-4" />
-                        <span className="flex-1">Gelap</span>
-                        {resolvedTheme === "dark" && <Check className="h-4 w-4" />}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2 cursor-pointer">
-                        <Monitor className="h-4 w-4" />
-                        <span className="flex-1">Sistem</span>
-                        {theme === "system" && <Check className="h-4 w-4" />}
-                      </DropdownMenuItem>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={onLogout}
-                    disabled={isLoggingOut}
-                    className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Keluar Aplikasi</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
+                {userName && (
+                  <DropdownMenuContent align="end" className="w-56" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1.5">
+                        <p className="text-sm font-medium leading-none text-foreground">{userName}</p>
+                        {userEmail && (
+                          <p className="text-xs leading-none text-muted-foreground">{userEmail}</p>
+                        )}
+                        {me.data && (
+                          <div className="pt-0.5">
+                            <EmailVerifiedBadge verified={emailVerified ?? false} className="w-fit scale-90 origin-left" />
+                          </div>
+                        )}
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Profil Saya</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="gap-2 cursor-pointer">
+                        <Palette className="h-4 w-4" />
+                        <span>Tema</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuItem onClick={() => setTheme("light")} className="gap-2 cursor-pointer">
+                          <Sun className="h-4 w-4" />
+                          <span className="flex-1">Terang</span>
+                          {resolvedTheme === "light" && <Check className="h-4 w-4" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("dark")} className="gap-2 cursor-pointer">
+                          <Moon className="h-4 w-4" />
+                          <span className="flex-1">Gelap</span>
+                          {resolvedTheme === "dark" && <Check className="h-4 w-4" />}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("system")} className="gap-2 cursor-pointer">
+                          <Monitor className="h-4 w-4" />
+                          <span className="flex-1">Sistem</span>
+                          {theme === "system" && <Check className="h-4 w-4" />}
+                        </DropdownMenuItem>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={onLogout}
+                      disabled={isLoggingOut}
+                      className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Keluar Aplikasi</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                )}
               </DropdownMenu>
             </div>
           </header>
 
-          <main className={`w-full flex-1 p-4 ${className ?? ""}`}>
+          <main className={`w-full flex-1 p-2 md:p-4 ${className ?? ""}`}>
             {children}
           </main>
         </div>

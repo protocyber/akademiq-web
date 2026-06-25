@@ -214,9 +214,11 @@ function PublishedReportCardShell() {
 
 function PageSkeleton() {
   return (
-    <main className="container mx-auto w-full space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-56" />
-      <Skeleton className="h-64 w-full" />
-    </main>
+    <SidebarLayout>
+      <main className="container mx-auto w-full space-y-6 px-4 py-10">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-64 w-full" />
+      </main>
+    </SidebarLayout>
   );
 }

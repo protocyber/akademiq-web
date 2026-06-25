@@ -30,17 +30,19 @@ export default function ProfilePage() {
 
 function ProfileSkeleton() {
   return (
-    <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-40" />
-      <div className="grid gap-6">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-64 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
-    </main>
+    <SidebarLayout>
+      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
+        <Skeleton className="h-9 w-40" />
+        <div className="grid gap-6">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-64 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </main>
+    </SidebarLayout>
   );
 }
 

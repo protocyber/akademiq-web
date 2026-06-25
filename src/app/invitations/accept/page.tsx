@@ -7,7 +7,6 @@ import { GraduationCap, ArrowRight } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { PublicOnly } from "@/components/features/public-only";
 import { getErrorMessage } from "@/lib/errors/messages";
@@ -34,16 +33,14 @@ export default function AcceptInvitationPage() {
 
 function AcceptSkeleton() {
   return (
-    <main className="container mx-auto flex min-h-screen items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <Skeleton className="h-7 w-44" />
-          <Skeleton className="h-4 w-64" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Skeleton className="h-10 w-full" />
-        </CardContent>
-      </Card>
+    <main className="container mx-auto flex min-h-screen flex-col items-center justify-center px-4 py-12">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="text-center">
+          <h3 className="font-bold text-lg text-foreground">Memuat Undangan</h3>
+          <p className="text-sm text-muted-foreground mt-1">Mohon tunggu sebentar, menyiapkan undangan Anda...</p>
+        </div>
+      </div>
     </main>
   );
 }
