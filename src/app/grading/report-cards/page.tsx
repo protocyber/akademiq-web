@@ -29,7 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/components/ui/toaster";
@@ -152,11 +152,20 @@ function ReportCardsBoard() {
     [router],
   );
 
+  React.useEffect(() => {
+    if (reportTypes.data && reportTypes.data.length === 1 && !reportTypeId) {
+      onParamsChange({
+        report_type_id: reportTypes.data[0].report_type_id,
+        homeroom_id: homeroomId || undefined,
+      });
+    }
+  }, [reportTypes.data, reportTypeId, homeroomId, onParamsChange]);
+
   const bothSelected = Boolean(reportTypeId && homeroomId);
 
   return (
     <DataTableCard
-      title="Papan Rapor"
+      title="Kelola Rapor"
       description="Pilih jenis rapor dan kelas untuk mengelola rapor siswa."
       primaryActions={
         <GenerateDraftButton reportTypeId={reportTypeId} homeroomId={homeroomId} disabled={!bothSelected} />
@@ -164,36 +173,30 @@ function ReportCardsBoard() {
       toolbar={{
         filters: (
           <>
-            <Select
-              value={reportTypeId || undefined}
+            <Combobox
+              items={reportTypes.data ?? []}
+              isLoading={reportTypes.isLoading}
+              value={reportTypeId}
               onValueChange={(value) => onParamsChange({ ...params, report_type_id: value })}
-            >
-              <SelectTrigger className="w-full sm:w-56">
-                <SelectValue placeholder="Jenis Rapor" />
-              </SelectTrigger>
-              <SelectContent>
-                {(reportTypes.data ?? []).map((rt) => (
-                  <SelectItem key={rt.report_type_id} value={rt.report_type_id}>
-                    {rt.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={homeroomId || undefined}
+              getOptionValue={(rt) => rt.report_type_id}
+              getOptionLabel={(rt) => rt.name}
+              placeholder="Jenis Rapor"
+              emptyText="Tidak ada jenis rapor"
+              searchable
+              className="w-full sm:w-56 font-normal"
+            />
+            <Combobox
+              items={homerooms.data ?? []}
+              isLoading={homerooms.isLoading}
+              value={homeroomId}
               onValueChange={(value) => onParamsChange({ ...params, homeroom_id: value })}
-            >
-              <SelectTrigger className="w-full sm:w-56">
-                <SelectValue placeholder="Kelas" />
-              </SelectTrigger>
-              <SelectContent>
-                {(homerooms.data ?? []).map((room) => (
-                  <SelectItem key={room.homeroom_id} value={room.homeroom_id}>
-                    {room.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              getOptionValue={(room) => room.homeroom_id}
+              getOptionLabel={(room) => room.name}
+              placeholder="Kelas"
+              emptyText="Tidak ada kelas"
+              searchable
+              className="w-full sm:w-56 font-normal"
+            />
           </>
         ),
       }}
@@ -206,7 +209,7 @@ function ReportCardsBoard() {
         <Skeleton className="h-48 w-full" />
       ) : !bothSelected ? (
         <p className="p-6 text-center text-sm text-muted-foreground border-t">
-          Pilih jenis rapor dan kelas untuk memuat papan rapor.
+          Pilih jenis rapor dan kelas untuk memuat data rapor.
         </p>
       ) : (
         <ReportCardsTable key={`${reportTypeId}:${homeroomId}`} reportTypeId={reportTypeId} homeroomId={homeroomId} />

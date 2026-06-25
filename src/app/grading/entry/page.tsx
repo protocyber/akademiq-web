@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronUp, Pencil, Plus, Trash2, UserRound } from "lucide-react";
+import { ChevronDown, ChevronUp, Link2, Pencil, Plus, Trash2, UserRound } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AuthGuard } from "@/components/features/auth-guard";
@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Combobox } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { hasAccessPerm, hasAccessRole } from "@/lib/auth/access-claims";
 import { getErrorMessage } from "@/lib/errors/messages";
@@ -133,6 +134,21 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
   const assignedSubjects = (subjects.data ?? []).filter((s) => assignedSubjectIds.has(s.subject_id));
   const scopeReady = Boolean(yearId && homeroomId && subjectId);
 
+  React.useEffect(() => {
+    if (!homeroomId || !subjectId) return;
+    if (assignments.isLoading || !assignments.data) return;
+
+    const assignedIds = new Set(
+      assignments.data
+        .filter((a) => a.academic_year_id === yearId)
+        .map((a) => a.subject_id),
+    );
+
+    if (!assignedIds.has(subjectId)) {
+      onParamsChange({ homeroom_id: homeroomId });
+    }
+  }, [homeroomId, subjectId, assignments.data, assignments.isLoading, yearId, onParamsChange]);
+
   const teacherById = React.useMemo(
     () => new Map((teachers.data ?? []).map((t) => [t.teacher_id, t])),
     [teachers.data],
@@ -176,7 +192,11 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
   }, [reportScores.data]);
 
   function changeHomeroom(id: string) {
-    onParamsChange({ homeroom_id: id || undefined });
+    if (!id) {
+      onParamsChange({});
+    } else {
+      onParamsChange({ homeroom_id: id, subject_id: subjectId || undefined });
+    }
   }
 
   function changeSubject(id: string) {
@@ -201,7 +221,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle>Entri Nilai</CardTitle>
-            <CardDescription className="mt-1">Pilih kelas dan mapel, lalu isi nilai per evaluasi. Setiap sel menyimpan otomatis saat pindah fokus.</CardDescription>
+            <CardDescription className="mt-1">Pilih kelas dan mapel, lalu isi nilai per evaluasi. Tekan enter/tab, nilai otomatis tersimpan.</CardDescription>
           </div>
           {canManageEvaluations && (
             <Button size="sm" onClick={() => setKelolOpen(true)}>
@@ -223,6 +243,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
               getOptionLabel={(r) => r.name}
               placeholder="Pilih kelas"
               emptyText="Belum ada kelas"
+              searchable
             />
             {homeroomId && (
               <div className="mt-1 space-y-1">
@@ -248,6 +269,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
               getOptionLabel={(s) => s.name}
               placeholder="Pilih mapel"
               emptyText="Penugasan belum tersinkron"
+              searchable
             />
             {subjectId && (
               <div className="mt-1 space-y-1">
@@ -332,13 +354,31 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
 
 function TeacherBadge({ teacher, label }: { teacher: Teacher; label: string; }) {
   const accountLabel = teacher.linked_user?.email ?? teacher.linked_user?.username ?? null;
-  const accountText = accountLabel ?? (teacher.user_id ? "akun terhubung" : "akun belum terhubung");
+  const isConnected = Boolean(teacher.user_id || teacher.linked_user);
+
+  if (isConnected) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="secondary" className="gap-1.5 cursor-help hover:bg-secondary/80 transition-colors">
+            {label}: <UserRound className="h-3 w-3 text-muted-foreground" />
+            <span className="font-medium">{teacher.full_name}</span>
+            <Link2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p className="text-xs">Akun terhubung: {accountLabel ?? "Ya"}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
   return (
-    <Badge variant="secondary" className="gap-1.5">
-      {label}: <UserRound className="h-3 w-3" />
-      {teacher.full_name}
-      <span className="text-secondary-foreground/70 font-normal">
-        {accountLabel ? `· ${accountText}` : `(${accountText})`}
+    <Badge variant="secondary" className="gap-1.5 opacity-80">
+      {label}: <UserRound className="h-3 w-3 text-muted-foreground" />
+      <span className="font-medium">{teacher.full_name}</span>
+      <span className="text-secondary-foreground/60 font-normal">
+        (akun belum terhubung)
       </span>
     </Badge>
   );

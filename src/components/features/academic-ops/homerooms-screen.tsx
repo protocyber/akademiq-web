@@ -603,10 +603,11 @@ function RosterDialog({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredEnrollments.map((enrollment) => (
+                  filteredEnrollments.map((enrollment, index) => (
                     <TableRow
                       key={enrollment.enrollment_id}
                       data-state={unenrollSelection.has(enrollment.enrollment_id) ? "selected" : undefined}
+                      className={index % 2 === 0 ? "bg-muted/40 dark:bg-muted/10" : "bg-background"}
                     >
                       <TableCell>
                         <Checkbox

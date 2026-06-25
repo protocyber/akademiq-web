@@ -78,6 +78,16 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
     [homerooms.data, params.academic_year_id],
   );
 
+  const subjectFilterOptions = React.useMemo(() => {
+    const list = (subjects.data ?? []).map((s) => ({ value: s.subject_id, label: s.name }));
+    return [{ value: "all", label: "Semua mapel" }, ...list];
+  }, [subjects.data]);
+
+  const homeroomFilterOptions = React.useMemo(() => {
+    const list = filteredHomerooms.map((h) => ({ value: h.homeroom_id, label: h.name }));
+    return [{ value: "all", label: "Semua kelas" }, ...list];
+  }, [filteredHomerooms]);
+
   const [createOpen, setCreateOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
@@ -128,6 +138,8 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
           </Button>
         }
         toolbar={{
+          leftClassName: "lg:max-w-[50%]",
+          rightClassName: "lg:flex-1 w-full lg:justify-end",
           selectAll: {
             checked: selectWithinPage.checked,
             disabled: selectWithinPage.disabled,
@@ -162,47 +174,35 @@ export function TeachingAssignmentsScreen({ canManage, upgradeMessage }: OpsCont
               onChange={(val) => onParamsChange({ ...params, search: val || undefined, page: 1 })}
               debounce={400}
               placeholder="Cari nama guru"
-              className="min-w-[160px] sm:flex-1 lg:flex-1"
+              className="w-full sm:flex-1 lg:flex-1"
             />
           ),
           filters: (
-            <div className="flex flex-wrap gap-2">
-              <Select
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full">
+              <Combobox
+                items={subjectFilterOptions}
+                isLoading={subjects.isLoading}
                 value={params.subject_id ?? "all"}
                 onValueChange={(value) =>
                   onParamsChange({ ...params, subject_id: value === "all" ? undefined : value, page: 1 })
                 }
-              >
-                <SelectTrigger className="w-full sm:w-[10rem]">
-                  <SelectValue placeholder="Mata pelajaran" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua mapel</SelectItem>
-                  {(subjects.data ?? []).map((subject) => (
-                    <SelectItem key={subject.subject_id} value={subject.subject_id}>
-                      {subject.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
+                placeholder="Mata pelajaran"
+                emptyText="Tidak ada mapel"
+                searchable
+                className="w-full font-normal"
+              />
+              <Combobox
+                items={homeroomFilterOptions}
+                isLoading={homerooms.isLoading}
                 value={params.homeroom_id ?? "all"}
                 onValueChange={(value) =>
                   onParamsChange({ ...params, homeroom_id: value === "all" ? undefined : value, page: 1 })
                 }
-              >
-                <SelectTrigger className="w-full sm:w-[10rem]">
-                  <SelectValue placeholder="Kelas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua kelas</SelectItem>
-                  {filteredHomerooms.map((homeroom) => (
-                    <SelectItem key={homeroom.homeroom_id} value={homeroom.homeroom_id}>
-                      {homeroom.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Kelas"
+                emptyText="Tidak ada kelas"
+                searchable
+                className="w-full font-normal"
+              />
             </div>
           ),
         }}

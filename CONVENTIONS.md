@@ -191,3 +191,23 @@ Open the openspec change file (`openspec/changes/<name>/`) and update
 the relevant capability spec before changing this document or the code.
 The spec is the contract; conventions are how we keep the code free of
 contradictions while we honour it.
+
+## 12. Overlay primitives — keep one copy of `@radix-ui/react-dialog`
+
+- `Dialog`, `Sheet`, `AlertDialog` (and therefore `ConfirmDialog`), plus
+  `cmdk` all build on `@radix-ui/react-dialog`. Each installed copy of that
+  package runs its own focus-scope, `aria-hidden`, and body-scroll-lock
+  singletons.
+- When **two copies** are present in the tree (e.g. the `Dialog` primitive on
+  one version and `AlertDialog`/`cmdk` on another), opening one overlay on top
+  of another deadlocks: the outer overlay hides a subtree that still holds
+  focus → the browser blocks it (`Blocked aria-hidden … descendant retained
+  focus`) and the page freezes.
+- `pnpm-workspace.yaml` pins `overrides."@radix-ui/react-dialog"` so the whole
+  graph resolves to a single version. Do not remove it.
+- Before bumping any `@radix-ui/react-*` or `cmdk` version, run
+  `pnpm why @radix-ui/react-dialog` and confirm it still reports exactly one
+  version. Adjust the override if a transitive consumer needs a newer release.
+- Nesting overlays (e.g. a `ConfirmDialog` opened from within a `Dialog`) is
+  supported once the copies are unified. The regression guard lives at
+  `src/components/ui/nested-dialog.test.tsx`.

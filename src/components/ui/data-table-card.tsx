@@ -45,6 +45,8 @@ export function DataTablePagination({
 
 export type DataTableToolbarProps = {
   className?: string;
+  leftClassName?: string;
+  rightClassName?: string;
   selectAll?: {
     checked: boolean | "indeterminate";
     disabled: boolean;
@@ -57,6 +59,8 @@ export type DataTableToolbarProps = {
 
 export function DataTableToolbar({
   className,
+  leftClassName,
+  rightClassName,
   selectAll,
   bulkActions,
   search,
@@ -68,7 +72,7 @@ export function DataTableToolbar({
   return (
     <div className={cn("flex flex-col gap-2 lg:flex-row lg:items-center px-4", className)}>
       {hasLeft ? (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:flex-1">
+        <div className={cn("flex flex-col gap-2 sm:flex-row sm:items-center lg:flex-1", leftClassName)}>
           {selectAll ? (
             <Checkbox
               checked={selectAll.checked}
@@ -83,7 +87,7 @@ export function DataTableToolbar({
         </div>
       ) : null}
       {hasRight ? (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className={cn("flex flex-col gap-2 sm:flex-row sm:items-center", rightClassName)}>
           {filters}
         </div>
       ) : null}
