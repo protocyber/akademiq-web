@@ -32,7 +32,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
   return (
     <div className="grid gap-4 lg:grid-cols-5">
       {/* Bar Chart: Siswa per Kelas */}
-      <Card className="lg:col-span-3 border border-border shadow-sm">
+      <Card className="lg:col-span-3 border border-border shadow-sm min-w-0">
         <CardHeader>
           <CardTitle className="text-lg">Siswa per Kelas</CardTitle>
         </CardHeader>
@@ -53,7 +53,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
                   color: "hsl(var(--chart-2))",
                 },
               }}
-              className="h-[300px] w-full"
+              className="aspect-auto h-[300px] w-full"
             >
               <BarChart data={gradeChartData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -85,7 +85,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
       </Card>
 
       {/* Donut Chart: Distribusi Gender */}
-      <Card className="lg:col-span-2 border border-border shadow-sm">
+      <Card className="lg:col-span-2 border border-border shadow-sm min-w-0">
         <CardHeader>
           <CardTitle className="text-lg">Distribusi Gender</CardTitle>
         </CardHeader>
@@ -107,7 +107,7 @@ export function DashboardCharts({ stats }: DashboardChartsProps) {
                     color: "#ec4899",
                   },
                 }}
-                className="h-[250px] w-full"
+                className="aspect-auto h-[250px] w-full"
               >
                 <PieChart>
                   <ChartTooltip
