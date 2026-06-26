@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
@@ -100,7 +101,12 @@ export function ReportCardDetailBody({
                     <div key={`${row.score.report_card_id}-${row.score.subject_id}`} className="flex items-center justify-between rounded-lg border p-3 text-sm">
                       <div>
                         <p className="font-medium">{row.name}</p>
-                        <p className="text-xs text-muted-foreground">Nilai akhir {row.score.final_score.toFixed(1)}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          Nilai akhir {row.score.final_score.toFixed(1)}
+                          {row.score.final_score === 0 ? (
+                            <Badge variant="destructive">periksa input</Badge>
+                          ) : null}
+                        </div>
                       </div>
                       <span className={row.passed ? "text-emerald-600" : "text-destructive"}>
                         {row.passed ? "Lulus" : "Remedial"}

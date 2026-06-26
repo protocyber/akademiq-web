@@ -107,7 +107,7 @@ const TabsList = React.forwardRef<
       className={cn(
         "inline-flex h-12 items-center justify-center text-foreground transition-all duration-200 gap-1",
         variant === "underline"
-          ? "w-full h-10 justify-start rounded-none border-b border-border bg-transparent p-0 mt-2 gap-6"
+          ? "w-full h-10 justify-start items-end rounded-none border-b border-border bg-transparent p-0 mt-2 gap-6"
           : "rounded-md bg-muted border border-border p-1",
         scrollable && "min-w-max justify-start",
         className,
@@ -143,7 +143,7 @@ const TabsList = React.forwardRef<
         </button>
       )}
       {/* TODO: tambahkan `scrollbar-thin` atau `scrollbar-none` setelah upgrade ke Tailwind v4.3+ */}
-      <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden">
+      <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden pb-px">
         {list}
       </div>
     </div>
@@ -164,7 +164,7 @@ const TabsTrigger = React.forwardRef<
         // Base badge style for nested spans
         "[&_span]:ml-1.5 [&_span]:rounded-full [&_span]:min-w-6 [&_span]:py-0.5 [&_span]:text-[10px] [&_span]:font-semibold [&_span]:transition-colors",
         variant === "underline"
-          ? "rounded-none border-b-2 border-transparent px-1 pb-3 pt-2 text-muted-foreground hover:text-foreground data-[state=active]:border-[#fd8c73] dark:data-[state=active]:border-[#f78166] data-[state=active]:text-foreground font-medium data-[state=active]:font-semibold [&_span]:bg-muted [&_span]:text-muted-foreground [&[data-state=active]_span]:bg-muted-foreground/20 [&[data-state=active]_span]:text-foreground"
+          ? "rounded-none border-b-2 border-transparent h-full -mb-px px-1 text-muted-foreground hover:text-foreground data-[state=active]:border-[#fd8c73] dark:data-[state=active]:border-[#f78166] data-[state=active]:text-foreground font-medium data-[state=active]:font-semibold [&_span]:bg-muted [&_span]:text-muted-foreground [&[data-state=active]_span]:bg-muted-foreground/20 [&[data-state=active]_span]:text-foreground"
           : variant === "tinted"
             ? "rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 data-[state=active]:bg-muted data-[state=active]:text-foreground [&_span]:bg-background [&_span]:text-muted-foreground [&[data-state=active]_span]:bg-muted-foreground/20 [&[data-state=active]_span]:text-foreground"
             : "rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground hover:bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm data-[state=active]:shadow-primary/10 dark:data-[state=active]:shadow-none [&_span]:bg-background [&_span]:text-muted-foreground [&[data-state=active]_span]:bg-primary-foreground/30 [&[data-state=active]_span]:text-primary-foreground",

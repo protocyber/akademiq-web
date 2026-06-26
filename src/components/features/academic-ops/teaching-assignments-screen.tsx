@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import type { ColumnDef, RowSelectionState } from "@tanstack/react-table";
-import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import type { ColumnDef, ExpandedState, Row, RowSelectionState } from "@tanstack/react-table";
+import { ChevronDown, ChevronRight, ExternalLink, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,9 +32,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { SearchInput } from "@/components/ui/search-input";
-import { Combobox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/select";
 import { toast } from "@/components/ui/toaster";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
+import { ReadOnlyEvaluationMatrix } from "@/components/features/grading/weight-matrix-grid";
 import { getErrorMessage } from "@/lib/errors/messages";
 import {
   useBulkAssignTeaching,
@@ -270,12 +272,45 @@ function AssignmentTable({
   const homerooms = useHomerooms();
   const subjectYearId = params.academic_year_id ?? assignments[0]?.academic_year_id;
   const subjects = useSubjectsForYear(subjectYearId);
+  const { yearId, termId } = useAcademicScope();
+  const [expanded, setExpanded] = React.useState<ExpandedState>({});
+
+  const renderSubComponent = React.useCallback(
+    (row: Row<TeachingAssignment>) => (
+      <AssignmentEvaluationPanel
+        homeroomId={row.original.homeroom_id}
+        subjectId={row.original.subject_id}
+        yearId={yearId ?? undefined}
+        termId={termId ?? undefined}
+      />
+    ),
+    [yearId, termId],
+  );
 
   const teacherName = useNameMap(teachers.data ?? [], (t) => t.teacher_id, (t) => t.full_name);
   const homeroomName = useNameMap(homerooms.data ?? [], (h) => h.homeroom_id, (h) => h.name);
   const subjectName = useNameMap(subjects.data ?? [], (s) => s.subject_id, (s) => s.name);
 
   const columns: ColumnDef<TeachingAssignment>[] = [
+    {
+      id: "expand",
+      size: 40,
+      header: () => null,
+      cell: ({ row }) =>
+        row.getCanExpand() ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={row.getToggleExpandedHandler()}
+            aria-label={row.getIsExpanded() ? "Lipat baris" : "Bentangkan baris"}
+            aria-expanded={row.getIsExpanded()}
+            className="h-6 w-6 p-0 text-muted-foreground"
+          >
+            {row.getIsExpanded() ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+        ) : null,
+    },
     {
       id: "select",
       size: 40,
@@ -335,9 +370,46 @@ function AssignmentTable({
       data={assignments}
       getRowId={(row) => row.assignment_id}
       rowSelection={rowSelection}
+      expanded={expanded}
+      onExpandedChange={setExpanded}
+      getRowCanExpand={() => true}
+      renderSubComponent={renderSubComponent}
       emptyText="Tidak ada penugasan yang cocok."
       classNames={{ wrapper: "rounded-none !border-x-0" }}
     />
+  );
+}
+
+function AssignmentEvaluationPanel({
+  homeroomId,
+  subjectId,
+  yearId,
+  termId,
+}: {
+  homeroomId: string;
+  subjectId: string;
+  yearId?: string;
+  termId?: string;
+}) {
+  const href = `/grading/entry?homeroom_id=${encodeURIComponent(homeroomId)}&subject_id=${encodeURIComponent(subjectId)}`;
+  return (
+    <div className="space-y-3 px-3 py-3">
+      <div className="flex justify-end">
+        <Button asChild variant="link" size="sm" className="h-auto gap-1.5 p-0">
+          <Link href={href}>
+            <ExternalLink className="h-3.5 w-3.5" />
+            Atur di Entri Nilai
+          </Link>
+        </Button>
+      </div>
+      {yearId ? (
+        <ReadOnlyEvaluationMatrix homeroomId={homeroomId} subjectId={subjectId} yearId={yearId} termId={termId} />
+      ) : (
+        <p className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+          Pilih tahun ajaran di header untuk melihat matriks evaluasi.
+        </p>
+      )}
+    </div>
   );
 }
 

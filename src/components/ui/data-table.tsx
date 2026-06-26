@@ -3,11 +3,14 @@
 import * as React from "react";
 import {
   type ColumnDef,
+  type ExpandedState,
   type OnChangeFn,
+  type Row,
   type RowSelectionState,
   type SortingState,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 
@@ -20,6 +23,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+
+declare module "@tanstack/react-table" {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData, TValue> {
+    headerClassName?: string;
+    cellClassName?: string;
+  }
+}
 
 type DataTableClassNames = {
   wrapper?: string;
@@ -43,6 +54,13 @@ type DataTableProps<TData, TValue> = {
   /** Selection state keyed by row id. */
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  /** Expandable rows: controlled expansion state keyed by row id. */
+  expanded?: ExpandedState;
+  onExpandedChange?: OnChangeFn<ExpandedState>;
+  /** Predicate marking which rows can expand (defaults to none). */
+  getRowCanExpand?: (row: Row<TData>) => boolean;
+  /** Content rendered below an expanded row. When omitted, no expansion UI runs. */
+  renderSubComponent?: (row: Row<TData>) => React.ReactNode;
   emptyText?: string;
   /**
    * Additional classes appended after `classOverrides` (or the default) via `cn()`.
@@ -70,6 +88,10 @@ export function DataTable<TData, TValue>({
   onSortingChange,
   rowSelection,
   onRowSelectionChange,
+  expanded,
+  onExpandedChange,
+  getRowCanExpand,
+  renderSubComponent,
   emptyText = "Tidak ada data.",
   classNames,
   classOverrides,
@@ -78,16 +100,20 @@ export function DataTable<TData, TValue>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: renderSubComponent ? getExpandedRowModel() : undefined,
     manualPagination: true,
     manualSorting: true,
     enableRowSelection: true,
     getRowId,
+    getRowCanExpand,
     state: {
       sorting: sorting ?? [],
       rowSelection: rowSelection ?? {},
+      ...(renderSubComponent ? { expanded: expanded ?? {} } : {}),
     },
     onSortingChange,
     onRowSelectionChange,
+    ...(renderSubComponent ? { onExpandedChange } : {}),
   });
 
   return (
@@ -97,7 +123,7 @@ export function DataTable<TData, TValue>({
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id} className={cn(classOverrides?.headerRow, classNames?.headerRow)}>
               {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} className={cn(classOverrides?.headerCell, classNames?.headerCell)} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>
+                <TableHead key={header.id} className={cn(classOverrides?.headerCell, classNames?.headerCell, header.column.columnDef.meta?.headerClassName)} style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}>
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -114,24 +140,32 @@ export function DataTable<TData, TValue>({
             table.getRowModel().rows.map((row, i) => {
               const isSelected = row.getIsSelected();
               return (
-                <TableRow
-                  key={row.id}
-                  data-state={isSelected && "selected"}
-                  className={cn(
-                    classOverrides?.row,
-                    classNames?.row,
-                    (i % 2 == 0 && !isSelected) ? "bg-muted/60 dark:bg-background/35" : ""
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={cn(classOverrides?.cell, classNames?.cell)}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                <React.Fragment key={row.id}>
+                  <TableRow
+                    data-state={isSelected && "selected"}
+                    className={cn(
+                      classOverrides?.row,
+                      classNames?.row,
+                      (i % 2 == 0 && !isSelected) ? "bg-muted/60 dark:bg-background/35" : ""
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id} className={cn(classOverrides?.cell, classNames?.cell)}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {renderSubComponent && row.getIsExpanded() ? (
+                    <TableRow>
+                      <TableCell colSpan={row.getVisibleCells().length} className="bg-background p-0">
+                        {renderSubComponent(row)}
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </React.Fragment>
               );
             })
           ) : (

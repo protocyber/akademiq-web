@@ -42,6 +42,7 @@ import { useUpsertReportFormula } from "@/lib/query/mutations/use-grading";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 
+import { WeightMatrixGrid } from "@/components/features/grading/weight-matrix-grid";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { gradeCellSchema } from "@/lib/schemas/grading";
 import {
@@ -1083,14 +1084,18 @@ export function WeightMatrix({
     );
   }
 
-  function columnTotal(reportTypeId: string): number {
-    return Object.entries(weights[reportTypeId] ?? {}).reduce(
-      (sum, [, value]) => sum + (Number.isFinite(value) ? value : 0),
-      0,
-    );
+  function handleWeightChange(reportTypeId: string, evaluationId: string, raw: string) {
+    setWeights((prev) => {
+      const col = { ...(prev[reportTypeId] ?? {}) };
+      if (raw === "") {
+        delete col[evaluationId];
+      } else {
+        const parsed = Number(raw);
+        if (Number.isFinite(parsed)) col[evaluationId] = parsed;
+      }
+      return { ...prev, [reportTypeId]: col };
+    });
   }
-
-  const driftedTypes = types.filter((type) => Math.abs(columnTotal(type.report_type_id) - 100) >= 1e-9);
 
   return (
     <div className="space-y-2 border-t pt-4">
@@ -1100,70 +1105,13 @@ export function WeightMatrix({
           Atur kontribusi tiap evaluasi ke tiap jenis rapor. Kolom harus berjumlah tepat 100% sebelum disimpan.
         </p>
       </div>
-      {driftedTypes.length > 0 ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-          Bobot {driftedTypes.map((type) => type.code).join(", ")} belum berjumlah 100%. Nilai tetap bisa diisi, tetapi skor rapor dapat kosong sampai bobot diperbaiki.
-        </div>
-      ) : null}
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-muted/40">
-              <th className="px-3 py-2 text-left text-xs font-semibold uppercase text-muted-foreground">Evaluasi</th>
-              {types.map((rt) => (
-                <th key={rt.report_type_id} className="px-3 py-2 text-center text-xs font-semibold uppercase text-muted-foreground">
-                  {rt.code}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {evaluations.map((ev, index) => (
-              <tr key={ev.evaluation_id} className={cn("border-t", index % 2 === 0 ? "bg-muted/60 dark:bg-background/35" : "bg-background")}>
-                <td className="px-3 py-2 font-medium">{ev.code}</td>
-                {types.map((rt) => (
-                  <td key={rt.report_type_id} className="px-2 py-2 text-center">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={weights[rt.report_type_id]?.[ev.evaluation_id] ?? ""}
-                      onChange={(e) =>
-                        setWeights((prev) => {
-                          const col = { ...(prev[rt.report_type_id] ?? {}) };
-                          const raw = e.target.value;
-                          if (raw === "") {
-                            delete col[ev.evaluation_id];
-                          } else {
-                            const parsed = Number(raw);
-                            if (Number.isFinite(parsed)) col[ev.evaluation_id] = parsed;
-                          }
-                          return { ...prev, [rt.report_type_id]: col };
-                        })
-                      }
-                      className="h-8 w-20 text-center text-sm"
-                    />
-                  </td>
-                ))}
-              </tr>
-            ))}
-            <tr className="border-t bg-muted/30">
-              <td className="px-3 py-2 text-xs font-semibold uppercase text-muted-foreground">Total</td>
-              {types.map((rt) => {
-                const total = columnTotal(rt.report_type_id);
-                const valid = Math.abs(total - 100) < 1e-9;
-                return (
-                  <td key={rt.report_type_id} className="px-3 py-2 text-center">
-                    <span className={valid ? "text-xs font-semibold text-emerald-600" : "text-xs font-semibold text-destructive"}>
-                      {total}%
-                    </span>
-                  </td>
-                );
-              })}
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <WeightMatrixGrid
+        evaluations={evaluations}
+        reportTypes={types}
+        weights={weights}
+        readOnly={false}
+        onWeightChange={handleWeightChange}
+      />
       <div className="flex flex-wrap gap-2">
         {types.map((rt) => (
           <WeightColumnSave key={rt.report_type_id} reportTypeId={rt.report_type_id} reportTypeCode={rt.code} homeroomId={homeroomId} subjectId={subjectId} weights={weights[rt.report_type_id] ?? {}} evaluations={evaluations} />
