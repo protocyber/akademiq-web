@@ -49,7 +49,7 @@ export function AcademicOpsPage({
             </TabsList>
           </Tabs>
         </div>
-        <DataTableCard title={title} description={description}>
+        <DataTableCard title={title} description={description} className="pt-2">
           <div className="px-4 pb-4"><TableSkeleton /></div>
         </DataTableCard>
       </SidebarLayout>

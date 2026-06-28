@@ -104,6 +104,7 @@ export type DataTableCardProps = {
   toolbar?: DataTableToolbarProps;
   children: React.ReactNode;
   pagination?: DataTablePaginationProps;
+  className?: string;
 };
 
 export function DataTableCard({
@@ -113,9 +114,10 @@ export function DataTableCard({
   toolbar,
   children,
   pagination,
+  className,
 }: DataTableCardProps) {
   return (
-    <Card className="border border-border shadow-sm">
+    <Card className={cn("border border-border shadow-sm", className)}>
       <CardHeader className="border-b pb-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>

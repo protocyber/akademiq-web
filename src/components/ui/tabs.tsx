@@ -143,7 +143,7 @@ const TabsList = React.forwardRef<
         </button>
       )}
       {/* TODO: tambahkan `scrollbar-thin` atau `scrollbar-none` setelah upgrade ke Tailwind v4.3+ */}
-      <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden pb-px">
+      <div ref={containerRef} className="w-full overflow-x-auto overflow-y-hidden">
         {list}
       </div>
     </div>
