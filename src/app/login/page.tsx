@@ -218,7 +218,7 @@ function LoginForm() {
       </section>
 
       {/* Right side: Login form */}
-      <section className="w-full md:w-1/2 lg:w-2/5 flex flex-col justify-center items-center p-8">
+      <section className="w-full md:w-1/2 lg:w-2/5 flex flex-col justify-center items-center px-4 md:px-8 py-8">
         <div className="w-full max-w-md space-y-6">
           <div className="space-y-2 text-center md:text-left">
             <div className="flex items-center justify-center gap-2.5 mb-2">

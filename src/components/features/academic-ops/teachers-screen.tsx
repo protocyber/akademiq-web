@@ -689,7 +689,7 @@ function TeacherDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-2xl">
         <DialogHeader>
           <DialogTitle>{teacher ? "Edit guru" : "Tambah guru"}</DialogTitle>
           <DialogDescription>NIP unik per sekolah.</DialogDescription>

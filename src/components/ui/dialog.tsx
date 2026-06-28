@@ -40,7 +40,7 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-6">
+      <div className="flex flex-col min-h-0 flex-1 gap-4 overflow-y-auto p-6 [&>form]:-mb-[26px]">
         {children}
       </div>
       <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
@@ -58,7 +58,7 @@ const DialogHeader = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "sticky top-0 -mx-6 mb-1 flex flex-col space-y-1.5 bg-card px-6 pb-4 pt-0 text-center sm:text-left",
+      "sticky top-[-24px] z-10 -mx-6 mb-1 -mt-6 flex flex-col space-y-1.5 bg-card px-6 pb-4 pt-6 text-center sm:text-left",
       className,
     )}
     {...props}
@@ -80,7 +80,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "sticky bottom-0 -mx-6 mt-1 flex flex-col-reverse gap-2 bg-card px-6 pb-0 pt-4 sm:flex-row sm:justify-end sm:space-x-2",
+      "sticky bottom-[-24px] z-10 -mx-6 mt-1 -mb-6 flex flex-col-reverse gap-2 bg-card px-6 pb-6 pt-4 sm:flex-row sm:justify-end sm:space-x-2",
       className,
     )}
     {...props}

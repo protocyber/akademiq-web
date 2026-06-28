@@ -14,7 +14,7 @@ export const studentSchema = z.object({
   birth_date: z.string().min(1, "Tanggal lahir wajib diisi"),
   nisn: optionalString,
   nik: optionalString,
-  birth_place: optionalString,
+  birth_place: z.string().min(1, "Tempat lahir wajib diisi"),
   address_line: optionalString,
   phone_number: optionalString,
   religion: optionalString,

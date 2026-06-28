@@ -603,24 +603,26 @@ function StudentDialog({
   const form = useForm<StudentForm>({ resolver: zodResolver(studentSchema), defaultValues });
 
   React.useEffect(() => {
-    form.reset(defaultValues);
-  }, [defaultValues, form]);
+    if (isOpen) {
+      form.reset(defaultValues);
+    }
+  }, [defaultValues, form, isOpen]);
 
   const loading = create.isPending || update.isPending || uploadPhoto.isPending;
 
   async function onSubmit(values: StudentForm) {
+    const payload = values.entry_date === "" ? { ...values, entry_date: undefined } : values;
     try {
       if (student) {
-        await update.mutateAsync(values);
+        await update.mutateAsync(payload);
         toast.success("Siswa diperbarui.");
       } else {
-        const created = await create.mutateAsync(values);
+        const created = await create.mutateAsync(payload);
         if (pendingPhoto) {
           await uploadPhoto.mutateAsync({ ownerType: "student", ownerId: created.student_id, file: pendingPhoto });
           setPendingPhoto(null);
         }
         toast.success("Siswa ditambahkan.");
-        form.reset({ nis: "", full_name: "", gender: "female", birth_date: "" });
       }
       setOpen(false);
     } catch (err) {
@@ -634,7 +636,7 @@ function StudentDialog({
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-2xl">
         <DialogHeader>
           <DialogTitle>{student ? "Edit siswa" : "Tambah siswa"}</DialogTitle>
           <DialogDescription>NIS unik per sekolah. Gender harus salah satu dari opsi.</DialogDescription>
@@ -698,21 +700,13 @@ function StudentDialog({
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="gender"
+                name="birth_place"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabelRequired>Gender</FormLabelRequired>
-                    <Select value={field.value ?? ""} onValueChange={(value) => field.onChange(value as "male" | "female")}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Pilih gender" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="male">Laki-laki</SelectItem>
-                        <SelectItem value="female">Perempuan</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <FormLabelRequired>Tempat lahir</FormLabelRequired>
+                    <FormControl>
+                      <Input {...field} placeholder="Jakarta" />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -734,13 +728,21 @@ function StudentDialog({
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="birth_place"
+                name="gender"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tempat lahir</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Jakarta" />
-                    </FormControl>
+                    <FormLabelRequired>Jenis kelamin</FormLabelRequired>
+                    <Select value={field.value ?? ""} onValueChange={(value) => field.onChange(value as "male" | "female")}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Pilih gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="male">Laki-laki</SelectItem>
+                        <SelectItem value="female">Perempuan</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -836,7 +838,7 @@ function StudentDialog({
                   <FormItem>
                     <FormLabel>Tanggal masuk</FormLabel>
                     <FormControl>
-                      <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="2023-07-01" />
+                      <DatePicker value={field.value ?? ""} onChange={field.onChange} placeholder="Pilih tanggal" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
