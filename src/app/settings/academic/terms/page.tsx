@@ -73,21 +73,11 @@ function AcademicTermsContent({ canManage, upgradeMessage }: { canManage: boolea
   const searchParams = useSearchParams();
   const { yearId } = useAcademicScope();
   const params = React.useMemo(() => parseAcademicTermsParams(searchParams), [searchParams]);
-  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const terms = useTermsTable(yearId ?? "", params);
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<AcademicTerm | null>(null);
   const [editInitialTab, setEditInitialTab] = React.useState<"info" | "rapor">("info");
-
-  React.useEffect(() => {
-    const handle = window.setTimeout(() => {
-      if ((params.search ?? "") !== searchDraft) {
-        replaceParams(router, { ...params, search: searchDraft || undefined, page: 1 });
-      }
-    }, 350);
-    return () => window.clearTimeout(handle);
-  }, [params, router, searchDraft]);
 
   function openEdit(term: AcademicTerm, tab: "info" | "rapor" = "info") {
     setEditing(term);
@@ -128,8 +118,9 @@ function AcademicTermsContent({ canManage, upgradeMessage }: { canManage: boolea
             toolbar={{
               search: (
                 <SearchInput
-                  value={searchDraft}
-                  onChange={setSearchDraft}
+                  value={params.search ?? ""}
+                  onChange={(val) => replaceParams(router, { ...params, search: val || undefined, page: 1 })}
+                  debounce={350}
                   placeholder="Cari nama semester"
                   className="min-w-[160px] sm:flex-1 lg:flex-1"
                 />

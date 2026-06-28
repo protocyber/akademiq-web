@@ -92,7 +92,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
   const { yearId, curriculumId, termId } = useAcademicScope();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const params = parseGradingEntryParams(searchParams);
+  const params = React.useMemo(() => parseGradingEntryParams(searchParams), [searchParams]);
   const homeroomId = params.homeroom_id ?? "";
   const subjectId = params.subject_id ?? "";
   const homerooms = useHomerooms();
@@ -114,7 +114,6 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
     if (!previous || !yearId || previous === yearId) return;
     if (homeroomId || subjectId) onParamsChange({});
   }, [yearId, homeroomId, subjectId, onParamsChange]);
-
   const subjects = useSubjects(curriculumId ?? undefined);
   const assignments = useTeachingAssignments(homeroomId);
   const teachers = useTeachers();

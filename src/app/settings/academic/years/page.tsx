@@ -118,7 +118,6 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseAcademicYearsParams(searchParams), [searchParams]);
-  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const [rowSelection, setRowSelection] = React.useState<AcademicYearsRowSelection>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [targetId, setTargetId] = React.useState<string | null>(null);
@@ -127,15 +126,6 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
 
   const [createOpen, setCreateOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<AcademicYear | null>(null);
-
-  React.useEffect(() => {
-    const handle = window.setTimeout(() => {
-      if ((params.search ?? "") !== searchDraft) {
-        replaceParams(router, { ...params, search: searchDraft || undefined, page: 1 });
-      }
-    }, 350);
-    return () => window.clearTimeout(handle);
-  }, [params, router, searchDraft]);
 
   React.useEffect(() => {
     setRowSelection({});
@@ -188,8 +178,9 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
           ) : undefined,
           search: (
             <SearchInput
-              value={searchDraft}
-              onChange={setSearchDraft}
+              value={params.search ?? ""}
+              onChange={(val) => replaceParams(router, { ...params, search: val || undefined, page: 1 })}
+              debounce={350}
               placeholder="Cari nama tahun ajaran"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

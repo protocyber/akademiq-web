@@ -115,7 +115,6 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseStudentsParams(searchParams), [searchParams]);
-  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const students = useStudentsTable(params);
   const users = useTenantUsers();
   const academicYears = useAcademicYears();
@@ -130,19 +129,6 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
   const [selected, setSelected] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [pendingId, setPendingId] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    setSearchDraft(params.search ?? "");
-  }, [params.search]);
-
-  React.useEffect(() => {
-    const handle = window.setTimeout(() => {
-      if ((params.search ?? "") !== searchDraft) {
-        replaceParams(router, { ...params, search: searchDraft || undefined, page: 1 });
-      }
-    }, 350);
-    return () => window.clearTimeout(handle);
-  }, [params, router, searchDraft]);
 
   React.useEffect(() => {
     setSelected({});
@@ -209,8 +195,9 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
           ) : null,
           search: (
             <SearchInput
-              value={searchDraft}
-              onChange={setSearchDraft}
+              value={params.search ?? ""}
+              onChange={(val) => replaceParams(router, { ...params, search: val || undefined, page: 1 })}
+              debounce={350}
               placeholder="Cari nama atau NIS"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

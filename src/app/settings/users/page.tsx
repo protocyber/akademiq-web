@@ -171,25 +171,11 @@ function UsersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseTenantUsersParams(searchParams), [searchParams]);
-  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const [selected, setSelected] = React.useState<RowSelectionState>({});
   const users = useTenantUsers(params);
   const roles = useAllTenantRoles();
   const invitations = useTenantInvitations();
   const logout = useLogout();
-
-  React.useEffect(() => {
-    setSearchDraft(params.search ?? "");
-  }, [params.search]);
-
-  React.useEffect(() => {
-    const handle = window.setTimeout(() => {
-      if ((params.search ?? "") !== searchDraft) {
-        replaceUsersParams(router, { ...params, search: searchDraft || undefined, page: 1 });
-      }
-    }, 350);
-    return () => window.clearTimeout(handle);
-  }, [params, router, searchDraft]);
 
   const pageRows = users.data?.data ?? [];
   const selectWithinPage = useSelectWithinPage({
@@ -316,8 +302,9 @@ function UsersContent() {
           ),
           search: (
             <SearchInput
-              value={searchDraft}
-              onChange={setSearchDraft}
+              value={params.search ?? ""}
+              onChange={(val) => applyParams({ ...params, search: val || undefined, page: 1 })}
+              debounce={350}
               placeholder="Cari nama, email, username"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

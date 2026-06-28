@@ -86,7 +86,6 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseAcademicClassTemplatesParams(searchParams), [searchParams]);
   const { yearId, isResolving } = useAcademicScope();
-  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
 
@@ -100,22 +99,6 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
 
   const templates = useClassTemplatesTable(tableParams);
   const templateList = templates.data?.data ?? [];
-
-  React.useEffect(() => {
-    const handle = window.setTimeout(() => {
-      if ((params.search ?? "") !== searchDraft) {
-        router.replace(
-          `/settings/academic/class-templates?${serializeAcademicClassTemplatesParams({
-            ...params,
-            search: searchDraft || undefined,
-            page: 1,
-          })}`,
-          { scroll: false },
-        );
-      }
-    }, 350);
-    return () => window.clearTimeout(handle);
-  }, [params, router, searchDraft]);
 
   React.useEffect(() => {
     setRowSelection({});
@@ -169,8 +152,6 @@ function ClassTemplatesContent({ canManage }: { canManage: boolean; upgradeMessa
         meta={meta}
         params={tableParams}
         canManage={canManage}
-        searchDraft={searchDraft}
-        onSearchDraftChange={setSearchDraft}
         onParamsChange={replaceParams}
         isLoading={templates.isLoading}
         academicYearId={yearId}
@@ -202,8 +183,6 @@ function ClassTemplatesTableSection({
   meta,
   params,
   canManage,
-  searchDraft,
-  onSearchDraftChange,
   onParamsChange,
   isLoading,
   academicYearId,
@@ -218,8 +197,6 @@ function ClassTemplatesTableSection({
   meta: { page: number; page_size: number; total: number; };
   params: AcademicClassTemplatesParams;
   canManage: boolean;
-  searchDraft: string;
-  onSearchDraftChange: (value: string) => void;
   onParamsChange: (next: AcademicClassTemplatesParams) => void;
   isLoading: boolean;
   academicYearId: string;
@@ -346,8 +323,9 @@ function ClassTemplatesTableSection({
         ) : undefined,
         search: (
           <SearchInput
-            value={searchDraft}
-            onChange={onSearchDraftChange}
+            value={params.search ?? ""}
+            onChange={(val) => onParamsChange({ ...params, search: val || undefined, page: 1 })}
+            debounce={350}
             placeholder="Cari tingkat"
             className="min-w-[160px] sm:flex-1 lg:flex-1"
           />

@@ -96,26 +96,12 @@ function RolesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = React.useMemo(() => parseTenantRolesParams(searchParams), [searchParams]);
-  const [searchDraft, setSearchDraft] = React.useState(params.search ?? "");
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const roles = useTenantRoles(params);
   const permissions = useTenantPermissions();
   const logout = useLogout();
   const canManageRoles = hasAccessPerm("role.manage");
-
-  React.useEffect(() => {
-    setSearchDraft(params.search ?? "");
-  }, [params.search]);
-
-  React.useEffect(() => {
-    const handle = window.setTimeout(() => {
-      if ((params.search ?? "") !== searchDraft) {
-        replaceRolesParams(router, { ...params, search: searchDraft || undefined, page: 1 });
-      }
-    }, 350);
-    return () => window.clearTimeout(handle);
-  }, [params, router, searchDraft]);
 
   const roleList = roles.data?.data ?? [];
 
@@ -197,8 +183,9 @@ function RolesContent() {
           ) : undefined,
           search: (
             <SearchInput
-              value={searchDraft}
-              onChange={setSearchDraft}
+              value={params.search ?? ""}
+              onChange={(val) => replaceRolesParams(router, { ...params, search: val || undefined, page: 1 })}
+              debounce={350}
               placeholder="Cari nama atau kode role"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

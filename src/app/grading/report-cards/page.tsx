@@ -147,7 +147,7 @@ function ReportCardsBoard() {
 
   const reportTypes = useReportTypes(yearId ?? undefined, termId ?? undefined);
   const homerooms = useHomerooms();
-  const params = parseReportCardsParams(searchParams);
+  const params = React.useMemo(() => parseReportCardsParams(searchParams), [searchParams]);
   const reportTypeId = params.report_type_id ?? "";
   const homeroomId = params.homeroom_id ?? "";
 
@@ -162,11 +162,8 @@ function ReportCardsBoard() {
   );
 
   React.useEffect(() => {
-    if (reportTypes.data && reportTypes.data.length === 1 && !reportTypeId) {
-      onParamsChange({
-        report_type_id: reportTypes.data[0].report_type_id,
-        homeroom_id: homeroomId || undefined,
-      });
+    if (reportTypes.data && reportTypes.data.length === 1 && !reportTypeId && !homeroomId) {
+      onParamsChange({ report_type_id: reportTypes.data[0].report_type_id });
     }
   }, [reportTypes.data, reportTypeId, homeroomId, onParamsChange]);
 
