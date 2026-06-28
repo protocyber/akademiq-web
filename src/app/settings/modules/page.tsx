@@ -20,32 +20,31 @@ import { getErrorMessage } from "@/lib/errors/messages";
 
 export default function ModulesPage() {
   return (
-    <AuthGuard fallback={<ModulesSkeleton />}>
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <div className="space-y-6">
+          <Card className="border border-border shadow-sm">
+            <CardHeader className="pb-4 border-b">
+              <CardTitle className="text-lg">Konfigurasi Fitur</CardTitle>
+              <CardDescription>
+                Aktifkan modul yang termasuk dalam plan Anda. Modul yang tidak
+                termasuk butuh upgrade plan.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-6 w-11 rounded-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </SidebarLayout>
+    }>
       <ModulesContent />
     </AuthGuard>
-  );
-}
-
-function ModulesSkeleton() {
-  return (
-    <SidebarLayout>
-      <main className="container mx-auto max-w-3xl space-y-6 px-4 py-10">
-        <Skeleton className="h-9 w-40" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-32" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <Skeleton className="h-5 w-40" />
-                <Skeleton className="h-6 w-11 rounded-full" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </main>
-    </SidebarLayout>
   );
 }
 
@@ -56,13 +55,11 @@ function ModulesContent() {
   const logout = useLogout();
   const router = useRouter();
 
-  if (tenant.isLoading || me.isLoading) {
-    return <ModulesSkeleton />;
-  }
+  const isLoading = tenant.isLoading || me.isLoading;
 
-  if (tenant.error || me.error || !tenant.data || !me.data) {
+  if (tenant.error || me.error) {
     return (
-      <main className="container mx-auto max-w-3xl space-y-6 px-4 py-10">
+      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
         <Alert variant="destructive">
           <AlertTitle>Tidak bisa memuat modul</AlertTitle>
           <AlertDescription className="space-y-3">
@@ -97,9 +94,9 @@ function ModulesContent() {
 
   return (
     <SidebarLayout
-      schoolName={data.school_name}
-      userName={u.full_name}
-      userEmail={u.email}
+      schoolName={data?.school_name}
+      userName={u?.full_name}
+      userEmail={u?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -113,13 +110,25 @@ function ModulesContent() {
           <CardDescription>
             Aktifkan modul yang termasuk dalam plan Anda. Modul yang tidak
             termasuk butuh upgrade plan.
-            <div className="text-muted-foreground text-sm mt-1">
-              Plan saat ini: <span className="font-semibold text-foreground">{data.current_plan?.name ?? "—"}</span>
-            </div>
+            {data && (
+              <div className="text-muted-foreground text-sm mt-1">
+                Plan saat ini: <span className="font-semibold text-foreground">{data.current_plan?.name ?? "—"}</span>
+              </div>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <ul className="divide-y">
+          {isLoading || !data ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-6 w-11 rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ul className="divide-y">
             {data.modules.map((m) => {
               const pending = inFlight === m.feature_code && toggle.isPending;
               const disabled = !m.plan_entitled || pending;
@@ -163,6 +172,7 @@ function ModulesContent() {
               );
             })}
           </ul>
+          )}
         </CardContent>
       </Card>
     </SidebarLayout>

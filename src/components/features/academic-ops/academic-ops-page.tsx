@@ -10,10 +10,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
+import { PermissionGuard } from "@/components/features/permission-guard";
 
 const opsNav = [
   { href: "/students", label: "Siswa" },
@@ -34,7 +36,24 @@ export function AcademicOpsPage({
   children: (ctx: OpsContext) => React.ReactNode;
 }) {
   return (
-    <AuthGuard fallback={<OpsSkeleton />}>
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <div className="space-y-4 px-6">
+          <Tabs value="" activationMode="manual" variant="underline">
+            <TabsList scrollable>
+              {opsNav.map((item) => (
+                <TabsTrigger key={item.href} value={item.href} asChild>
+                  <Link href={item.href}>{item.label}</Link>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+        <DataTableCard title={title} description={description}>
+          <div className="px-4 pb-4"><TableSkeleton /></div>
+        </DataTableCard>
+      </SidebarLayout>
+    }>
       <OpsShell title={title} description={description}>
         {children}
       </OpsShell>
@@ -43,8 +62,8 @@ export function AcademicOpsPage({
 }
 
 function OpsShell({
-  // title,
-  // description,
+  title,
+  description,
   children,
 }: {
   title?: string;
@@ -56,8 +75,10 @@ function OpsShell({
   const logout = useLogout();
   const router = useRouter();
   const pathname = usePathname();
-  if (tenant.isLoading || me.isLoading) return <OpsSkeleton />;
-  if (tenant.error || me.error || !tenant.data || !me.data) {
+
+  const isLoading = tenant.isLoading || me.isLoading;
+
+  if (tenant.error || me.error) {
     return (
       <main className="container mx-auto max-w-4xl px-4 py-10">
         <Alert variant="destructive">
@@ -68,7 +89,7 @@ function OpsShell({
     );
   }
 
-  const opsModule = tenant.data.modules.find((item) => item.feature_code === "academic_ops");
+  const opsModule = tenant.data?.modules.find((item) => item.feature_code === "academic_ops");
   const canManage = Boolean(opsModule?.plan_entitled && opsModule.enabled);
   const upgradeMessage = opsModule?.plan_entitled
     ? "Aktifkan modul Academic Ops terlebih dahulu."
@@ -76,9 +97,9 @@ function OpsShell({
 
   return (
     <SidebarLayout
-      schoolName={tenant.data.school_name}
-      userName={me.data.full_name}
-      userEmail={me.data.email}
+      schoolName={tenant.data?.school_name}
+      userName={me.data?.full_name}
+      userEmail={me.data?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -87,10 +108,6 @@ function OpsShell({
       className="mx-auto w-full"
     >
       <div className="space-y-4 px-6">
-        {/* <div>
-          <h1 className="font-display text-3xl font-extrabold tracking-tight">{title}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div> */}
         <Tabs value={pathname} activationMode="manual" variant="underline">
           <TabsList scrollable>
             {opsNav.map((item) => (
@@ -101,24 +118,30 @@ function OpsShell({
           </TabsList>
         </Tabs>
       </div>
-      {!canManage ? (
-        <Alert>
-          <AlertTitle>Kontrol dibatasi</AlertTitle>
-          <AlertDescription>{upgradeMessage}</AlertDescription>
-        </Alert>
-      ) : null}
-      {children({ canManage, upgradeMessage })}
-    </SidebarLayout>
-  );
-}
-
-export function OpsSkeleton() {
-  return (
-    <SidebarLayout>
-      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-        <Skeleton className="h-9 w-56" />
-        <Skeleton className="h-40 w-full" />
-      </main>
+      {isLoading ? (
+        <DataTableCard title={title ?? "Operasional Akademik"} description={description}>
+          <div className="px-4 pb-4"><TableSkeleton /></div>
+        </DataTableCard>
+      ) : (
+        <PermissionGuard
+          permission="academic.ops.manage"
+          fallback={
+            <DataTableCard title={title ?? "Operasional Akademik"} description={description}>
+              <div className="px-4 pb-4"><TableSkeleton /></div>
+            </DataTableCard>
+          }
+        >
+          <>
+            {!canManage ? (
+              <Alert>
+                <AlertTitle>Kontrol dibatasi</AlertTitle>
+                <AlertDescription>{upgradeMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+            {children({ canManage, upgradeMessage })}
+          </>
+        </PermissionGuard>
+      )}
     </SidebarLayout>
   );
 }

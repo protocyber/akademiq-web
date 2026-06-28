@@ -84,26 +84,28 @@ type BoardRow = {
 
 export default function ReportCardsPage() {
   return (
-    <AuthGuard fallback={<PageSkeleton />}>
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <DataTableCard
+          title="Kelola Rapor"
+          description="Pilih jenis rapor dan kelas untuk mengelola rapor siswa."
+          toolbar={{
+            filters: (
+              <>
+                <Skeleton className="h-10 w-full sm:w-56" />
+                <Skeleton className="h-10 w-full sm:w-56" />
+              </>
+            )
+          }}
+        >
+          <p className="p-6 text-center text-sm text-muted-foreground border-t">
+            Pilih jenis rapor dan kelas untuk memuat data rapor.
+          </p>
+        </DataTableCard>
+      </SidebarLayout>
+    }>
       <ReportCardsShell />
     </AuthGuard>
-  );
-}
-
-function PageSkeletonInner() {
-  return (
-    <main className="container mx-auto w-full space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-56" />
-      <Skeleton className="h-64 w-full" />
-    </main>
-  );
-}
-
-function PageSkeleton() {
-  return (
-    <SidebarLayout>
-      <PageSkeletonInner />
-    </SidebarLayout>
   );
 }
 
@@ -112,8 +114,10 @@ function ReportCardsShell() {
   const me = useMe();
   const logout = useLogout();
   const router = useRouter();
-  if (tenant.isLoading || me.isLoading) return <PageSkeleton />;
-  if (tenant.error || me.error || !tenant.data || !me.data) {
+
+  const isLoading = tenant.isLoading || me.isLoading;
+
+  if (tenant.error || me.error) {
     return (
       <main className="container mx-auto max-w-4xl px-4 py-10">
         <Alert variant="destructive">
@@ -125,9 +129,9 @@ function ReportCardsShell() {
   }
   return (
     <SidebarLayout
-      schoolName={tenant.data.school_name}
-      userName={me.data.full_name}
-      userEmail={me.data.email}
+      schoolName={tenant.data?.school_name}
+      userName={me.data?.full_name}
+      userEmail={me.data?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -135,17 +139,17 @@ function ReportCardsShell() {
       }}
       className="mx-auto w-full"
     >
-      <ReportCardsBoard />
+      <ReportCardsBoard isLoadingShell={isLoading} />
     </SidebarLayout>
   );
 }
 
-function ReportCardsBoard() {
+function ReportCardsBoard({ isLoadingShell = false }: { isLoadingShell?: boolean; }) {
   const { yearId, termId } = useAcademicScope();
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const reportTypes = useReportTypes(yearId ?? undefined, termId ?? undefined);
+  const reportTypes = useReportTypes(isLoadingShell ? undefined : yearId ?? undefined, isLoadingShell ? undefined : termId ?? undefined);
   const homerooms = useHomerooms();
   const params = React.useMemo(() => parseReportCardsParams(searchParams), [searchParams]);
   const reportTypeId = params.report_type_id ?? "";
@@ -168,20 +172,21 @@ function ReportCardsBoard() {
   }, [reportTypes.data, reportTypeId, homeroomId, onParamsChange]);
 
   const bothSelected = Boolean(reportTypeId && homeroomId);
+  const isLoading = isLoadingShell || reportTypes.isLoading || homerooms.isLoading;
 
   return (
     <DataTableCard
       title="Kelola Rapor"
       description="Pilih jenis rapor dan kelas untuk mengelola rapor siswa."
       primaryActions={
-        <GenerateDraftButton reportTypeId={reportTypeId} homeroomId={homeroomId} disabled={!bothSelected} />
+        <GenerateDraftButton reportTypeId={reportTypeId} homeroomId={homeroomId} disabled={!bothSelected || isLoading} />
       }
       toolbar={{
         filters: (
           <>
             <Combobox
               items={reportTypes.data ?? []}
-              isLoading={reportTypes.isLoading}
+              isLoading={isLoading}
               value={reportTypeId}
               onValueChange={(value) => onParamsChange({ ...params, report_type_id: value })}
               getOptionValue={(rt) => rt.report_type_id}
@@ -193,7 +198,7 @@ function ReportCardsBoard() {
             />
             <Combobox
               items={homerooms.data ?? []}
-              isLoading={homerooms.isLoading}
+              isLoading={isLoading}
               value={homeroomId}
               onValueChange={(value) => onParamsChange({ ...params, homeroom_id: value })}
               getOptionValue={(room) => room.homeroom_id}
@@ -211,12 +216,16 @@ function ReportCardsBoard() {
         <p className="p-6 text-center text-sm text-muted-foreground">
           Silakan pilih tahun ajaran di header untuk melihat jenis rapor.
         </p>
-      ) : reportTypes.isLoading || homerooms.isLoading ? (
-        <Skeleton className="h-48 w-full" />
       ) : !bothSelected ? (
         <p className="p-6 text-center text-sm text-muted-foreground border-t">
           Pilih jenis rapor dan kelas untuk memuat data rapor.
         </p>
+      ) : isLoading ? (
+        <div className="space-y-3 px-4 pb-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
       ) : (
         <ReportCardsTable key={`${reportTypeId}:${homeroomId}`} reportTypeId={reportTypeId} homeroomId={homeroomId} />
       )}

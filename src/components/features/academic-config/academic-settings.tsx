@@ -41,19 +41,30 @@ export function AcademicSettingsPage({
   children: (context: AcademicSettingsContext) => React.ReactNode;
 }) {
   return (
-    <AuthGuard fallback={<AcademicPageSkeleton />}>
-      <PermissionGuard fallback={<AcademicPageSkeleton />} permission="academic.config.write">
-        <AcademicSettingsContent title={title} description={description}>
-          {children}
-        </AcademicSettingsContent>
-      </PermissionGuard>
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <div className="space-y-4 px-6">
+          <Tabs value="" activationMode="manual" variant="underline">
+            <TabsList scrollable>
+              {academicNav.map((item) => (
+                <TabsTrigger key={item.href} value={item.href} asChild>
+                  <Link href={item.href}>{item.label}</Link>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+        <AcademicPageSkeleton />
+      </SidebarLayout>
+    }>
+      <AcademicSettingsContent title={title} description={description}>
+        {children}
+      </AcademicSettingsContent>
     </AuthGuard>
   );
 }
 
 function AcademicSettingsContent({
-  // title,
-  // description,
   children,
 }: {
   title?: string;
@@ -66,11 +77,9 @@ function AcademicSettingsContent({
   const router = useRouter();
   const pathname = usePathname();
 
-  if (tenant.isLoading || me.isLoading) {
-    return <AcademicPageSkeleton />;
-  }
+  const isLoading = tenant.isLoading || me.isLoading;
 
-  if (tenant.error || me.error || !tenant.data || !me.data) {
+  if (tenant.error || me.error) {
     return (
       <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
         <Alert variant="destructive">
@@ -93,7 +102,7 @@ function AcademicSettingsContent({
     );
   }
 
-  const academicModule = tenant.data.modules.find(
+  const academicModule = tenant.data?.modules.find(
     (module) => module.feature_code === "academic_config",
   );
   const canManageAcademicConfig = Boolean(
@@ -105,9 +114,9 @@ function AcademicSettingsContent({
 
   return (
     <SidebarLayout
-      schoolName={tenant.data.school_name}
-      userName={me.data.full_name}
-      userEmail={me.data.email}
+      schoolName={tenant.data?.school_name}
+      userName={me.data?.full_name}
+      userEmail={me.data?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -116,12 +125,6 @@ function AcademicSettingsContent({
       className="mx-auto w-full"
     >
       <div className="space-y-4 px-6">
-        {/* <div>
-          <h1 className="text-3xl font-extrabold font-display tracking-tight text-foreground">
-            {title}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-        </div> */}
         <Tabs value={pathname} activationMode="manual" variant="underline">
           <TabsList scrollable>
             {academicNav.map((item) => (
@@ -133,41 +136,38 @@ function AcademicSettingsContent({
         </Tabs>
       </div>
 
-      {!canManageAcademicConfig ? (
-        <Alert>
-          <AlertTitle>Kontrol dibatasi</AlertTitle>
-          <AlertDescription>{upgradeMessage}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {children({ canManageAcademicConfig, upgradeMessage })}
+      {isLoading ? (
+        <AcademicPageSkeleton />
+      ) : (
+        <PermissionGuard fallback={<AcademicPageSkeleton />} permission="academic.config.write">
+          <>
+            {!canManageAcademicConfig ? (
+              <Alert>
+                <AlertTitle>Kontrol dibatasi</AlertTitle>
+                <AlertDescription>{upgradeMessage}</AlertDescription>
+              </Alert>
+            ) : null}
+            {children({ canManageAcademicConfig, upgradeMessage })}
+          </>
+        </PermissionGuard>
+      )}
     </SidebarLayout>
   );
 }
 
 export function AcademicPageSkeleton() {
   return (
-    <SidebarLayout>
-      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-        <Skeleton className="h-9 w-56" />
-        <div className="flex gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-9 w-28" />
-          ))}
-        </div>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-64" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </CardContent>
-        </Card>
-      </main>
-    </SidebarLayout>
+    <Card>
+      <CardHeader>
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-64" />
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

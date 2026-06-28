@@ -22,27 +22,21 @@ import {
 
 export default function ProfilePage() {
   return (
-    <AuthGuard fallback={<ProfileSkeleton />}>
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <div className="mx-auto w-full max-w-4xl space-y-6">
+          <h1 className="text-3xl font-bold tracking-tight">Profil Saya</h1>
+          <div className="grid gap-6">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </SidebarLayout>
+    }>
       <ProfileContent />
     </AuthGuard>
-  );
-}
-
-function ProfileSkeleton() {
-  return (
-    <SidebarLayout>
-      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-        <Skeleton className="h-9 w-40" />
-        <div className="grid gap-6">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-      </main>
-    </SidebarLayout>
   );
 }
 
@@ -52,11 +46,9 @@ function ProfileContent() {
   const me = useMe();
   const logout = useLogout();
 
-  if (tenant.isLoading || me.isLoading) {
-    return <ProfileSkeleton />;
-  }
+  const isLoading = tenant.isLoading || me.isLoading;
 
-  if (tenant.error || me.error || !tenant.data || !me.data) {
+  if (tenant.error || me.error) {
     return (
       <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
         <Alert variant="destructive">
@@ -97,9 +89,9 @@ function ProfileContent() {
 
   return (
     <SidebarLayout
-      schoolName={t.school_name}
-      userName={u.full_name}
-      userEmail={u.email}
+      schoolName={t?.school_name}
+      userName={u?.full_name}
+      userEmail={u?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -109,17 +101,28 @@ function ProfileContent() {
       <div className="mx-auto w-full max-w-4xl space-y-6">
         <h1 className="text-3xl font-bold tracking-tight">Profil Saya</h1>
 
-        <ProfileHeader user={u} />
+        {isLoading || !u ? (
+          <div className="grid gap-6">
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        ) : (
+          <>
+            <ProfileHeader user={u} />
 
-        <AvatarUpload user={u} />
+            <AvatarUpload user={u} />
 
-        <ProfileInfoForm user={u} />
+            <ProfileInfoForm user={u} />
 
-        <EmailSection user={u} />
+            <EmailSection user={u} />
 
-        {u.password_set && <PasswordSection />}
+            {u.password_set && <PasswordSection />}
 
-        <MembershipInfo user={u} />
+            <MembershipInfo user={u} />
+          </>
+        )}
       </div>
     </SidebarLayout>
   );

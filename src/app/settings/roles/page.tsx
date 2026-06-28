@@ -67,26 +67,24 @@ import { useSelectWithinPage } from "@/lib/data-table/use-select-within-page";
 
 export default function SettingsRolesPage() {
   return (
-    <AuthGuard fallback={<RolesSkeleton />}>
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <div className="space-y-6">
+          <DataTableCard
+            title="Daftar Role"
+            description="Kelola role bawaan dan role custom sekolah dari palet izin yang Anda miliki."
+          >
+            <div className="space-y-3 px-4 pb-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </DataTableCard>
+        </div>
+      </SidebarLayout>
+    }>
       <RolesContent />
     </AuthGuard>
-  );
-}
-
-function RolesSkeleton() {
-  return (
-    <SidebarLayout>
-      <main className="container mx-auto max-w-5xl space-y-6 px-4 py-10">
-        <Skeleton className="h-9 w-56" />
-        <Card>
-          <CardContent className="space-y-3 pt-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </CardContent>
-        </Card>
-      </main>
-    </SidebarLayout>
   );
 }
 
@@ -101,8 +99,8 @@ function RolesContent() {
   const roles = useTenantRoles(params);
   const permissions = useTenantPermissions();
   const logout = useLogout();
-  const canManageRoles = hasAccessPerm("role.manage");
 
+  const isLoading = tenant.isLoading || me.isLoading || roles.isLoading || permissions.isLoading;
   const roleList = roles.data?.data ?? [];
 
   React.useEffect(() => {
@@ -117,16 +115,13 @@ function RolesContent() {
     toggleMode: "some",
   });
 
-  if (tenant.isLoading || me.isLoading || roles.isLoading || permissions.isLoading) {
-    return <RolesSkeleton />;
-  }
-
-  const error = tenant.error || me.error || roles.error || permissions.error;
-  if (error || !tenant.data || !me.data) {
+  if (tenant.error || me.error || roles.error || permissions.error) {
+    const error = tenant.error || me.error || roles.error || permissions.error;
     const status = error instanceof ApiHttpError ? error.status : undefined;
     return <ErrorView status={status} fullPage onRetry={() => window.location.reload()} />;
   }
 
+  const canManageRoles = hasAccessPerm("role.manage");
   const meta = roles.data?.meta ?? { page: params.page, page_size: params.page_size, total: 0 };
   const pageCount = Math.max(1, Math.ceil(meta.total / meta.page_size));
   const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
@@ -135,9 +130,9 @@ function RolesContent() {
 
   return (
     <SidebarLayout
-      schoolName={tenant.data.school_name}
-      userName={me.data.full_name}
-      userEmail={me.data.email}
+      schoolName={tenant.data?.school_name}
+      userName={me.data?.full_name}
+      userEmail={me.data?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -148,14 +143,14 @@ function RolesContent() {
       <DataTableCard
         title="Daftar Role"
         description="Kelola role bawaan dan role custom sekolah dari palet izin yang Anda miliki."
-        primaryActions={<RoleDialog permissions={permissions.data ?? []} />}
+        primaryActions={!isLoading ? <RoleDialog permissions={permissions.data ?? []} /> : null}
         toolbar={{
           selectAll: {
             checked: selectWithinPage.checked,
-            disabled: selectWithinPage.disabled,
+            disabled: selectWithinPage.disabled || isLoading,
             onToggle: () => selectWithinPage.toggleAll(),
           },
-          bulkActions: selectedIds.length > 0 ? (
+          bulkActions: !isLoading && selectedIds.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span>{selectedIds.length} dipilih</span>
               <DropdownMenu>
@@ -188,6 +183,7 @@ function RolesContent() {
               debounce={350}
               placeholder="Cari nama atau kode role"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
+              disabled={isLoading}
             />
           ),
         }}
@@ -198,26 +194,37 @@ function RolesContent() {
           label: "role",
           onPrev: () => replaceRolesParams(router, { ...params, page: meta.page - 1 }),
           onNext: () => replaceRolesParams(router, { ...params, page: meta.page + 1 }),
+          disabled: isLoading,
         }}
       >
-        {!canManageRoles ? (
-          <Alert variant="destructive">
-            <AlertTitle>Akses dibatasi</AlertTitle>
-            <AlertDescription>Anda belum memiliki izin role.manage untuk mengelola katalog role.</AlertDescription>
-          </Alert>
-        ) : null}
-        <RolesTableSection
-          roles={roleList}
-          permissions={permissions.data ?? []}
-          params={params}
-          rowSelection={rowSelection}
-          onRowSelectionChange={setRowSelection}
-          onParamsChange={(next) => replaceRolesParams(router, next)}
-          onTriggerDelete={(singleId) => {
-            if (singleId) setRowSelection({ [singleId]: true });
-            setConfirmDelete(true);
-          }}
-        />
+        {isLoading ? (
+          <div className="space-y-3 px-4 pb-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {!canManageRoles ? (
+              <Alert variant="destructive">
+                <AlertTitle>Akses dibatasi</AlertTitle>
+                <AlertDescription>Anda belum memiliki izin role.manage untuk mengelola katalog role.</AlertDescription>
+              </Alert>
+            ) : null}
+            <RolesTableSection
+              roles={roleList}
+              permissions={permissions.data ?? []}
+              params={params}
+              rowSelection={rowSelection}
+              onRowSelectionChange={setRowSelection}
+              onParamsChange={(next) => replaceRolesParams(router, next)}
+              onTriggerDelete={(singleId) => {
+                if (singleId) setRowSelection({ [singleId]: true });
+                setConfirmDelete(true);
+              }}
+            />
+          </>
+        )}
       </DataTableCard>
 
       <BulkDeleteConfirmDialog

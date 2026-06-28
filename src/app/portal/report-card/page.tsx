@@ -17,7 +17,30 @@ import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { groupScoresByKelompok } from "@/components/features/grading/report-card-detail-body";
 
 export default function PublishedReportCardPage() {
-  return <AuthGuard fallback={<PageSkeleton />}><PublishedReportCardShell /></AuthGuard>;
+  return (
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="h-5 w-96" />
+          </div>
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </CardContent>
+          </Card>
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </SidebarLayout>
+    }>
+      <PublishedReportCardShell />
+    </AuthGuard>
+  );
 }
 
 function PublishedReportCardShell() {
@@ -71,11 +94,9 @@ function PublishedReportCardShell() {
   );
   const subjects = useSubjectsForYear(academicYearId || undefined);
 
-  if (tenant.isLoading || me.isLoading || yearsQuery.isLoading || (academicYearId && myReportCardsQuery.isLoading)) {
-    return <PageSkeleton />;
-  }
+  const isLoading = Boolean(tenant.isLoading || me.isLoading || yearsQuery.isLoading || (academicYearId && myReportCardsQuery.isLoading));
 
-  if (tenant.error || me.error || !tenant.data || !me.data) {
+  if (tenant.error || me.error) {
     return (
       <main className="container mx-auto w-full px-4 py-10">
         <Alert variant="destructive">
@@ -90,9 +111,9 @@ function PublishedReportCardShell() {
 
   return (
     <SidebarLayout
-      schoolName={tenant.data.school_name}
-      userName={me.data.full_name}
-      userEmail={me.data.email}
+      schoolName={tenant.data?.school_name}
+      userName={me.data?.full_name}
+      userEmail={me.data?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -115,7 +136,7 @@ function PublishedReportCardShell() {
         <CardContent className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground">Tahun Akademik</label>
-            <Select value={academicYearId} onValueChange={setAcademicYearId}>
+            <Select value={academicYearId} onValueChange={setAcademicYearId} disabled={isLoading}>
               <SelectTrigger id="year-select">
                 <SelectValue placeholder="Pilih Tahun Akademik" />
               </SelectTrigger>
@@ -131,7 +152,7 @@ function PublishedReportCardShell() {
 
           <div className="space-y-1">
             <label className="text-xs font-semibold text-muted-foreground">Pilih Anak</label>
-            <Select value={studentId} onValueChange={setStudentId} disabled={hasNoLinkedStudents || isDeepLinkUnauthorized}>
+            <Select value={studentId} onValueChange={setStudentId} disabled={isLoading || hasNoLinkedStudents || isDeepLinkUnauthorized}>
               <SelectTrigger id="student-select">
                 <SelectValue placeholder="Pilih Anak" />
               </SelectTrigger>
@@ -154,25 +175,25 @@ function PublishedReportCardShell() {
         </Alert>
       ) : null}
 
-      {hasNoLinkedStudents && !isDeepLinkUnauthorized ? (
+      {hasNoLinkedStudents && !isDeepLinkUnauthorized && !isLoading ? (
         <Alert>
           <AlertTitle>Belum ada siswa terhubung</AlertTitle>
           <AlertDescription>Belum ada profil siswa yang terhubung dengan akun Anda.</AlertDescription>
         </Alert>
       ) : null}
 
-      {!hasNoLinkedStudents && !isDeepLinkUnauthorized && studentId && report.isLoading ? (
+      {!hasNoLinkedStudents && !isDeepLinkUnauthorized && (studentId && (report.isLoading || isLoading)) ? (
         <Skeleton className="h-64 w-full" />
       ) : null}
 
-      {!hasNoLinkedStudents && !isDeepLinkUnauthorized && studentId && report.error ? (
+      {!hasNoLinkedStudents && !isDeepLinkUnauthorized && studentId && report.error && !isLoading ? (
         <Alert>
           <AlertTitle>Rapor belum tersedia</AlertTitle>
           <AlertDescription>Rapor belum dipublikasikan atau tidak ditemukan.</AlertDescription>
         </Alert>
       ) : null}
 
-      {!hasNoLinkedStudents && !isDeepLinkUnauthorized && report.data ? (
+      {!hasNoLinkedStudents && !isDeepLinkUnauthorized && report.data && !isLoading ? (
         <Card>
           <CardHeader>
             <CardTitle>Rapor Siswa</CardTitle>
@@ -208,17 +229,6 @@ function PublishedReportCardShell() {
           </CardContent>
         </Card>
       ) : null}
-    </SidebarLayout>
-  );
-}
-
-function PageSkeleton() {
-  return (
-    <SidebarLayout>
-      <main className="container mx-auto w-full space-y-6 px-4 py-10">
-        <Skeleton className="h-9 w-56" />
-        <Skeleton className="h-64 w-full" />
-      </main>
     </SidebarLayout>
   );
 }

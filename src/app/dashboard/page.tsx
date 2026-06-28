@@ -20,7 +20,17 @@ import { DashboardCharts } from "./_components/dashboard-charts";
 
 export default function DashboardPage() {
   return (
-    <AuthGuard fallback={<DashboardSkeleton />}>
+    <AuthGuard fallback={
+      <SidebarLayout>
+        <div className="mx-auto w-full max-w-7xl space-y-6">
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-72" />
+            <Skeleton className="h-5 w-48" />
+          </div>
+          <DashboardSkeletonInner />
+        </div>
+      </SidebarLayout>
+    }>
       <DashboardContent />
     </AuthGuard>
   );
@@ -28,9 +38,7 @@ export default function DashboardPage() {
 
 function DashboardSkeletonInner() {
   return (
-    <main className="container mx-auto max-w-7xl space-y-6 px-4 py-10">
-      <Skeleton className="h-10 w-72" />
-      <Skeleton className="h-5 w-48" />
+    <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[1, 2, 3, 4].map((i) => (
           <Skeleton key={i} className="h-[120px] w-full rounded-xl" />
@@ -40,15 +48,7 @@ function DashboardSkeletonInner() {
         <Skeleton className="h-[350px] lg:col-span-3 rounded-xl" />
         <Skeleton className="h-[350px] lg:col-span-2 rounded-xl" />
       </div>
-    </main>
-  );
-}
-
-function DashboardSkeleton() {
-  return (
-    <SidebarLayout>
-      <DashboardSkeletonInner />
-    </SidebarLayout>
+    </div>
   );
 }
 
@@ -62,9 +62,7 @@ function DashboardContent() {
   const stats = useDashboardStats();
   const subjects = useSubjectsForYear(yearId || undefined);
 
-  if (tenant.isLoading || me.isLoading) {
-    return <DashboardSkeleton />;
-  }
+  const isLoading = tenant.isLoading || me.isLoading || stats.isLoading;
 
   if (tenant.error || me.error) {
     return (
@@ -101,14 +99,14 @@ function DashboardContent() {
     );
   }
 
-  const t = tenant.data!;
-  const u = me.data!;
+  const t = tenant.data;
+  const u = me.data;
 
   return (
     <SidebarLayout
-      schoolName={t.school_name}
-      userName={u.full_name}
-      userEmail={u.email}
+      schoolName={t?.school_name}
+      userName={u?.full_name}
+      userEmail={u?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -116,12 +114,18 @@ function DashboardContent() {
       }}
     >
       <div className="mx-auto w-full max-w-7xl space-y-6">
-        <DashboardWelcome userName={u.full_name} />
+        {u ? (
+          <DashboardWelcome userName={u.full_name} />
+        ) : (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-72" />
+            <Skeleton className="h-5 w-48" />
+          </div>
+        )}
 
-        {/* No academic year selected — empty state */}
         {!yearId ? (
           <EmptyStateNoYear />
-        ) : stats.isLoading || !stats.data ? (
+        ) : isLoading || !stats.data ? (
           <DashboardSkeletonInner />
         ) : stats.error ? (
           <Alert variant="destructive">

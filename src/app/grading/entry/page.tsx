@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Combobox } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DataTableCard } from "@/components/ui/data-table-card";
 import { toast } from "@/components/ui/toaster";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -52,7 +53,26 @@ import {
 } from "@/lib/schemas/grading-entry-params";
 
 export default function GradeEntryPage() {
-  return <AuthGuard fallback={<EntrySkeleton />}><GradeEntryShell /></AuthGuard>;
+  return (
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <DataTableCard
+          title="Entri Nilai"
+          description="Pilih kelas dan mapel, lalu isi nilai per evaluasi. Tekan enter/tab, nilai otomatis tersimpan."
+        >
+          <div className="grid gap-3 md:grid-cols-2 border-b p-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+          <p className="p-6 text-sm text-muted-foreground">
+            Pilih kelas dan mapel untuk membuka grid nilai.
+          </p>
+        </DataTableCard>
+      </SidebarLayout>
+    }>
+      <GradeEntryShell />
+    </AuthGuard>
+  );
 }
 
 function GradeEntryShell() {
@@ -60,35 +80,39 @@ function GradeEntryShell() {
   const me = useMe();
   const logout = useLogout();
   const router = useRouter();
-  if (tenant.isLoading || me.isLoading) return <EntrySkeleton />;
-  if (tenant.error || me.error || !tenant.data || !me.data) {
+
+  const isLoading = tenant.isLoading || me.isLoading;
+
+  if (tenant.error || me.error) {
     return (
       <main className="container mx-auto max-w-4xl px-4 py-10">
         <Alert variant="destructive"><AlertTitle>Tidak bisa memuat entri nilai</AlertTitle><AlertDescription>Coba muat ulang halaman.</AlertDescription></Alert>
       </main>
     );
   }
-  const gradingModule = tenant.data.modules.find((item) => item.feature_code === "grading");
+
+  const gradingModule = tenant.data?.modules.find((item) => item.feature_code === "grading");
   const canWrite = Boolean(gradingModule?.plan_entitled && gradingModule.enabled);
   const lockedMessage = gradingModule?.plan_entitled
     ? "Aktifkan modul grading terlebih dahulu."
     : "Upgrade plan untuk menggunakan entri nilai.";
+
   return (
     <SidebarLayout
-      schoolName={tenant.data.school_name}
-      userName={me.data.full_name}
-      userEmail={me.data.email}
+      schoolName={tenant.data?.school_name}
+      userName={me.data?.full_name}
+      userEmail={me.data?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => { await logout.mutateAsync(); router.push("/login"); }}
       className="mx-auto w-full"
     >
-      {!canWrite ? <Alert><AlertTitle>Kontrol dibatasi</AlertTitle><AlertDescription>{lockedMessage}</AlertDescription></Alert> : null}
-      <GradeEntryPanel canWrite={canWrite} meUserId={me.data.user_id} />
+      {!isLoading && !canWrite ? <Alert><AlertTitle>Kontrol dibatasi</AlertTitle><AlertDescription>{lockedMessage}</AlertDescription></Alert> : null}
+      <GradeEntryPanel canWrite={canWrite && !isLoading} meUserId={me.data?.user_id} isLoadingShell={isLoading} />
     </SidebarLayout>
   );
 }
 
-function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: string | undefined; }) {
+function GradeEntryPanel({ canWrite, meUserId, isLoadingShell = false }: { canWrite: boolean; meUserId: string | undefined; isLoadingShell?: boolean; }) {
   const { yearId, curriculumId, termId } = useAcademicScope();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -125,6 +149,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
   const reportScores = useSubjectReportScoresForTypes(reportTypeIds, homeroomId, subjectId);
   const unmaterializedCount = useUnmaterializedCount(termId ?? undefined);
 
+  const isLoading = isLoadingShell || homerooms.isLoading || subjects.isLoading;
   const filteredHomerooms = (homerooms.data ?? []).filter((room) => !yearId || room.academic_year_id === yearId);
   const assignedSubjectIds = new Set(
     (assignments.data ?? [])
@@ -216,27 +241,24 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
   }
 
   return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <CardTitle>Entri Nilai</CardTitle>
-            <CardDescription className="mt-1">Pilih kelas dan mapel, lalu isi nilai per evaluasi. Tekan enter/tab, nilai otomatis tersimpan.</CardDescription>
-          </div>
-          {canManageEvaluations && (
-            <Button size="sm" onClick={() => setKelolOpen(true)}>
-              <Plus className="mr-1.5 h-4 w-4" />
-              Kelola Evaluasi
-            </Button>
-          )}
-        </div>
-      </CardHeader>
+    <DataTableCard
+      title="Entri Nilai"
+      description="Pilih kelas dan mapel, lalu isi nilai per evaluasi. Tekan enter/tab, nilai otomatis tersimpan."
+      primaryActions={
+        canManageEvaluations && (
+          <Button size="sm" onClick={() => setKelolOpen(true)}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Kelola Evaluasi
+          </Button>
+        )
+      }
+    >
       <CardContent className="p-0">
         <div className="grid gap-3 md:grid-cols-2 border-b p-4">
           <div>
             <Combobox
               items={filteredHomerooms}
-              isLoading={homerooms.isLoading}
+              isLoading={isLoading}
               value={homeroomId}
               onValueChange={changeHomeroom}
               getOptionValue={(r) => r.homeroom_id}
@@ -244,10 +266,11 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
               placeholder="Pilih kelas"
               emptyText="Belum ada kelas"
               searchable
+              disabled={isLoading}
             />
             {homeroomId && (
               <div className="mt-1 space-y-1">
-                {teachers.isLoading ? (
+                {teachers.isLoading || isLoading ? (
                   <Skeleton className="h-5 w-40" />
                 ) : walikelas ? (
                   <TeacherBadge teacher={walikelas} label="Walikelas" />
@@ -262,7 +285,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
           <div>
             <Combobox
               items={assignedSubjects}
-              isLoading={subjects.isLoading || assignments.isLoading}
+              isLoading={subjects.isLoading || assignments.isLoading || isLoading}
               value={subjectId}
               onValueChange={changeSubject}
               getOptionValue={(s) => s.subject_id}
@@ -270,10 +293,11 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
               placeholder="Pilih mapel"
               emptyText="Penugasan belum tersinkron"
               searchable
+              disabled={isLoading}
             />
             {subjectId && (
               <div className="mt-1 space-y-1">
-                {teachers.isLoading || assignments.isLoading ? (
+                {teachers.isLoading || assignments.isLoading || isLoading ? (
                   <Skeleton className="h-5 w-40" />
                 ) : assignedTeachers.length > 0 ? (
                   assignedTeachers.map((teacher) => (
@@ -298,7 +322,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
 
         {scopeReady && unmaterializedCount.data && unmaterializedCount.data.count > 0 ? (
           <div className="border-b bg-amber-50 px-4 py-3 text-xs text-amber-900">
-            {unmaterializedCount.data.count} penugasan pada semester aktif belum punya evaluasi. Minta admin menerapkan template evaluasi semester.
+            Ada nilai evaluasi baru yang belum digenerate ke nilai rapor. Harap sinkronkan nilai di tombol aksi di bawah grid.
           </div>
         ) : null}
 
@@ -314,11 +338,11 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
           </p>
         )}
 
-        {scopeReady && (roster.isLoading || evaluations.isLoading || grades.isLoading) && (
+        {scopeReady && (roster.isLoading || evaluations.isLoading || grades.isLoading || isLoading) && (
           <EntryGridSkeleton />
         )}
 
-        {scopeReady && !roster.isLoading && !evaluations.isLoading && !grades.isLoading && (
+        {scopeReady && !roster.isLoading && !evaluations.isLoading && !grades.isLoading && !isLoading && (
           <EvaluationGrid
             students={roster.data ?? []}
             evaluations={evaluations.data ?? []}
@@ -346,7 +370,7 @@ function GradeEntryPanel({ canWrite, meUserId }: { canWrite: boolean; meUserId: 
           evaluations={evaluations.data ?? []}
         />
       )}
-    </Card>
+    </DataTableCard>
   );
 }
 
@@ -1156,16 +1180,7 @@ function WeightColumnSave({
 
 // ── Skeletons ─────────────────────────────────────────────────────────────────
 
-function EntrySkeleton() {
-  return (
-    <SidebarLayout>
-      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-        <Skeleton className="h-9 w-56" />
-        <Skeleton className="h-40 w-full" />
-      </main>
-    </SidebarLayout>
-  );
-}
+
 
 function EntryGridSkeleton() {
   return (

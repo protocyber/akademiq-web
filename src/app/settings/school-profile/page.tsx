@@ -40,32 +40,34 @@ import type { MediaAsset } from "@/lib/query/queries/use-academic-ops";
 
 export default function SchoolProfilePage() {
   return (
-    <AuthGuard fallback={<SchoolProfileSkeleton />}>
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader className="flex-row items-start justify-between border-b pb-4">
+              <div>
+                <CardTitle className="text-lg">Profil Sekolah</CardTitle>
+                <CardDescription>
+                  Kelola informasi identitas, kontak, dan alamat sekolah Anda.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </SidebarLayout>
+    }>
       <SchoolProfileContent />
     </AuthGuard>
-  );
-}
-
-function SchoolProfileSkeleton() {
-  return (
-    <SidebarLayout>
-      <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
-        <Skeleton className="h-9 w-40" />
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-32" />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </main>
-    </SidebarLayout>
   );
 }
 
@@ -81,11 +83,9 @@ function SchoolProfileContent() {
   const [editOpen, setEditOpen] = React.useState(false);
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
 
-  if (tenant.isLoading || me.isLoading || profile.isLoading || media.isLoading) {
-    return <SchoolProfileSkeleton />;
-  }
+  const isLoading = tenant.isLoading || me.isLoading || profile.isLoading || media.isLoading;
 
-  if (tenant.error || me.error || profile.error || media.error || !tenant.data || !me.data || !profile.data) {
+  if (tenant.error || me.error || profile.error || media.error) {
     return (
       <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
         <Alert variant="destructive">
@@ -138,9 +138,9 @@ function SchoolProfileContent() {
 
   return (
     <SidebarLayout
-      schoolName={tenant.data.school_name}
-      userName={me.data.full_name}
-      userEmail={me.data.email}
+      schoolName={tenant.data?.school_name}
+      userName={me.data?.full_name}
+      userEmail={me.data?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -157,18 +157,31 @@ function SchoolProfileContent() {
                 Kelola informasi identitas, kontak, dan alamat sekolah Anda.
               </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditOpen(true)}
-              className="shrink-0"
-            >
-              <Pencil className="mr-2 h-3.5 w-3.5" />
-              Edit
-            </Button>
+            {!isLoading && profile.data && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditOpen(true)}
+                className="shrink-0"
+              >
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Edit
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="pt-6">
-            <SchoolProfileView profile={profile.data} />
+            {isLoading || !profile.data ? (
+              <div className="space-y-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <SchoolProfileView profile={profile.data} />
+            )}
           </CardContent>
         </Card>
 
@@ -178,10 +191,18 @@ function SchoolProfileContent() {
             <CardDescription>Unggah atau perbarui logo sekolah.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              {logoUrl ? (
-                <img src={logoUrl} alt="Logo sekolah" className="h-24 w-24 rounded-lg border object-cover" />
-              ) : (
+            {isLoading ? (
+              <div className="flex items-start gap-4">
+                <Skeleton className="h-24 w-24 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-4">
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo sekolah" className="h-24 w-24 rounded-lg border object-cover" />
+                ) : (
                 <div className="flex h-24 w-24 items-center justify-center rounded-lg border-2 border-dashed bg-muted">
                   <ImageIcon className="h-8 w-8 text-muted-foreground" />
                 </div>
@@ -218,6 +239,7 @@ function SchoolProfileContent() {
                 </div>
               </div>
             </div>
+            )}
           </CardContent>
         </Card>
 
@@ -241,11 +263,13 @@ function SchoolProfileContent() {
           <DialogHeader>
             <DialogTitle>Edit Profil Sekolah</DialogTitle>
           </DialogHeader>
-          <SchoolProfileForm
-            profile={profile.data}
-            onSuccess={() => setEditOpen(false)}
-            onCancel={() => setEditOpen(false)}
-          />
+          {profile.data && (
+            <SchoolProfileForm
+              profile={profile.data}
+              onSuccess={() => setEditOpen(false)}
+              onCancel={() => setEditOpen(false)}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </SidebarLayout>

@@ -15,6 +15,7 @@ export type DataTablePaginationProps = {
   label?: string;
   onPrev: () => void;
   onNext: () => void;
+  disabled?: boolean;
 };
 
 export function DataTablePagination({
@@ -25,6 +26,7 @@ export function DataTablePagination({
   label = "item",
   onPrev,
   onNext,
+  disabled,
 }: DataTablePaginationProps) {
   return (
     <div className={cn("flex items-center justify-between gap-3 text-sm text-muted-foreground px-4", className)}>
@@ -32,10 +34,10 @@ export function DataTablePagination({
         Halaman {page} dari {pageCount} · {total} {label}
       </span>
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" disabled={page <= 1} onClick={onPrev}>
+        <Button variant="outline" size="sm" disabled={disabled || page <= 1} onClick={onPrev}>
           Sebelumnya
         </Button>
-        <Button variant="outline" size="sm" disabled={page >= pageCount} onClick={onNext}>
+        <Button variant="outline" size="sm" disabled={disabled || page >= pageCount} onClick={onNext}>
           Berikutnya
         </Button>
       </div>

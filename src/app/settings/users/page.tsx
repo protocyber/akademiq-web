@@ -136,32 +136,22 @@ function roleOptions(roles: TenantRole[]) {
 
 export default function SettingsUsersPage() {
   return (
-    <AuthGuard fallback={<UsersSkeleton />}>
+    <AuthGuard fallback={
+      <SidebarLayout className="mx-auto w-full space-y-4">
+        <DataTableCard
+          title="Pengguna"
+          description="Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ."
+        >
+          <div className="space-y-3 px-4 pb-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        </DataTableCard>
+      </SidebarLayout>
+    }>
       <UsersContent />
     </AuthGuard>
-  );
-}
-
-function UsersSkeletonInner() {
-  return (
-    <main className="container mx-auto w-full space-y-6 px-4 py-10">
-      <Skeleton className="h-9 w-56" />
-      <Card>
-        <CardContent className="space-y-3 pt-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </CardContent>
-      </Card>
-    </main>
-  );
-}
-
-function UsersSkeleton() {
-  return (
-    <SidebarLayout>
-      <UsersSkeletonInner />
-    </SidebarLayout>
   );
 }
 
@@ -177,6 +167,8 @@ function UsersContent() {
   const invitations = useTenantInvitations();
   const logout = useLogout();
 
+  const isLoading = tenant.isLoading || me.isLoading || users.isLoading || roles.isLoading || invitations.isLoading;
+
   const pageRows = users.data?.data ?? [];
   const selectWithinPage = useSelectWithinPage({
     rows: pageRows,
@@ -191,30 +183,8 @@ function UsersContent() {
     setSelected({});
   }, [paramsKey]);
 
-  if (tenant.isLoading || me.isLoading) {
-    return <UsersSkeleton />;
-  }
-
-  if (users.isLoading || roles.isLoading || invitations.isLoading) {
-    return (
-      <SidebarLayout
-        schoolName={tenant.data?.school_name}
-        userName={me.data?.full_name}
-        userEmail={me.data?.email}
-        isLoggingOut={logout.isPending}
-        onLogout={async () => {
-          await logout.mutateAsync();
-          router.push("/login");
-        }}
-        className="mx-auto w-full"
-      >
-        <UsersSkeletonInner />
-      </SidebarLayout>
-    );
-  }
-
-  const layoutError = tenant.error || me.error;
-  if (layoutError || !tenant.data || !me.data) {
+  if (tenant.error || me.error) {
+    const layoutError = tenant.error || me.error;
     const status = layoutError instanceof ApiHttpError ? layoutError.status : undefined;
     return (
       <ErrorView
@@ -228,14 +198,14 @@ function UsersContent() {
     );
   }
 
-  const dataError = users.error || roles.error || invitations.error;
-  if (dataError) {
+  if (users.error || roles.error || invitations.error) {
+    const dataError = users.error || roles.error || invitations.error;
     const status = dataError instanceof ApiHttpError ? dataError.status : undefined;
     return (
       <SidebarLayout
-        schoolName={tenant.data.school_name}
-        userName={me.data.full_name}
-        userEmail={me.data.email}
+        schoolName={tenant.data?.school_name}
+        userName={me.data?.full_name}
+        userEmail={me.data?.email}
         isLoggingOut={logout.isPending}
         onLogout={async () => {
           await logout.mutateAsync();
@@ -268,9 +238,9 @@ function UsersContent() {
 
   return (
     <SidebarLayout
-      schoolName={tenant.data.school_name}
-      userName={me.data.full_name}
-      userEmail={me.data.email}
+      schoolName={tenant.data?.school_name}
+      userName={me.data?.full_name}
+      userEmail={me.data?.email}
       isLoggingOut={logout.isPending}
       onLogout={async () => {
         await logout.mutateAsync();
@@ -282,24 +252,26 @@ function UsersContent() {
         title="Pengguna"
         description="Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ."
         primaryActions={
-          <>
-            <CreateUserDialog roles={roleList} />
-            <InviteDialog roles={roleList} />
-          </>
+          !isLoading ? (
+            <>
+              <CreateUserDialog roles={roleList} />
+              <InviteDialog roles={roleList} />
+            </>
+          ) : null
         }
         toolbar={{
           selectAll: {
             checked: selectWithinPage.checked,
-            disabled: selectWithinPage.disabled,
+            disabled: selectWithinPage.disabled || isLoading,
             onToggle: () => selectWithinPage.toggleAll(),
           },
-          bulkActions: (
+          bulkActions: !isLoading && selectedIds.length > 0 ? (
             <BulkActionMenu
               selectedIds={selectedIds}
               roles={roleList}
               onDone={() => setSelected({})}
             />
-          ),
+          ) : undefined,
           search: (
             <SearchInput
               value={params.search ?? ""}
@@ -307,9 +279,10 @@ function UsersContent() {
               debounce={350}
               placeholder="Cari nama, email, username"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
+              disabled={isLoading}
             />
           ),
-          filters: (
+          filters: !isLoading ? (
             <>
               <Select
                 value={params.role ?? "all"}
@@ -344,7 +317,7 @@ function UsersContent() {
                 <Download className="h-4 w-4" /> Export
               </Button>
             </>
-          ),
+          ) : undefined,
         }}
         pagination={{
           page: meta.page,
@@ -353,16 +326,25 @@ function UsersContent() {
           label: "pengguna",
           onPrev: () => applyParams({ ...params, page: meta.page - 1 }),
           onNext: () => applyParams({ ...params, page: meta.page + 1 }),
+          disabled: isLoading,
         }}
       >
-        <UsersTableSection
-          users={userList}
-          roles={roleList}
-          params={params}
-          rowSelection={selected}
-          onRowSelectionChange={setSelected}
-          onParamsChange={(next) => replaceUsersParams(router, next)}
-        />
+        {isLoading ? (
+          <div className="space-y-3 px-4 pb-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : (
+          <UsersTableSection
+            users={userList}
+            roles={roleList}
+            params={params}
+            rowSelection={selected}
+            onRowSelectionChange={setSelected}
+            onParamsChange={(next) => replaceUsersParams(router, next)}
+          />
+        )}
       </DataTableCard>
 
       <Card className="border border-border shadow-sm">
@@ -371,7 +353,12 @@ function UsersContent() {
           <CardDescription>Token hanya tampil saat undangan dibuat; gunakan revoke untuk membatalkan.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 pt-4">
-          {invitations.data?.filter((i) => i.status === "pending").length ? (
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+          ) : invitations.data?.filter((i) => i.status === "pending").length ? (
             invitations.data
               .filter((i) => i.status === "pending")
               .map((invitation) => (
