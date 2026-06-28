@@ -1,6 +1,7 @@
 "use client";
 
 import type { Path, UseFormReturn, FieldValues } from "react-hook-form";
+import { toast } from "sonner";
 
 import { ApiHttpError, FieldErrors } from "@/lib/api/types";
 
@@ -28,6 +29,9 @@ export function applyServerFieldErrors<T extends FieldValues>(
       message: messages[0],
     });
     applied.push(field);
+  }
+  if (applied.length > 0) {
+    toast.error("Terdapat kesalahan validasi dari server. Silakan periksa kembali form.");
   }
   return applied;
 }

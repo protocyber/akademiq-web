@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
 import { makeQueryClient } from "./client";
+import "@/lib/zod-error-map";
 
 export function QueryProvider({ children }: { children: React.ReactNode }) {
   // One QueryClient per browser tab. Memoised so HMR does not blow it away.

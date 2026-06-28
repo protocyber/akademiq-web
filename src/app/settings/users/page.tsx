@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Combobox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
@@ -314,9 +315,9 @@ function UsersContent() {
             />
           ),
           search: (
-            <Input
+            <SearchInput
               value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
+              onChange={setSearchDraft}
               placeholder="Cari nama, email, username"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

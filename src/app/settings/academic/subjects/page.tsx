@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import {
@@ -219,9 +220,9 @@ function SubjectGroupsBoard({
             </div>
           ) : undefined,
           search: (
-            <Input
+            <SearchInput
               value={subjectSearch}
-              onChange={(event) => setSubjectSearch(event.target.value)}
+              onChange={setSubjectSearch}
               placeholder="Cari nama atau kode mapel"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

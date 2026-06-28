@@ -40,7 +40,7 @@ describe("registerSchema", () => {
     expect(r.success).toBe(false);
     if (!r.success) {
       expect(r.error.flatten().fieldErrors.admin_password?.[0]).toMatch(
-        /at least 8/,
+        /minimal 8/i,
       );
     }
   });
@@ -49,7 +49,7 @@ describe("registerSchema", () => {
     const r = registerSchema.safeParse({ ...valid, plan_id: "not-uuid" });
     expect(r.success).toBe(false);
     if (!r.success) {
-      expect(r.error.flatten().fieldErrors.plan_id?.[0]).toMatch(/plan/i);
+      expect(r.error.flatten().fieldErrors.plan_id?.[0]).toMatch(/paket/i);
     }
   });
 });

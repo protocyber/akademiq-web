@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 export const academicYearSchema = z.object({
-  name: z.string().min(1, "Nama tahun ajaran wajib diisi"),
-  start_date: z.string().min(1, "Tanggal mulai wajib diisi"),
-  end_date: z.string().min(1, "Tanggal selesai wajib diisi"),
+  name: z.string().min(1),
+  start_date: z.string().min(1),
+  end_date: z.string().min(1),
 });
 
 export const yearStatusSchema = z.object({

@@ -47,6 +47,7 @@ import {
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Combobox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toaster";
@@ -185,9 +186,9 @@ export function TeachersScreen({ canManage, upgradeMessage }: OpsContext) {
             </div>
           ) : null,
           search: (
-            <Input
+            <SearchInput
               value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
+              onChange={setSearchDraft}
               placeholder="Cari nama atau NIP"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

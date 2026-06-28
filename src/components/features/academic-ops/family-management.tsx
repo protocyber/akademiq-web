@@ -3,10 +3,11 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { Plus, Search, X, AlertCircle } from "lucide-react";
+import { Plus, X, AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   Dialog,
   DialogContent,
@@ -457,15 +458,12 @@ function LinkFamilyDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Cari nama atau NIK..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
+          <SearchInput
+            placeholder="Cari nama atau NIK..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+            debounce={350}
+          />
 
           {familiesQuery.isLoading ? (
             <div className="space-y-2">

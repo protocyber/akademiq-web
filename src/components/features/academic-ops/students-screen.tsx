@@ -46,6 +46,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import {
   Combobox,
   Select,
@@ -207,9 +208,9 @@ export function StudentsScreen({ canManage, upgradeMessage }: OpsContext) {
             </div>
           ) : null,
           search: (
-            <Input
+            <SearchInput
               value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
+              onChange={setSearchDraft}
               placeholder="Cari nama atau NIS"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

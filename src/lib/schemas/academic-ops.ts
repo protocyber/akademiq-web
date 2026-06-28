@@ -9,12 +9,12 @@ const optionalDate = z.string().min(1).optional().or(z.literal(""));
 
 export const studentSchema = z.object({
   nis: identifier,
-  full_name: z.string().min(1, "Nama wajib diisi"),
+  full_name: z.string().min(1),
   gender: z.enum(["male", "female"]),
-  birth_date: z.string().min(1, "Tanggal lahir wajib diisi"),
+  birth_date: z.string().min(1),
   nisn: optionalString,
   nik: optionalString,
-  birth_place: z.string().min(1, "Tempat lahir wajib diisi"),
+  birth_place: z.string().min(1),
   address_line: optionalString,
   phone_number: optionalString,
   religion: optionalString,
@@ -32,7 +32,7 @@ export const studentSchema = z.object({
 
 export const teacherSchema = z.object({
   nip: identifier,
-  full_name: z.string().min(1, "Nama wajib diisi"),
+  full_name: z.string().min(1),
   nik: optionalString,
   education_level: optionalString,
   gender: z.enum(["male", "female"]).optional().or(z.literal("")),
@@ -53,7 +53,7 @@ export const teacherSchema = z.object({
 // --- Family Profiles ---
 
 export const familyProfileSchema = z.object({
-  full_name: z.string().min(1, "Nama wajib diisi"),
+  full_name: z.string().min(1),
   nik: optionalString,
   birth_place: optionalString,
   birth_date: optionalDate,
@@ -103,7 +103,7 @@ export const familyLinkUpdateSchema = z.object({
 // --- School Profile (Billing) ---
 
 export const schoolProfileSchema = z.object({
-  school_name: z.string().min(1, "Nama sekolah wajib diisi"),
+  school_name: z.string().min(1),
   phone_number: optionalString,
   email: z.string().email("Email tidak valid").optional().or(z.literal("")),
   website: optionalString,
@@ -128,14 +128,14 @@ export const schoolProfileSchema = z.object({
 // --- Archive ---
 
 export const archiveReasonSchema = z.object({
-  reason: z.string().min(1, "Alasan arsip wajib diisi"),
+  reason: z.string().min(1),
 });
 
 // --- Existing schemas ---
 
 export const homeroomSchema = z.object({
-  name: z.string().min(1, "Nama kelas wajib diisi"),
-  grade_level: z.string().min(1, "Tingkat wajib diisi"),
+  name: z.string().min(1),
+  grade_level: z.string().min(1),
   capacity: z.coerce.number().int().positive(),
   academic_year_id: uuid,
 });

@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { AuthGuard } from "@/components/features/auth-guard";
@@ -195,9 +196,9 @@ function RolesContent() {
             </div>
           ) : undefined,
           search: (
-            <Input
+            <SearchInput
               value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
+              onChange={setSearchDraft}
               placeholder="Cari nama atau kode role"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
@@ -186,9 +187,9 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
             </div>
           ) : undefined,
           search: (
-            <Input
+            <SearchInput
               value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
+              onChange={setSearchDraft}
               placeholder="Cari nama tahun ajaran"
               className="min-w-[160px] sm:flex-1 lg:flex-1"
             />

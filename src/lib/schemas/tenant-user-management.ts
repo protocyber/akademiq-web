@@ -11,12 +11,12 @@ export const tenantAssignableRoles = [
 ] as const;
 
 export const inviteTenantUserSchema = z.object({
-  email: z.string().email("Email tidak valid"),
+  email: z.string().email(),
   roles: z.array(z.string().min(1)).min(1, "Pilih minimal satu role"),
 });
 
 export const acceptInvitationSchema = z.object({
-  token: z.string().min(1, "Token undangan wajib diisi"),
+  token: z.string().min(1),
 });
 
 export const setPasswordSchema = z
@@ -30,7 +30,7 @@ export const setPasswordSchema = z
   });
 
 export const resendSetPasswordSchema = z.object({
-  identifier: z.string().trim().min(1, "Email atau username wajib diisi"),
+  identifier: z.string().trim().min(1),
 });
 
 export const roleChangeSchema = z.object({
@@ -39,12 +39,12 @@ export const roleChangeSchema = z.object({
 
 export const createTenantUserSchema = z.object({
   username: usernameSchema,
-  full_name: z.string().trim().min(1, "Nama lengkap wajib diisi"),
+  full_name: z.string().trim().min(1),
   roles: z.array(z.string().min(1)).min(1, "Pilih minimal satu role"),
   email: z
     .string()
     .trim()
-    .email("Email tidak valid")
+    .email()
     .optional()
     .or(z.literal("")),
   password: z
@@ -56,11 +56,11 @@ export const createTenantUserSchema = z.object({
 
 export const updateTenantUserSchema = z.object({
   username: usernameSchema,
-  full_name: z.string().trim().min(1, "Nama lengkap wajib diisi"),
+  full_name: z.string().trim().min(1),
   email: z
     .string()
     .trim()
-    .email("Email tidak valid")
+    .email()
     .optional()
     .or(z.literal("")),
 });

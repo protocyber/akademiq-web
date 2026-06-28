@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import {
@@ -126,9 +127,9 @@ function AcademicTermsContent({ canManage, upgradeMessage }: { canManage: boolea
             }
             toolbar={{
               search: (
-                <Input
+                <SearchInput
                   value={searchDraft}
-                  onChange={(event) => setSearchDraft(event.target.value)}
+                  onChange={setSearchDraft}
                   placeholder="Cari nama semester"
                   className="min-w-[160px] sm:flex-1 lg:flex-1"
                 />

@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import {
@@ -344,9 +345,9 @@ function ClassTemplatesTableSection({
           </div>
         ) : undefined,
         search: (
-          <Input
+          <SearchInput
             value={searchDraft}
-            onChange={(event) => onSearchDraftChange(event.target.value)}
+            onChange={onSearchDraftChange}
             placeholder="Cari tingkat"
             className="min-w-[160px] sm:flex-1 lg:flex-1"
           />

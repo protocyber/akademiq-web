@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const curriculumVersionSchema = z.object({
-  name: z.string().min(1, "Nama kurikulum wajib diisi"),
+  name: z.string().min(1),
   description: z.string().optional(),
 });
 
 export const subjectGroupSchema = z.object({
-  name: z.string().min(1, "Nama kelompok wajib diisi"),
+  name: z.string().min(1),
   code: z.string().optional(),
   position: z.coerce.number().int().min(1, "Posisi minimal 1"),
 });
@@ -14,7 +14,7 @@ export const subjectGroupSchema = z.object({
 export const subjectSchema = z.object({
   curriculum_version_id: z.string().uuid("Pilih kurikulum terlebih dahulu"),
   subject_group_id: z.string().min(1, "Pilih kelompok terlebih dahulu"),
-  name: z.string().min(1, "Nama mata pelajaran wajib diisi"),
+  name: z.string().min(1),
   code: z.string().optional(),
   passing_grade: z.coerce.number().min(0, "Minimal 0").max(100, "Maksimal 100"),
 });

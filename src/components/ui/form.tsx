@@ -9,13 +9,46 @@ import {
   FieldPath,
   FieldValues,
   FormProvider,
+  FormProviderProps,
   useFormContext,
 } from "react-hook-form";
 
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
-const Form = FormProvider;
+function FormErrorWatcher() {
+  const { formState: { submitCount, errors } } = useFormContext();
+  const lastSubmitCount = React.useRef(submitCount);
+
+  React.useEffect(() => {
+    if (submitCount > lastSubmitCount.current) {
+      lastSubmitCount.current = submitCount;
+      const errorKeys = Object.keys(errors);
+      if (errorKeys.length > 0) {
+        toast.error("Terdapat kesalahan validasi. Silakan periksa kembali field yang diisi.");
+      }
+    }
+  }, [submitCount, errors]);
+
+  return null;
+}
+
+const Form = <
+  TFieldValues extends FieldValues = FieldValues,
+  TContext = any,
+  TTransformedValues extends FieldValues | undefined = undefined,
+>({
+  children,
+  ...props
+}: FormProviderProps<TFieldValues, TContext, TTransformedValues>) => {
+  return (
+    <FormProvider {...props}>
+      <FormErrorWatcher />
+      {children}
+    </FormProvider>
+  );
+};
 
 type FormFieldContextValue<
   TFieldValues extends FieldValues = FieldValues,

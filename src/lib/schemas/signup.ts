@@ -3,7 +3,7 @@ import { z } from "zod";
 import { usernameSchema } from "@/lib/schemas/username";
 
 export const signupSchema = z.object({
-  email: z.string().trim().min(1, "Email wajib diisi").email("Email harus valid"),
+  email: z.string().trim().min(1).email(),
   password: z
     .string()
     .min(8, "Password minimal 8 karakter"),
