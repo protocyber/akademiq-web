@@ -7,11 +7,9 @@ import { Button } from "@/components/ui/button";
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { toast } from "@/components/ui/toaster";
 import { getErrorMessage } from "@/lib/errors/messages";
-import { useUploadMedia } from "@/lib/query/mutations/use-academic-ops";
+import { IMAGE_ACCEPT, IMAGE_SIZE_HINT, MAX_IMAGE_SELECT_SIZE_BYTES } from "@/lib/media/upload-constraints";
+import { useDeleteMedia, useUploadMedia } from "@/lib/query/mutations/use-academic-ops";
 import { useMediaAssets } from "@/lib/query/queries/use-academic-ops";
-
-const IMAGE_ACCEPT = { "image/*": [".jpg", ".jpeg", ".png", ".webp"] };
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 
 type PhotoUploadProps = {
   ownerType: "student" | "teacher";
@@ -23,6 +21,7 @@ export function PhotoUpload({ ownerType, ownerId, disabled = false }: PhotoUploa
   const [file, setFile] = React.useState<File | null>(null);
   const media = useMediaAssets(ownerType, ownerId);
   const upload = useUploadMedia();
+  const deleteMedia = useDeleteMedia();
   const activeMedia = media.data?.find((asset) => asset.is_active) ?? media.data?.[0];
 
   async function onUpload() {
@@ -33,6 +32,18 @@ export function PhotoUpload({ ownerType, ownerId, disabled = false }: PhotoUploa
       toast.success("Foto berhasil diunggah");
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Gagal mengunggah foto" }));
+    }
+  }
+
+  async function onDelete() {
+    if (!ownerId || !activeMedia) return;
+    if (!window.confirm("Hapus foto? Tindakan ini tidak dapat dibatalkan.")) return;
+    try {
+      await deleteMedia.mutateAsync({ ownerType, ownerId });
+      setFile(null);
+      toast.success("Foto berhasil dihapus");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Gagal menghapus foto" }));
     }
   }
 
@@ -59,21 +70,35 @@ export function PhotoUpload({ ownerType, ownerId, disabled = false }: PhotoUploa
             value={file}
             onChange={setFile}
             accept={IMAGE_ACCEPT}
-            maxSize={MAX_IMAGE_SIZE}
-            disabled={disabled || upload.isPending}
+            maxSize={MAX_IMAGE_SELECT_SIZE_BYTES}
+            disabled={disabled || upload.isPending || deleteMedia.isPending}
             prompt="Tarik foto ke sini atau klik untuk memilih"
-            hint="JPG, PNG, atau WebP. Maksimal 2MB."
+            hint={IMAGE_SIZE_HINT}
           />
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onUpload}
-            loading={upload.isPending}
-            disabled={!file || disabled}
-          >
-            Unggah Foto
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onUpload}
+              loading={upload.isPending}
+              disabled={!file || disabled || deleteMedia.isPending}
+            >
+              Unggah Foto
+            </Button>
+            {activeMedia && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onDelete}
+                loading={deleteMedia.isPending}
+                disabled={disabled || upload.isPending}
+              >
+                Hapus Foto
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

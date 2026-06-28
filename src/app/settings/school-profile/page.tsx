@@ -27,12 +27,13 @@ import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { useSchoolProfile, useSchoolMedia, type SchoolProfile } from "@/lib/query/queries/use-school-profile";
 import { useUpdateSchoolProfile } from "@/lib/query/mutations/use-school-profile";
-import { useUploadSchoolLogo } from "@/lib/query/mutations/use-academic-ops";
+import { useDeleteSchoolLogo, useUploadSchoolLogo } from "@/lib/query/mutations/use-academic-ops";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { formatDate } from "@/lib/date-utils";
+import { IMAGE_ACCEPT, IMAGE_SIZE_HINT, MAX_IMAGE_SELECT_SIZE_BYTES } from "@/lib/media/upload-constraints";
 import { schoolProfileSchema, type SchoolProfileForm } from "@/lib/schemas/academic-ops";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import type { MediaAsset } from "@/lib/query/queries/use-academic-ops";
@@ -75,6 +76,7 @@ function SchoolProfileContent() {
   const profile = useSchoolProfile();
   const media = useSchoolMedia();
   const uploadLogo = useUploadSchoolLogo();
+  const deleteLogo = useDeleteSchoolLogo();
   const logout = useLogout();
   const [editOpen, setEditOpen] = React.useState(false);
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
@@ -116,6 +118,18 @@ function SchoolProfileContent() {
       toast.success("Logo sekolah berhasil diunggah");
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Gagal mengunggah logo" }));
+    }
+  }
+
+  async function onLogoDelete() {
+    if (!tenant.data?.tenant_id || !logoMedia) return;
+    if (!window.confirm("Hapus logo? Tindakan ini tidak dapat dibatalkan.")) return;
+    try {
+      await deleteLogo.mutateAsync({ ownerType: "school", ownerId: tenant.data.tenant_id });
+      setLogoFile(null);
+      toast.success("Logo sekolah berhasil dihapus");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Gagal menghapus logo" }));
     }
   }
 
@@ -176,20 +190,32 @@ function SchoolProfileContent() {
                 <FileDropzone
                   value={logoFile}
                   onChange={setLogoFile}
-                  accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
-                  maxSize={2 * 1024 * 1024}
-                  disabled={uploadLogo.isPending}
+                  accept={IMAGE_ACCEPT}
+                  maxSize={MAX_IMAGE_SELECT_SIZE_BYTES}
+                  disabled={uploadLogo.isPending || deleteLogo.isPending}
                   prompt="Tarik logo ke sini atau klik untuk memilih"
-                  hint="JPG, PNG, atau WebP. Maksimal 2MB."
+                  hint={IMAGE_SIZE_HINT}
                 />
-                <Button
-                  variant="outline"
-                  onClick={onLogoUpload}
-                  loading={uploadLogo.isPending}
-                  disabled={!logoFile}
-                >
-                  Unggah Logo
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={onLogoUpload}
+                    loading={uploadLogo.isPending}
+                    disabled={!logoFile || deleteLogo.isPending}
+                  >
+                    Unggah Logo
+                  </Button>
+                  {logoMedia && (
+                    <Button
+                      variant="outline"
+                      onClick={onLogoDelete}
+                      loading={deleteLogo.isPending}
+                      disabled={uploadLogo.isPending}
+                    >
+                      Hapus Logo
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>

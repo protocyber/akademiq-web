@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
+import { compressImageForUpload } from "@/lib/media/compress-image";
 import type {
   BulkTeachingAssignmentForm,
   EnrollmentForm,
@@ -382,11 +383,12 @@ export function useDeleteFamilyLink(studentId?: string) {
 export function useUploadMedia() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ ownerType, ownerId, file }: { ownerType: string; ownerId: string; file: File }) => {
+    mutationFn: async ({ ownerType, ownerId, file }: { ownerType: string; ownerId: string; file: File }) => {
+      const compressed = await compressImageForUpload(file);
       const body = new FormData();
       body.set("owner_type", ownerType);
       body.set("owner_id", ownerId);
-      body.set("file", file);
+      body.set("file", compressed);
       return apiFetch<MediaAsset>({ service: "academic-ops", path: "/api/v1/academic-ops/media", method: "POST", authenticated: true, body });
     },
     onSuccess: (_, { ownerType }) => {
@@ -399,14 +401,41 @@ export function useUploadMedia() {
   });
 }
 
+export function useDeleteMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ownerType, ownerId }: { ownerType: string; ownerId: string }) =>
+      apiFetch<void>({ service: "academic-ops", path: `/api/v1/academic-ops/media?owner_type=${ownerType}&owner_id=${ownerId}`, method: "DELETE", authenticated: true }),
+    onSuccess: (_, { ownerType }) => {
+      qc.invalidateQueries({ queryKey: MEDIA_QUERY_KEY });
+      if (ownerType === "student") qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY });
+      if (ownerType === "teacher") qc.invalidateQueries({ queryKey: TEACHERS_QUERY_KEY });
+      if (ownerType === "family") qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY });
+    },
+  });
+}
+
 export function useUploadSchoolLogo() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (file: File) => {
+    mutationFn: async (file: File) => {
+      const compressed = await compressImageForUpload(file);
       const body = new FormData();
-      body.set("file", file);
+      body.set("file", compressed);
       return apiFetch<MediaAsset>({ service: "billing", path: "/api/v1/billing/tenants/me/school-profile/media", method: "POST", authenticated: true, body });
     },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["billing", "school-profile"] });
+      qc.invalidateQueries({ queryKey: ["billing", "school-media"] });
+    },
+  });
+}
+
+export function useDeleteSchoolLogo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ownerType, ownerId }: { ownerType: "school"; ownerId: string }) =>
+      apiFetch<void>({ service: "billing", path: `/api/v1/billing/media?owner_type=${ownerType}&owner_id=${ownerId}`, method: "DELETE", authenticated: true }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["billing", "school-profile"] });
       qc.invalidateQueries({ queryKey: ["billing", "school-media"] });

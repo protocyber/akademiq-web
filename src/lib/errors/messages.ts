@@ -36,8 +36,8 @@ const ERROR_MESSAGES: Record<string, string> = {
     'Format file tidak didukung. Gunakan JPG, PNG, atau WebP.',
   INVALID_MEDIA_TYPE:
     'Format file tidak didukung. Gunakan JPG, PNG, atau WebP.',
-  FILE_TOO_LARGE: 'Ukuran file melebihi batas 2MB.',
-  MEDIA_TOO_LARGE: 'Ukuran file melebihi batas 2MB.',
+  FILE_TOO_LARGE: 'Ukuran file melebihi batas 512KB.',
+  MEDIA_TOO_LARGE: 'Ukuran file melebihi batas 512KB.',
   SET_PASSWORD_TOKEN_EXPIRED:
     'Link set password sudah kedaluwarsa. Minta link baru dari admin atau gunakan login dengan Google.',
   PASSWORD_NOT_SET:

@@ -62,6 +62,7 @@ import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/feat
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { formatDate } from "@/lib/date-utils";
+import { IMAGE_ACCEPT, IMAGE_SIZE_HINT, MAX_IMAGE_SELECT_SIZE_BYTES } from "@/lib/media/upload-constraints";
 import {
   useArchiveStudent,
   useBulkDeleteStudents,
@@ -819,10 +820,10 @@ function StudentDialog({
                   <FileDropzone
                     value={pendingPhoto}
                     onChange={setPendingPhoto}
-                    accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
-                    maxSize={2 * 1024 * 1024}
+                    accept={IMAGE_ACCEPT}
+                    maxSize={MAX_IMAGE_SELECT_SIZE_BYTES}
                     prompt="Tarik foto ke sini atau klik untuk memilih"
-                    hint="JPG, PNG, atau WebP. Maksimal 2MB. Foto diunggah setelah siswa disimpan."
+                    hint={`${IMAGE_SIZE_HINT} Foto diunggah setelah siswa disimpan.`}
                   />
                 </>
               )}

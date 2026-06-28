@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FileDropzone } from "@/components/ui/file-dropzone";
 import { getErrorMessage } from "@/lib/errors/messages";
+import { IMAGE_ACCEPT, IMAGE_SIZE_HINT, MAX_IMAGE_SELECT_SIZE_BYTES } from "@/lib/media/upload-constraints";
 import {
   useUploadAvatar,
   useDeleteAvatar,
@@ -33,11 +34,12 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
   };
 
   const handleDelete = async () => {
+    if (!window.confirm("Hapus avatar? Tindakan ini tidak dapat dibatalkan.")) return;
     try {
       await deleteAvatar.mutateAsync();
       toast.success("Avatar berhasil dihapus");
-    } catch {
-      toast.error("Gagal menghapus avatar");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, { fallback: "Gagal menghapus avatar" }));
     }
   };
 
@@ -70,11 +72,11 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
             <FileDropzone
               value={selectedFile}
               onChange={setSelectedFile}
-              accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
-              maxSize={2 * 1024 * 1024}
+              accept={IMAGE_ACCEPT}
+              maxSize={MAX_IMAGE_SELECT_SIZE_BYTES}
               disabled={uploadAvatar.isPending}
               prompt="Tarik avatar ke sini atau klik untuk memilih"
-              hint="JPG, PNG, atau WebP. Maksimal 2MB."
+              hint={IMAGE_SIZE_HINT}
             />
             <div className="flex flex-wrap gap-2">
               <Button
@@ -98,7 +100,7 @@ export function AvatarUpload({ user }: AvatarUploadProps) {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Format: JPG, PNG, atau WebP. Maksimal 2MB.
+          Format: {IMAGE_SIZE_HINT}
         </p>
       </CardContent>
     </Card>

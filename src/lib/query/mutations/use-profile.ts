@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
+import { compressImageForUpload } from "@/lib/media/compress-image";
 import { ME_QUERY_KEY } from "@/lib/query/queries/use-me";
 
 // ===== API Input Types =====
@@ -115,8 +116,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<void> {
  * Error codes: FILE_TOO_LARGE, INVALID_FILE_TYPE
  */
 export async function uploadAvatar(input: UploadAvatarInput): Promise<void> {
+  const file = await compressImageForUpload(input.file);
   const formData = new FormData();
-  formData.append("file", input.file);
+  formData.append("file", file);
 
   await apiFetch<void>({
     service: "iam",

@@ -55,6 +55,7 @@ import { PhotoUpload } from "@/components/features/academic-ops/photo-upload";
 import { GuardedButton, TableSkeleton, type OpsContext } from "@/components/features/academic-ops/academic-ops-page";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { getErrorMessage } from "@/lib/errors/messages";
+import { IMAGE_ACCEPT, IMAGE_SIZE_HINT, MAX_IMAGE_SELECT_SIZE_BYTES } from "@/lib/media/upload-constraints";
 import {
   useArchiveTeacher,
   useBulkDeleteTeachers,
@@ -871,10 +872,10 @@ function TeacherDialog({
                 <FileDropzone
                   value={pendingPhoto}
                   onChange={setPendingPhoto}
-                  accept={{ "image/*": [".jpg", ".jpeg", ".png", ".webp"] }}
-                  maxSize={2 * 1024 * 1024}
+                  accept={IMAGE_ACCEPT}
+                  maxSize={MAX_IMAGE_SELECT_SIZE_BYTES}
                   prompt="Tarik foto ke sini atau klik untuk memilih"
-                  hint="JPG, PNG, atau WebP. Maksimal 2MB. Foto diunggah setelah guru disimpan."
+                  hint={`${IMAGE_SIZE_HINT} Foto diunggah setelah guru disimpan.`}
                 />
               )}
             </div>
