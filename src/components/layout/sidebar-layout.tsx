@@ -481,7 +481,7 @@ export function SidebarLayout({
         <SheetContent side="left" className="w-72 border-[#d0d7de] bg-[#f6f8fa] p-0 text-[#24292f] sm:max-w-80 dark:bg-[#0d1117] dark:border-[#30363d] dark:text-[#e6edf3]">
           <SheetTitle className="sr-only">Navigasi utama</SheetTitle>
           <SheetDescription className="sr-only">
-            Menu navigasi aplikasi AcademiQ.
+            Menu navigasi aplikasi AkademiQ.
           </SheetDescription>
           <SidebarContent pathname={pathname} />
         </SheetContent>
@@ -558,7 +558,7 @@ export function SidebarContent({
           <GraduationCap className="h-5 w-5" />
         </div>
         <div>
-          <h1 className="font-display text-lg font-bold leading-none text-[#24292f] dark:text-white">AcademiQ</h1>
+          <h1 className="font-display text-lg font-bold leading-none text-[#24292f] dark:text-white">AkademiQ</h1>
           <p className="mt-0.5 text-xs text-[#57606a] dark:text-[#8b949e]">Sekolah Console</p>
         </div>
       </div>

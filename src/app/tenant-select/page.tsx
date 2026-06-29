@@ -106,7 +106,7 @@ function TenantSelectContent() {
               <GraduationCap className="h-6 w-6" />
             </div>
             <span className="text-2xl font-bold font-display text-primary tracking-tight">
-              AcademiQ
+              AkademiQ
             </span>
           </div>
           <h2 className="text-2xl font-bold font-display text-foreground">Pilih Sekolah</h2>

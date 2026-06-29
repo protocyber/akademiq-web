@@ -1,14 +1,14 @@
 # akademiq-web
 
-AcademiQ web frontend (Next.js). This repository hosts the user-facing web
-application for the AcademiQ multi-tenant SaaS platform for school
+AkademiQ web frontend (Next.js). This repository hosts the user-facing web
+application for the AkademiQ multi-tenant SaaS platform for school
 management.
 
 This is a submodule of the parent
 [`protocyber/akademiq`](https://github.com/protocyber/akademiq) repository,
 mounted at `apps/web`. The container architecture and the role of this
 frontend (the `WEB` container) are documented in the parent repo at
-[`docs/internal/06_container_architecture/AcademiQ_Container_Diagram.md`](https://github.com/protocyber/akademiq/blob/main/docs/internal/06_container_architecture/AcademiQ_Container_Diagram.md).
+[`docs/internal/06_container_architecture/AkademiQ_Container_Diagram.md`](https://github.com/protocyber/akademiq/blob/main/docs/internal/06_container_architecture/AkademiQ_Container_Diagram.md).
 
 ## Status
 

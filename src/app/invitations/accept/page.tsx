@@ -94,7 +94,7 @@ function AcceptInvitationContent() {
               <GraduationCap className="h-6 w-6" />
             </div>
             <div className="space-y-3">
-              <h1 className="font-display text-4xl font-extrabold tracking-tight md:text-5xl mb-6">Aktifkan akun AcademiQ Anda</h1>
+              <h1 className="font-display text-4xl font-extrabold tracking-tight md:text-5xl mb-6">Aktifkan akun AkademiQ Anda</h1>
               {invitation ? (
                 <div className="space-y-3">
                   {invitation.tenant_name ? (
@@ -103,7 +103,7 @@ function AcceptInvitationContent() {
                     </p>
                   ) : (
                     <p className="max-w-xl text-base leading-7 text-white/90">
-                      Anda diundang ke AcademiQ sebagai <strong className="text-white">{formattedRoles}</strong>.
+                      Anda diundang ke AkademiQ sebagai <strong className="text-white">{formattedRoles}</strong>.
                     </p>
                   )}
                   <p className="max-w-xl text-sm leading-6 text-white/70">

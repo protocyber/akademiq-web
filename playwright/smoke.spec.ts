@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
  */
 test("home page renders register and login CTAs", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "AcademiQ" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "AkademiQ" })).toBeVisible();
   await expect(page.getByRole("link", { name: /daftar sekolah/i })).toBeVisible();
   await expect(page.getByRole("link", { name: /^masuk$/i })).toBeVisible();
 });

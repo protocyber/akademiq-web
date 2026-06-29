@@ -89,12 +89,12 @@ function SignupForm() {
               <GraduationCap className="h-6 w-6" />
             </div>
             <span className="text-2xl font-bold font-display text-primary tracking-tight">
-              AcademiQ
+              AkademiQ
             </span>
           </div>
           <h2 className="text-2xl font-bold font-display text-foreground">Buat Akun</h2>
           <p className="text-muted-foreground text-sm">
-            Daftar dengan email dan password untuk mulai menggunakan AcademiQ.
+            Daftar dengan email dan password untuk mulai menggunakan AkademiQ.
           </p>
         </div>
 

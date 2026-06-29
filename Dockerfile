@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # =============================================================================
-# AcademiQ Web — Production Dockerfile
+# AkademiQ Web — Production Dockerfile
 # =============================================================================
 # This image is for *production* deploys only. Local development uses
 # `make dev` on the host (Next.js fast-refresh) and does NOT build this image.

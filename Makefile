@@ -1,5 +1,5 @@
 # =============================================================================
-# AcademiQ Web — Makefile
+# AkademiQ Web — Makefile
 # =============================================================================
 # Standard target list per
 # docs/internal/13_engineering_standards/12_makefile_standards.md (parent repo):

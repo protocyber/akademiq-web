@@ -2,7 +2,7 @@
   "name": "akademiq-web",
   "version": "0.1.0",
   "private": true,
-  "description": "AcademiQ web frontend (Next.js + shadcn/ui + TanStack Query)",
+  "description": "AkademiQ web frontend (Next.js + shadcn/ui + TanStack Query)",
   "packageManager": "pnpm@11.5.0",
   "engines": {
     "node": ">=20.9.0"

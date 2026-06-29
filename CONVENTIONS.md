@@ -1,4 +1,4 @@
-# AcademiQ Web — Conventions
+# AkademiQ Web — Conventions
 
 This document is the rulebook for the `apps/web` codebase. It applies to
 every page, feature component, and library file. The rules are enforced

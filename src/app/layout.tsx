@@ -21,7 +21,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "AcademiQ",
+  title: "AkademiQ",
   description: "Multi-tenant school management SaaS",
 };
 

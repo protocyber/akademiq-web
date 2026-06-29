@@ -46,7 +46,7 @@ const TEACHER_COLUMNS = [
 
 async function generate(filename, columns) {
   const wb = new Workbook();
-  wb.creator = "AcademiQ";
+  wb.creator = "AkademiQ";
   wb.created = new Date();
 
   const dataSheet = wb.addWorksheet("Data");

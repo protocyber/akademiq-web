@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# AcademiQ Web — purge
+# AkademiQ Web — purge
 # =============================================================================
 # DESTRUCTIVE: deletes .next/ (build output) and node_modules/.
 # You will need to run 'pnpm install' before 'make dev' afterwards.

@@ -225,7 +225,7 @@ function LoginForm() {
               <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-md">
                 <GraduationCap className="h-6 w-6" />
               </div>
-              {/* <span className="text-2xl font-bold font-display text-primary tracking-tight">AcademiQ</span> */}
+              {/* <span className="text-2xl font-bold font-display text-primary tracking-tight">AkademiQ</span> */}
             </div>
             {/* <h2 className="text-2xl font-bold font-display text-foreground">Selamat Datang</h2>
             <p className="text-muted-foreground text-sm">
@@ -235,7 +235,7 @@ function LoginForm() {
 
           <Card className="border border-border shadow-sm">
             <CardHeader className="pb-4">
-              <CardTitle className="text-xl text-center">Masuk ke AcademiQ</CardTitle>
+              <CardTitle className="text-xl text-center">Masuk ke AkademiQ</CardTitle>
             </CardHeader>
             <CardContent className="pt-2">
               <Form {...form}>
@@ -421,7 +421,7 @@ function LoginForm() {
               <span>•</span>
               <Link className="hover:text-primary transition-colors" href="#">Syarat & Ketentuan</Link>
             </div>
-            <p>© 2026 AcademiQ. Hak Cipta Dilindungi.</p>
+            <p>© 2026 AkademiQ. Hak Cipta Dilindungi.</p>
           </footer>
         </div>
       </section>

@@ -140,7 +140,7 @@ export default function SettingsUsersPage() {
       <SidebarLayout className="mx-auto w-full space-y-4">
         <DataTableCard
           title="Pengguna"
-          description="Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ."
+          description="Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AkademiQ."
         >
           <div className="space-y-3 px-4 pb-4">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -250,7 +250,7 @@ function UsersContent() {
     >
       <DataTableCard
         title="Pengguna"
-        description="Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AcademiQ."
+        description="Kelola guru, wali kelas, kepala sekolah, siswa, dan orang tua di AkademiQ."
         primaryActions={
           !isLoading ? (
             <>
