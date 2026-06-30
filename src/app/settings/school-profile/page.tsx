@@ -1,11 +1,11 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Pencil } from "lucide-react";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,7 +26,7 @@ import { toast } from "@/components/ui/toaster";
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
 import { useSchoolProfile, useSchoolMedia, type SchoolProfile } from "@/lib/query/queries/use-school-profile";
-import { useUpdateSchoolProfile } from "@/lib/query/mutations/use-school-profile";
+import { useDeleteSchoolLogoMedia, useUpdateSchoolProfile } from "@/lib/query/mutations/use-school-profile";
 import { useDeleteSchoolLogo, useUploadSchoolLogo } from "@/lib/query/mutations/use-academic-ops";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
@@ -79,6 +79,7 @@ function SchoolProfileContent() {
   const media = useSchoolMedia();
   const uploadLogo = useUploadSchoolLogo();
   const deleteLogo = useDeleteSchoolLogo();
+  const deleteLogoMedia = useDeleteSchoolLogoMedia();
   const logout = useLogout();
   const [editOpen, setEditOpen] = React.useState(false);
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
@@ -130,6 +131,16 @@ function SchoolProfileContent() {
       toast.success("Logo sekolah berhasil dihapus");
     } catch (err) {
       toast.error(getErrorMessage(err, { fallback: "Gagal menghapus logo" }));
+    }
+  }
+
+  async function onLogoHistoryDelete(mediaId: string) {
+    if (!window.confirm("Hapus logo dari riwayat? Tindakan ini tidak dapat dibatalkan.")) return;
+    try {
+      await deleteLogoMedia.mutateAsync(mediaId);
+      toast.success("Logo berhasil dihapus dari riwayat");
+    } catch (err) {
+      toast.error(getErrorMessage(err, { fallback: "Gagal menghapus logo dari riwayat" }));
     }
   }
 
@@ -201,7 +212,7 @@ function SchoolProfileContent() {
             ) : (
               <div className="flex items-start gap-4">
                 {logoUrl ? (
-                  <img src={logoUrl} alt="Logo sekolah" className="h-24 w-24 rounded-lg border object-cover" />
+                  <Image src={logoUrl} alt="Logo sekolah" width={96} height={96} className="h-24 w-24 rounded-lg border object-cover" unoptimized />
                 ) : (
                 <div className="flex h-24 w-24 items-center justify-center rounded-lg border-2 border-dashed bg-muted">
                   <ImageIcon className="h-8 w-8 text-muted-foreground" />
@@ -213,7 +224,7 @@ function SchoolProfileContent() {
                   onChange={setLogoFile}
                   accept={IMAGE_ACCEPT}
                   maxSize={MAX_IMAGE_SELECT_SIZE_BYTES}
-                  disabled={uploadLogo.isPending || deleteLogo.isPending}
+                  disabled={uploadLogo.isPending || deleteLogo.isPending || deleteLogoMedia.isPending}
                   prompt="Tarik logo ke sini atau klik untuk memilih"
                   hint={IMAGE_SIZE_HINT}
                 />
@@ -222,7 +233,7 @@ function SchoolProfileContent() {
                     variant="outline"
                     onClick={onLogoUpload}
                     loading={uploadLogo.isPending}
-                    disabled={!logoFile || deleteLogo.isPending}
+                    disabled={!logoFile || deleteLogo.isPending || deleteLogoMedia.isPending}
                   >
                     Unggah Logo
                   </Button>
@@ -231,7 +242,7 @@ function SchoolProfileContent() {
                       variant="outline"
                       onClick={onLogoDelete}
                       loading={deleteLogo.isPending}
-                      disabled={uploadLogo.isPending}
+                      disabled={uploadLogo.isPending || deleteLogoMedia.isPending}
                     >
                       Hapus Logo
                     </Button>
@@ -252,7 +263,12 @@ function SchoolProfileContent() {
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
-              <MediaHistoryList media={media.data} />
+              <MediaHistoryList
+                media={media.data}
+                pendingMediaId={deleteLogoMedia.variables}
+                isDeleting={deleteLogoMedia.isPending}
+                onDelete={onLogoHistoryDelete}
+              />
             </CardContent>
           </Card>
         )}
@@ -643,7 +659,17 @@ function SchoolProfileForm({
   );
 }
 
-function MediaHistoryList({ media }: { media: MediaAsset[] }) {
+function MediaHistoryList({
+  media,
+  pendingMediaId,
+  isDeleting,
+  onDelete,
+}: {
+  media: MediaAsset[];
+  pendingMediaId?: string;
+  isDeleting: boolean;
+  onDelete: (mediaId: string) => void;
+}) {
   if (media.length === 0) {
     return <p className="text-sm text-muted-foreground">Belum ada riwayat logo.</p>;
   }
@@ -652,11 +678,22 @@ function MediaHistoryList({ media }: { media: MediaAsset[] }) {
     <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
       {media.map((m: MediaAsset) => (
         <div key={m.media_id} className="space-y-2">
-          <img src={m.file_url} alt="Logo" className="h-24 w-24 rounded-lg border object-cover" />
+          <Image src={m.file_url} alt="Logo" width={96} height={96} className="h-24 w-24 rounded-lg border object-cover" unoptimized />
           <div className="text-xs text-muted-foreground">
             {formatDate(m.uploaded_at)}
             {m.is_active && <span className="ml-1 text-green-600">(Aktif)</span>}
           </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 w-24"
+            loading={isDeleting && pendingMediaId === m.media_id}
+            disabled={isDeleting && pendingMediaId !== m.media_id}
+            onClick={() => onDelete(m.media_id)}
+          >
+            <Trash2 className="mr-2 h-3.5 w-3.5" />
+            Hapus
+          </Button>
         </div>
       ))}
     </div>
