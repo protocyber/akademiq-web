@@ -19,13 +19,11 @@ import {
   AVAILABLE_ROSTER_KEY,
   FAMILIES_QUERY_KEY,
   HOMEROOMS_QUERY_KEY,
-  MEDIA_QUERY_KEY,
   STUDENTS_QUERY_KEY,
   TEACHING_ASSIGNMENTS_QUERY_KEY,
   TEACHERS_QUERY_KEY,
   type FamilyProfile,
   type Homeroom,
-  type MediaAsset,
   type Student,
   type StudentFamilyLink,
   type Teacher,
@@ -378,7 +376,9 @@ export function useDeleteFamilyLink(studentId?: string) {
   });
 }
 
-// --- media upload -----------------------------------------------------------
+// --- photo upload / clear ----------------------------------------------------
+
+type PhotoResponse = { photo_url: string };
 
 export function useUploadMedia() {
   const qc = useQueryClient();
@@ -389,11 +389,9 @@ export function useUploadMedia() {
       body.set("owner_type", ownerType);
       body.set("owner_id", ownerId);
       body.set("file", compressed);
-      return apiFetch<MediaAsset>({ service: "academic-ops", path: "/api/v1/academic-ops/media", method: "POST", authenticated: true, body });
+      return apiFetch<PhotoResponse>({ service: "academic-ops", path: "/api/v1/academic-ops/media", method: "POST", authenticated: true, body });
     },
     onSuccess: (_, { ownerType }) => {
-      qc.invalidateQueries({ queryKey: MEDIA_QUERY_KEY });
-      // Also invalidate the owner entity to refresh photo_media_id
       if (ownerType === "student") qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY });
       if (ownerType === "teacher") qc.invalidateQueries({ queryKey: TEACHERS_QUERY_KEY });
       if (ownerType === "family") qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY });
@@ -407,7 +405,6 @@ export function useDeleteMedia() {
     mutationFn: ({ ownerType, ownerId }: { ownerType: string; ownerId: string }) =>
       apiFetch<void>({ service: "academic-ops", path: `/api/v1/academic-ops/media?owner_type=${ownerType}&owner_id=${ownerId}`, method: "DELETE", authenticated: true }),
     onSuccess: (_, { ownerType }) => {
-      qc.invalidateQueries({ queryKey: MEDIA_QUERY_KEY });
       if (ownerType === "student") qc.invalidateQueries({ queryKey: STUDENTS_QUERY_KEY });
       if (ownerType === "teacher") qc.invalidateQueries({ queryKey: TEACHERS_QUERY_KEY });
       if (ownerType === "family") qc.invalidateQueries({ queryKey: FAMILIES_QUERY_KEY });
@@ -422,11 +419,10 @@ export function useUploadSchoolLogo() {
       const compressed = await compressImageForUpload(file);
       const body = new FormData();
       body.set("file", compressed);
-      return apiFetch<MediaAsset>({ service: "billing", path: "/api/v1/billing/tenants/me/school-profile/media", method: "POST", authenticated: true, body });
+      return apiFetch<{ logo_url: string }>({ service: "billing", path: "/api/v1/billing/tenants/me/school-profile/logo", method: "POST", authenticated: true, body });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["billing", "school-profile"] });
-      qc.invalidateQueries({ queryKey: ["billing", "school-media"] });
     },
   });
 }
@@ -434,11 +430,10 @@ export function useUploadSchoolLogo() {
 export function useDeleteSchoolLogo() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ ownerType, ownerId }: { ownerType: "school"; ownerId: string }) =>
-      apiFetch<void>({ service: "billing", path: `/api/v1/billing/media?owner_type=${ownerType}&owner_id=${ownerId}`, method: "DELETE", authenticated: true }),
+    mutationFn: () =>
+      apiFetch<void>({ service: "billing", path: "/api/v1/billing/tenants/me/school-profile/logo", method: "DELETE", authenticated: true }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["billing", "school-profile"] });
-      qc.invalidateQueries({ queryKey: ["billing", "school-media"] });
     },
   });
 }

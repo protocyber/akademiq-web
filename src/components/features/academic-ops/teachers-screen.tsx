@@ -855,7 +855,7 @@ function TeacherDialog({
             <div className="space-y-2">
               <FormLabel>Foto guru</FormLabel>
               {teacher ? (
-                <PhotoUpload ownerType="teacher" ownerId={teacher.teacher_id} disabled={!canManage} />
+                <PhotoUpload ownerType="teacher" ownerId={teacher.teacher_id} photoUrl={teacher.photo_url} disabled={!canManage} />
               ) : (
                 <FileDropzone
                   value={pendingPhoto}

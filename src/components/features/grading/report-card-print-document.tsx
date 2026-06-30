@@ -9,8 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useSubjectsForYear } from "@/lib/query/queries/use-academic-config";
 import { useReportCardDetail } from "@/lib/query/queries/use-grading";
-import { useHomeroomRoster, useTeachers, useHomerooms, useTeachingAssignments, useMediaAssets } from "@/lib/query/queries/use-academic-ops";
-import { useSchoolMedia } from "@/lib/query/queries/use-school-profile";
+import { useHomeroomRoster, useTeachers, useHomerooms, useTeachingAssignments } from "@/lib/query/queries/use-academic-ops";
+import { useSchoolProfile } from "@/lib/query/queries/use-school-profile";
 
 export function ReportCardPrintStyles() {
   return (
@@ -161,14 +161,13 @@ export function ReportCardPrintDocument({ reportCardId, onReady }: { reportCardI
   const homerooms = useHomerooms();
   const subjects = useSubjectsForYear(card?.academic_year_id);
   const assignments = useTeachingAssignments(card?.homeroom_id);
-  const schoolMedia = useSchoolMedia();
+  const schoolProfile = useSchoolProfile();
   const student = (roster.data ?? []).find((s) => s.student_id === card?.student_id);
-  const studentMedia = useMediaAssets("student", student?.student_id);
-  const studentPhoto = studentMedia.data?.find((asset) => asset.is_active) ?? studentMedia.data?.[0];
-  const schoolLogo = schoolMedia.data?.find((asset) => asset.is_active) ?? schoolMedia.data?.[0];
+  const schoolLogoUrl = schoolProfile.data?.logo_url;
+  const studentPhotoUrl = student?.photo_url;
 
   const isLoading =
-    tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading || subjects.isLoading || assignments.isLoading || studentMedia.isLoading || schoolMedia.isLoading;
+    tenant.isLoading || detail.isLoading || roster.isLoading || teachers.isLoading || homerooms.isLoading || subjects.isLoading || assignments.isLoading || schoolProfile.isLoading;
 
   const readyCalled = React.useRef(false);
   React.useEffect(() => {
@@ -230,8 +229,8 @@ export function ReportCardPrintDocument({ reportCardId, onReady }: { reportCardI
 
       <div className="relative z-10 flex items-center justify-center gap-5 text-center">
         <div className="relative h-[72px] w-[72px]">
-          {schoolLogo?.file_url ? (
-            <Image src={schoolLogo.file_url} alt="Logo sekolah" fill sizes="72px" className="object-contain" />
+          {schoolLogoUrl ? (
+            <Image src={schoolLogoUrl} alt="Logo sekolah" fill sizes="72px" className="object-contain" />
           ) : (
             <SchoolSeal />
           )}
@@ -281,8 +280,8 @@ export function ReportCardPrintDocument({ reportCardId, onReady }: { reportCardI
         <div className="flex flex-col items-center gap-3 pt-6">
           <div className="relative h-[164px] w-[128px] border-[3px] border-[#c8a84e] bg-[#f1f1ee] p-[5px] shadow-[0_0_0_1px_#0d4b31]">
             <div className="relative h-full w-full overflow-hidden bg-[#efefec]">
-              {studentPhoto?.file_url ? (
-                <Image src={studentPhoto.file_url} alt="Foto siswa" fill sizes="128px" className="object-cover" />
+              {studentPhotoUrl ? (
+                <Image src={studentPhotoUrl} alt="Foto siswa" fill sizes="128px" className="object-cover" />
               ) : (
                 <svg viewBox="0 0 118 154" className="h-full w-full">
                   <rect width="118" height="154" fill="#eeeeec" />

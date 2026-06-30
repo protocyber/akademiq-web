@@ -804,7 +804,7 @@ function StudentDialog({
             <div className="space-y-2">
               <FormLabel>Foto siswa</FormLabel>
               {student ? (
-                <PhotoUpload ownerType="student" ownerId={student.student_id} disabled={!canManage} />
+                <PhotoUpload ownerType="student" ownerId={student.student_id} photoUrl={student.photo_url} disabled={!canManage} />
               ) : (
                 <>
                   <FileDropzone

@@ -40,7 +40,7 @@ export type Student = {
   birth_place?: string | null;
   address_line?: string | null;
   phone_number?: string | null;
-  photo_media_id?: string | null;
+  photo_url?: string | null;
   religion?: string | null;
   nationality?: string | null;
   child_order?: number | null;
@@ -73,7 +73,7 @@ export type Teacher = {
   birth_place?: string | null;
   address_line?: string | null;
   phone_number?: string | null;
-  photo_media_id?: string | null;
+  photo_url?: string | null;
   email?: string | null;
   employment_status?: string | null;
   role_position?: string | null;
@@ -98,7 +98,7 @@ export type FamilyProfile = {
   birth_date?: string | null;
   address_line?: string | null;
   phone_number?: string | null;
-  photo_media_id?: string | null;
+  photo_url?: string | null;
   email?: string | null;
   occupation?: string | null;
   income_range?: string | null;
@@ -129,17 +129,6 @@ export type StudentFamilyLink = {
   family?: FamilyProfile;
 };
 
-export type MediaAsset = {
-  media_id: string;
-  owner_type: string;
-  owner_id: string;
-  file_url: string;
-  content_type: string;
-  size_bytes: number;
-  is_active: boolean;
-  uploaded_at: string;
-};
-
 export type Guardian = { tenant_id: string; user_id: string; student_id: string; created_at: string };
 export type Homeroom = { homeroom_id: string; name: string; grade_level: string; capacity: number; academic_year_id: string; enrolled_count: number; homeroom_teacher_id?: string | null };
 export type TeachingAssignment = { assignment_id: string; teacher_id: string; subject_id: string; homeroom_id: string; academic_year_id: string; created_at: string };
@@ -156,7 +145,6 @@ export const TEACHERS_QUERY_KEY = ["academic-ops", "teachers"] as const;
 export const FAMILIES_QUERY_KEY = ["academic-ops", "families"] as const;
 export const HOMEROOMS_QUERY_KEY = ["academic-ops", "homerooms"] as const;
 export const TEACHING_ASSIGNMENTS_QUERY_KEY = ["academic-ops", "teaching-assignments"] as const;
-export const MEDIA_QUERY_KEY = ["academic-ops", "media"] as const;
 
 // --- dropdown / consumer hooks (array; preserved for grading + roster) ------
 // These hit the now-paginated endpoints with a generous page so dropdown
@@ -384,16 +372,6 @@ export function useStudentFamilyLinks(studentId?: string) {
     queryKey: [...STUDENTS_QUERY_KEY, studentId, "family-links"],
     queryFn: () => apiFetch<StudentFamilyLink[]>({ service: "academic-ops", path: `/api/v1/academic-ops/students/${studentId}/family-links`, authenticated: true }),
     enabled: Boolean(studentId),
-  });
-}
-
-// --- media assets ---
-
-export function useMediaAssets(ownerType?: string, ownerId?: string) {
-  return useQuery({
-    queryKey: [...MEDIA_QUERY_KEY, ownerType, ownerId],
-    queryFn: () => apiFetch<MediaAsset[]>({ service: "academic-ops", path: `/api/v1/academic-ops/media?owner_type=${ownerType}&owner_id=${ownerId}`, authenticated: true }),
-    enabled: Boolean(ownerType && ownerId),
   });
 }
 

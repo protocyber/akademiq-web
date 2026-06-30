@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Image as ImageIcon, Pencil, Trash2 } from "lucide-react";
+import { Image as ImageIcon, Pencil } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -25,18 +25,16 @@ import {
 import { toast } from "@/components/ui/toaster";
 import { AuthGuard } from "@/components/features/auth-guard";
 import { SidebarLayout } from "@/components/layout/sidebar-layout";
-import { useSchoolProfile, useSchoolMedia, type SchoolProfile } from "@/lib/query/queries/use-school-profile";
-import { useDeleteSchoolLogoMedia, useUpdateSchoolProfile } from "@/lib/query/mutations/use-school-profile";
+import { useSchoolProfile, type SchoolProfile } from "@/lib/query/queries/use-school-profile";
+import { useUpdateSchoolProfile } from "@/lib/query/mutations/use-school-profile";
 import { useDeleteSchoolLogo, useUploadSchoolLogo } from "@/lib/query/mutations/use-academic-ops";
 import { useMe } from "@/lib/query/queries/use-me";
 import { useTenantMe } from "@/lib/query/queries/use-tenant-me";
 import { useLogout } from "@/lib/query/mutations/use-logout";
 import { getErrorMessage } from "@/lib/errors/messages";
-import { formatDate } from "@/lib/date-utils";
 import { IMAGE_ACCEPT, IMAGE_SIZE_HINT, MAX_IMAGE_SELECT_SIZE_BYTES } from "@/lib/media/upload-constraints";
 import { schoolProfileSchema, type SchoolProfileForm } from "@/lib/schemas/academic-ops";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
-import type { MediaAsset } from "@/lib/query/queries/use-academic-ops";
 
 export default function SchoolProfilePage() {
   return (
@@ -76,17 +74,15 @@ function SchoolProfileContent() {
   const tenant = useTenantMe();
   const me = useMe();
   const profile = useSchoolProfile();
-  const media = useSchoolMedia();
   const uploadLogo = useUploadSchoolLogo();
   const deleteLogo = useDeleteSchoolLogo();
-  const deleteLogoMedia = useDeleteSchoolLogoMedia();
   const logout = useLogout();
   const [editOpen, setEditOpen] = React.useState(false);
   const [logoFile, setLogoFile] = React.useState<File | null>(null);
 
-  const isLoading = tenant.isLoading || me.isLoading || profile.isLoading || media.isLoading;
+  const isLoading = tenant.isLoading || me.isLoading || profile.isLoading;
 
-  if (tenant.error || me.error || profile.error || media.error) {
+  if (tenant.error || me.error || profile.error) {
     return (
       <main className="container mx-auto max-w-4xl space-y-6 px-4 py-10">
         <Alert variant="destructive">
@@ -95,12 +91,11 @@ function SchoolProfileContent() {
             <Button
               size="sm"
               variant="outline"
-              loading={tenant.isFetching || me.isFetching || profile.isFetching || media.isFetching}
+              loading={tenant.isFetching || me.isFetching || profile.isFetching}
               onClick={() => {
                 tenant.refetch();
                 me.refetch();
                 profile.refetch();
-                media.refetch();
               }}
             >
               Coba lagi
@@ -123,10 +118,10 @@ function SchoolProfileContent() {
   }
 
   async function onLogoDelete() {
-    if (!tenant.data?.tenant_id || !logoMedia) return;
+    if (!logoUrl) return;
     if (!window.confirm("Hapus logo? Tindakan ini tidak dapat dibatalkan.")) return;
     try {
-      await deleteLogo.mutateAsync({ ownerType: "school", ownerId: tenant.data.tenant_id });
+      await deleteLogo.mutateAsync();
       setLogoFile(null);
       toast.success("Logo sekolah berhasil dihapus");
     } catch (err) {
@@ -134,18 +129,7 @@ function SchoolProfileContent() {
     }
   }
 
-  async function onLogoHistoryDelete(mediaId: string) {
-    if (!window.confirm("Hapus logo dari riwayat? Tindakan ini tidak dapat dibatalkan.")) return;
-    try {
-      await deleteLogoMedia.mutateAsync(mediaId);
-      toast.success("Logo berhasil dihapus dari riwayat");
-    } catch (err) {
-      toast.error(getErrorMessage(err, { fallback: "Gagal menghapus logo dari riwayat" }));
-    }
-  }
-
-  const logoMedia = media.data?.find((m: MediaAsset) => m.is_active);
-  const logoUrl = logoMedia?.file_url;
+  const logoUrl = profile.data?.logo_url;
 
   return (
     <SidebarLayout
@@ -224,7 +208,7 @@ function SchoolProfileContent() {
                   onChange={setLogoFile}
                   accept={IMAGE_ACCEPT}
                   maxSize={MAX_IMAGE_SELECT_SIZE_BYTES}
-                  disabled={uploadLogo.isPending || deleteLogo.isPending || deleteLogoMedia.isPending}
+                  disabled={uploadLogo.isPending || deleteLogo.isPending}
                   prompt="Tarik logo ke sini atau klik untuk memilih"
                   hint={IMAGE_SIZE_HINT}
                 />
@@ -233,16 +217,16 @@ function SchoolProfileContent() {
                     variant="outline"
                     onClick={onLogoUpload}
                     loading={uploadLogo.isPending}
-                    disabled={!logoFile || deleteLogo.isPending || deleteLogoMedia.isPending}
+                    disabled={!logoFile || deleteLogo.isPending}
                   >
                     Unggah Logo
                   </Button>
-                  {logoMedia && (
+                  {logoUrl && (
                     <Button
                       variant="outline"
                       onClick={onLogoDelete}
                       loading={deleteLogo.isPending}
-                      disabled={uploadLogo.isPending || deleteLogoMedia.isPending}
+                      disabled={uploadLogo.isPending}
                     >
                       Hapus Logo
                     </Button>
@@ -253,25 +237,6 @@ function SchoolProfileContent() {
             )}
           </CardContent>
         </Card>
-
-        {media.data && media.data.length > 0 && (
-          <Card>
-            <CardHeader className="border-b pb-4">
-              <CardTitle className="text-lg">Riwayat Logo</CardTitle>
-              <CardDescription>
-                Logo yang pernah diunggah untuk sekolah ini.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <MediaHistoryList
-                media={media.data}
-                pendingMediaId={deleteLogoMedia.variables}
-                isDeleting={deleteLogoMedia.isPending}
-                onDelete={onLogoHistoryDelete}
-              />
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -656,46 +621,5 @@ function SchoolProfileForm({
         </DialogFooter>
       </form>
     </Form>
-  );
-}
-
-function MediaHistoryList({
-  media,
-  pendingMediaId,
-  isDeleting,
-  onDelete,
-}: {
-  media: MediaAsset[];
-  pendingMediaId?: string;
-  isDeleting: boolean;
-  onDelete: (mediaId: string) => void;
-}) {
-  if (media.length === 0) {
-    return <p className="text-sm text-muted-foreground">Belum ada riwayat logo.</p>;
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-      {media.map((m: MediaAsset) => (
-        <div key={m.media_id} className="space-y-2">
-          <Image src={m.file_url} alt="Logo" width={96} height={96} className="h-24 w-24 rounded-lg border object-cover" unoptimized />
-          <div className="text-xs text-muted-foreground">
-            {formatDate(m.uploaded_at)}
-            {m.is_active && <span className="ml-1 text-green-600">(Aktif)</span>}
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 w-24"
-            loading={isDeleting && pendingMediaId === m.media_id}
-            disabled={isDeleting && pendingMediaId !== m.media_id}
-            onClick={() => onDelete(m.media_id)}
-          >
-            <Trash2 className="mr-2 h-3.5 w-3.5" />
-            Hapus
-          </Button>
-        </div>
-      ))}
-    </div>
   );
 }

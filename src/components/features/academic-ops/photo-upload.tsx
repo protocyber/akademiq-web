@@ -9,20 +9,18 @@ import { toast } from "@/components/ui/toaster";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { IMAGE_ACCEPT, IMAGE_SIZE_HINT, MAX_IMAGE_SELECT_SIZE_BYTES } from "@/lib/media/upload-constraints";
 import { useDeleteMedia, useUploadMedia } from "@/lib/query/mutations/use-academic-ops";
-import { useMediaAssets } from "@/lib/query/queries/use-academic-ops";
 
 type PhotoUploadProps = {
   ownerType: "student" | "teacher";
   ownerId?: string;
+  photoUrl?: string | null;
   disabled?: boolean;
 };
 
-export function PhotoUpload({ ownerType, ownerId, disabled = false }: PhotoUploadProps) {
+export function PhotoUpload({ ownerType, ownerId, photoUrl, disabled = false }: PhotoUploadProps) {
   const [file, setFile] = React.useState<File | null>(null);
-  const media = useMediaAssets(ownerType, ownerId);
   const upload = useUploadMedia();
   const deleteMedia = useDeleteMedia();
-  const activeMedia = media.data?.find((asset) => asset.is_active) ?? media.data?.[0];
 
   async function onUpload() {
     if (!ownerId || !file) return;
@@ -36,7 +34,7 @@ export function PhotoUpload({ ownerType, ownerId, disabled = false }: PhotoUploa
   }
 
   async function onDelete() {
-    if (!ownerId || !activeMedia) return;
+    if (!ownerId || !photoUrl) return;
     if (!window.confirm("Hapus foto? Tindakan ini tidak dapat dibatalkan.")) return;
     try {
       await deleteMedia.mutateAsync({ ownerType, ownerId });
@@ -58,8 +56,8 @@ export function PhotoUpload({ ownerType, ownerId, disabled = false }: PhotoUploa
   return (
     <div className="space-y-3 rounded-lg border p-3">
       <div className="flex items-start gap-3">
-        {activeMedia?.file_url ? (
-          <img src={activeMedia.file_url} alt="Foto" className="h-20 w-16 rounded-md border object-cover" />
+        {photoUrl ? (
+          <img src={photoUrl} alt="Foto" className="h-20 w-16 rounded-md border object-cover" />
         ) : (
           <div className="flex h-20 w-16 items-center justify-center rounded-md border-2 border-dashed bg-muted">
             <ImageIcon className="h-6 w-6 text-muted-foreground" />
@@ -86,7 +84,7 @@ export function PhotoUpload({ ownerType, ownerId, disabled = false }: PhotoUploa
             >
               Unggah Foto
             </Button>
-            {activeMedia && (
+            {photoUrl && (
               <Button
                 type="button"
                 variant="outline"
