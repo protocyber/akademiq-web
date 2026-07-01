@@ -44,7 +44,7 @@
     --popover-foreground: 210 17% 92%;
 
     /* Primary (GitHub green) */
-    --primary: 137 58% 33%; /* #238636 */
+    --primary: 132 59% 33%; /* #238636 */
     --primary-foreground: 0 0% 100%;
 
     /* Secondary */
@@ -57,7 +57,7 @@
 
     /* Accent / hover */
     --accent: 215 14% 18%;
-    --accent-foreground: 137 58% 50%;
+    --accent-foreground: 132 59% 50%;
 
     /* Danger */
     --destructive: 0 72% 51%; /* #da3633 */
@@ -66,10 +66,10 @@
     /* Border & input */
     --border: 215 14% 23%; /* #30363d */
     --input: 215 14% 23%;
-    --ring: 137 58% 33%;
+    --ring: 132 59% 33%;
 
     /* Charts */
-    --chart-1: 137 58% 33%;
+    --chart-1: 132 59% 33%;
     --chart-2: 207 90% 54%;
     --chart-3: 40 90% 55%;
     --chart-4: 280 65% 60%;
