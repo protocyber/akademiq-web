@@ -12,8 +12,6 @@ import {
   Users,
   Lock,
   Mail,
-  Eye,
-  EyeOff,
   ArrowRight
 } from "lucide-react";
 
@@ -23,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -67,7 +66,6 @@ function LoginForm() {
   const params = useSearchParams();
   const next = params.get("next") || "/dashboard";
   const oauthError = params.get("oauth_error");
-  const [showPassword, setShowPassword] = React.useState(false);
   const [recoveryOpen, setRecoveryOpen] = React.useState(false);
   const [recoveryConfirmed, setRecoveryConfirmed] = React.useState(false);
 
@@ -308,26 +306,13 @@ function LoginForm() {
                             Lupa Password?
                           </Button>
                         </div>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <FormControl>
-                            <Input
-                              className="pl-10 pr-10"
-                              type={showPassword ? "text" : "password"}
-                              autoComplete="current-password"
-                              {...field}
-                            />
-                          </FormControl>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </Button>
-                        </div>
+                        <FormControl>
+                          <PasswordInput
+                            leftIcon={<Lock className="h-4 w-4" />}
+                            autoComplete="current-password"
+                            {...field}
+                          />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
