@@ -187,8 +187,8 @@ Rules:
 
 ## 11. When the rules disagree with a feature requirement
 
-Open the openspec change file (`openspec/changes/<name>/`) and update
-the relevant capability spec before changing this document or the code.
+Open the relevant design spec or plan under `docs/superpowers/` in the
+parent repo and update it before changing this document or the code.
 The spec is the contract; conventions are how we keep the code free of
 contradictions while we honour it.
 
