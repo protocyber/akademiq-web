@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 
-import { GradeLevelsTable } from "@/app/settings/academic/grade-levels/page";
+import { GradeLevelDialog, GradeLevelsTable } from "@/app/settings/academic/grade-levels/page";
 
 const levels = [
   {
@@ -108,5 +108,58 @@ describe("GradeLevelsTable", () => {
       />,
     );
     expect(screen.getByText(/belum ada tingkat kelas/i)).toBeInTheDocument();
+  });
+
+  it("disables move buttons while a reorder mutation is pending", () => {
+    wrap(
+      <GradeLevelsTable
+        levels={levels}
+        canEdit
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+        reorderPending
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Turunkan Kelas X" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Naikkan Kelas XII" })).toBeDisabled();
+  });
+
+  it("still respects ladder boundaries when reorder is not pending", () => {
+    wrap(
+      <GradeLevelsTable
+        levels={levels}
+        canEdit
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+        onReorder={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Naikkan Kelas X" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Turunkan Kelas XII" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Turunkan Kelas X" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Naikkan Kelas XII" })).not.toBeDisabled();
+  });
+});
+
+describe("GradeLevelDialog is_final checkbox", () => {
+  it("toggles the checkbox when the descriptive label text is clicked", async () => {
+    // Regression test for FIX 4: the is_final control must use FormLabel so
+    // clicking the descriptive text toggles the checkbox (not a bare <span>).
+    wrap(
+      <GradeLevelDialog
+        open
+        level={null}
+        academicYearId="11111111-1111-4111-8111-111111111111"
+        nextOrdinal={1}
+        onClose={vi.fn()}
+      />,
+    );
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox).not.toBeChecked();
+    await userEvent.click(
+      screen.getByText("Tingkat akhir — siswa di tingkat ini lulus, bukan naik kelas"),
+    );
+    expect(checkbox).toBeChecked();
   });
 });

@@ -21,6 +21,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   EXPIRED_ACCESS_TOKEN: 'Sesi Anda sudah berakhir. Silakan masuk kembali.',
   FEATURE_NOT_AVAILABLE:
     'Fitur ini belum aktif untuk sekolah Anda. Aktifkan modul atau cek paket langganan.',
+  GRADE_LEVEL_IN_USE:
+    'Tingkat kelas masih dipakai template kelas dan tidak bisa dihapus.',
+  GRADE_LEVEL_CODE_TAKEN:
+    'Kode tingkat kelas sudah digunakan dalam tahun ajaran ini. Gunakan kode lain.',
+  GRADE_LEVEL_ORDINAL_TAKEN:
+    'Urutan tingkat kelas ini sudah dipakai tingkat lain dalam tahun ajaran ini. Pilih urutan lain.',
   GRADES_LOCKED:
     'Nilai sudah dikunci karena rapor masuk proses review. Kembalikan rapor ke Draft jika nilai perlu diperbaiki.',
   GRADING_POLICY_NOT_CONFIGURED:

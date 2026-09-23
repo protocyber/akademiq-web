@@ -26,7 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Form, FormControl, FormField, FormItem, FormLabelRequired, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -62,12 +62,14 @@ export function GradeLevelsTable({
   onEdit,
   onDelete,
   onReorder,
+  reorderPending = false,
 }: {
   levels: GradeLevel[];
   canEdit: boolean;
   onEdit: (level: GradeLevel) => void;
   onDelete: (level: GradeLevel) => void;
   onReorder: (orderedIds: string[]) => void;
+  reorderPending?: boolean;
 }) {
   if (levels.length === 0) {
     return (
@@ -111,7 +113,7 @@ export function GradeLevelsTable({
                   variant="ghost"
                   size="icon"
                   aria-label={`Naikkan ${level.label}`}
-                  disabled={index === 0}
+                  disabled={index === 0 || reorderPending}
                   onClick={() => move(index, -1)}
                 >
                   <ArrowUp className="h-4 w-4" />
@@ -120,7 +122,7 @@ export function GradeLevelsTable({
                   variant="ghost"
                   size="icon"
                   aria-label={`Turunkan ${level.label}`}
-                  disabled={index === levels.length - 1}
+                  disabled={index === levels.length - 1 || reorderPending}
                   onClick={() => move(index, 1)}
                 >
                   <ArrowDown className="h-4 w-4" />
@@ -167,8 +169,8 @@ export default function GradeLevelsPage() {
   );
 }
 
-function GradeLevelsScreen({ canEdit }: { canEdit: boolean }) {
-  const { yearId } = useAcademicScope();
+export function GradeLevelsScreen({ canEdit }: { canEdit: boolean }) {
+  const { yearId, isResolving } = useAcademicScope();
   const academicYearId = yearId ?? undefined;
   const query = useGradeLevels(academicYearId);
   const reorder = useReorderGradeLevels(academicYearId ?? "");
@@ -197,12 +199,34 @@ function GradeLevelsScreen({ canEdit }: { canEdit: boolean }) {
     });
   }
 
+  if (isResolving) {
+    return (
+      <Card>
+        <CardContent className="space-y-2 pt-6">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!academicYearId) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Pilih tahun ajaran di header untuk menampilkan tingkat kelas.
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
         {canEdit ? (
           <div className="flex justify-end">
-            <Button onClick={() => setCreating(true)} disabled={!academicYearId}>
+            <Button onClick={() => setCreating(true)}>
               <Plus className="mr-2 h-4 w-4" /> Tambah Tingkat
             </Button>
           </div>
@@ -221,29 +245,30 @@ function GradeLevelsScreen({ canEdit }: { canEdit: boolean }) {
             onEdit={setEditing}
             onDelete={setDeleting}
             onReorder={handleReorder}
+            reorderPending={reorder.isPending}
           />
         )}
       </CardContent>
 
-      {academicYearId ? (
-        <GradeLevelDialog
-          key={editing?.grade_level_id ?? "create"}
-          open={creating || editing !== null}
-          level={editing}
-          academicYearId={academicYearId}
-          nextOrdinal={levels.length + 1}
-          onClose={() => {
-            setCreating(false);
-            setEditing(null);
-          }}
-        />
-      ) : null}
+      <GradeLevelDialog
+        key={editing?.grade_level_id ?? "create"}
+        open={creating || editing !== null}
+        level={editing}
+        academicYearId={academicYearId}
+        nextOrdinal={levels.length + 1}
+        onClose={() => {
+          setCreating(false);
+          setEditing(null);
+        }}
+      />
 
       <ConfirmDialog
         open={deleting !== null}
         title="Hapus tingkat kelas?"
         description={`Tingkat ${deleting?.label ?? ""} akan dihapus.`}
         confirmLabel="Hapus"
+        loadingLabel="Menghapus..."
+        loading={remove.isPending}
         onConfirm={handleDelete}
         onOpenChange={(open) => {
           if (!open) setDeleting(null);
@@ -253,7 +278,7 @@ function GradeLevelsScreen({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-function GradeLevelDialog({
+export function GradeLevelDialog({
   open,
   level,
   academicYearId,
@@ -367,9 +392,9 @@ function GradeLevelDialog({
                       onCheckedChange={(checked) => field.onChange(checked === true)}
                     />
                   </FormControl>
-                  <span className="text-sm">
+                  <FormLabel className="cursor-pointer text-sm font-normal">
                     Tingkat akhir — siswa di tingkat ini lulus, bukan naik kelas
-                  </span>
+                  </FormLabel>
                   <FormMessage />
                 </FormItem>
               )}
