@@ -4,6 +4,7 @@ import { loginSchema } from "@/lib/schemas/login";
 import { registerSchema } from "@/lib/schemas/register";
 import { moduleToggleSchema } from "@/lib/schemas/module-toggle";
 import { schoolProfileSchema } from "@/lib/schemas/academic-ops";
+import { gradeLevelSchema } from "@/lib/schemas/grade-level";
 
 describe("loginSchema", () => {
   it("accepts a valid email identifier and password", () => {
@@ -125,5 +126,52 @@ describe("moduleToggleSchema", () => {
     expect(
       moduleToggleSchema.safeParse({ feature_code: "", enabled: true }).success,
     ).toBe(false);
+  });
+});
+
+describe("gradeLevelSchema", () => {
+  it("accepts a well-formed grade level", () => {
+    const parsed = gradeLevelSchema.safeParse({
+      academic_year_id: "0b5f3e1a-1111-4111-8111-111111111111",
+      code: "X",
+      label: "Kelas X",
+      ordinal: 1,
+      is_final: false,
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects an empty code", () => {
+    const parsed = gradeLevelSchema.safeParse({
+      academic_year_id: "0b5f3e1a-1111-4111-8111-111111111111",
+      code: "",
+      label: "Kelas X",
+      ordinal: 1,
+      is_final: false,
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("rejects ordinal below 1", () => {
+    const parsed = gradeLevelSchema.safeParse({
+      academic_year_id: "0b5f3e1a-1111-4111-8111-111111111111",
+      code: "X",
+      label: "Kelas X",
+      ordinal: 0,
+      is_final: false,
+    });
+    expect(parsed.success).toBe(false);
+  });
+
+  it("coerces a numeric string ordinal from the form input", () => {
+    const parsed = gradeLevelSchema.safeParse({
+      academic_year_id: "0b5f3e1a-1111-4111-8111-111111111111",
+      code: "X",
+      label: "Kelas X",
+      ordinal: "2",
+      is_final: false,
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.ordinal).toBe(2);
   });
 });

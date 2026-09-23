@@ -96,6 +96,18 @@ export type ClassTemplate = {
   default_capacity: number;
 };
 
+export type GradeLevel = {
+  grade_level_id: string;
+  tenant_id: string;
+  academic_year_id: string;
+  code: string;
+  label: string;
+  ordinal: number;
+  is_final: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type PageMeta = {
   page: number;
   page_size: number;
@@ -116,6 +128,7 @@ export const CURRICULUM_VERSIONS_QUERY_KEY = [
 export const SUBJECTS_QUERY_KEY = ["academic-config", "subjects"] as const;
 export const SUBJECT_GROUPS_QUERY_KEY = ["academic-config", "subject-groups"] as const;
 export const CLASS_TEMPLATES_QUERY_KEY = ["academic-config", "class-templates"] as const;
+export const GRADE_LEVELS_QUERY_KEY = ["academic-config", "grade-levels"] as const;
 
 function buildQuery(serialized: string) {
   return serialized ? `?${serialized}` : "";
@@ -353,6 +366,27 @@ export function useClassTemplates(academicYearId?: string) {
       const envelope = await apiFetchEnvelope<ClassTemplate[]>({
         service: "academic-config",
         path: `/api/v1/academic-config/academic-years/${academicYearId}/class-templates?page=1&page_size=100&sort=grade_level`,
+        authenticated: true,
+      });
+      return envelope.data;
+    },
+    enabled: Boolean(academicYearId),
+  });
+}
+
+/**
+ * Grade levels for one academic year, ordered by `ordinal`.
+ *
+ * Unpaginated by design — the backend returns the whole ladder (a school has
+ * at most ~13 levels) because the reorder UI needs every row at once.
+ */
+export function useGradeLevels(academicYearId?: string) {
+  return useQuery({
+    queryKey: [...GRADE_LEVELS_QUERY_KEY, academicYearId ?? ""],
+    queryFn: async () => {
+      const envelope = await apiFetchEnvelope<GradeLevel[]>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${academicYearId}/grade-levels`,
         authenticated: true,
       });
       return envelope.data;

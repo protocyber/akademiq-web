@@ -12,6 +12,8 @@ import {
   CLASS_TEMPLATES_QUERY_KEY,
   CurriculumVersion,
   CURRICULUM_VERSIONS_QUERY_KEY,
+  GradeLevel,
+  GRADE_LEVELS_QUERY_KEY,
   GradingPolicy,
   Subject,
   SUBJECTS_QUERY_KEY,
@@ -21,6 +23,7 @@ import {
 import type { AcademicYearForm, TransitionRequestForm, UpdateAcademicYearForm } from "@/lib/schemas/academic-year";
 import type { AcademicTermForm, TermTransitionRequestForm } from "@/lib/schemas/academic-term";
 import type { ClassTemplateForm } from "@/lib/schemas/class-template";
+import type { GradeLevelForm } from "@/lib/schemas/grade-level";
 import type { GradingPolicyForm } from "@/lib/schemas/grading-policy";
 import type { CurriculumVersionForm, SubjectForm, SubjectGroupForm } from "@/lib/schemas/subject";
 
@@ -450,5 +453,68 @@ export function useBulkDeleteClassTemplates() {
         body: { ids },
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: CLASS_TEMPLATES_QUERY_KEY }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Grade levels
+// ---------------------------------------------------------------------------
+
+export function useAddGradeLevel(academicYearId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<GradeLevelForm, "academic_year_id">) =>
+      apiFetch<GradeLevel>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${academicYearId}/grade-levels`,
+        method: "POST",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: GRADE_LEVELS_QUERY_KEY }),
+  });
+}
+
+export function useUpdateGradeLevel(gradeLevelId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Omit<GradeLevelForm, "academic_year_id">) =>
+      apiFetch<GradeLevel>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/grade-levels/${gradeLevelId}`,
+        method: "PATCH",
+        authenticated: true,
+        body: input,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: GRADE_LEVELS_QUERY_KEY }),
+  });
+}
+
+export function useDeleteGradeLevel() {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, string>({
+    mutationFn: (gradeLevelId) =>
+      apiFetch<void>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/grade-levels/${gradeLevelId}`,
+        method: "DELETE",
+        authenticated: true,
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: GRADE_LEVELS_QUERY_KEY }),
+  });
+}
+
+export function useReorderGradeLevels(academicYearId: string) {
+  const qc = useQueryClient();
+  return useMutation<GradeLevel[], unknown, string[]>({
+    mutationFn: (orderedIds) =>
+      apiFetch<GradeLevel[]>({
+        service: "academic-config",
+        path: `/api/v1/academic-config/academic-years/${academicYearId}/grade-levels/order`,
+        method: "PUT",
+        authenticated: true,
+        body: { ordered_ids: orderedIds },
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: GRADE_LEVELS_QUERY_KEY }),
   });
 }
