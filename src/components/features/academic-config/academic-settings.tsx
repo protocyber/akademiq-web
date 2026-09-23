@@ -24,6 +24,7 @@ const academicNav = [
   { href: "/settings/academic/terms", label: "Semester" },
   { href: "/settings/academic/subjects", label: "Mata Pelajaran" },
   { href: "/settings/academic/class-templates", label: "Template Kelas" },
+  { href: "/settings/academic/grade-levels", label: "Tingkat Kelas" },
 ];
 
 type AcademicSettingsContext = {
