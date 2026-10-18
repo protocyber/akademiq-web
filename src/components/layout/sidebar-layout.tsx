@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck, ChevronDown, Settings, UserRound, DoorOpen, Sun, Moon, Monitor, Check, Palette } from "lucide-react";
+import { BookOpen, GraduationCap, LayoutDashboard, Boxes, LogOut, School, User, Users, ClipboardList, Menu, ShieldCheck, ChevronDown, Settings, UserRound, DoorOpen, Sun, Moon, Monitor, Check, Palette, TrendingUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ThemeSwitcher } from "@/components/layout/theme-switcher";
@@ -41,7 +41,8 @@ type VisibilityRule =
   | { kind: "always"; }
   | { kind: "permission"; code: string; }
   | { kind: "module"; featureCode: string; }
-  | { kind: "moduleAndPermission"; featureCode: string; permissionCode: string; };
+  | { kind: "moduleAndPermission"; featureCode: string; permissionCode: string; }
+  | { kind: "moduleAndAnyPermission"; featureCode: string; permissionCodes: string[]; };
 
 interface NavItem {
   href: string;
@@ -105,6 +106,7 @@ const navEntries: NavEntry[] = [
       children: [
         { href: "/grading/entry", label: "Nilai", icon: ClipboardList, activePrefixes: ["/grading/entry"], visibility: { kind: "moduleAndPermission", featureCode: "grading", permissionCode: "grade.read" } },
         { href: "/grading/report-cards", label: "Rapor", icon: GraduationCap, activePrefixes: ["/grading/report-cards"], visibility: { kind: "moduleAndPermission", featureCode: "grading", permissionCode: "report.read" } },
+        { href: "/promotion", label: "Kenaikan Kelas", icon: TrendingUp, activePrefixes: ["/promotion"], visibility: { kind: "moduleAndAnyPermission", featureCode: "academic_ops", permissionCodes: ["promotion.manage", "promotion.approve"] } },
       ],
     },
   },
@@ -136,7 +138,7 @@ function isGroupVisible(
   return checkVisibility(group.visibility, heldPermissions, enabledModules);
 }
 
-function checkVisibility(
+export function checkVisibility(
   rule: VisibilityRule,
   heldPermissions: Set<string>,
   enabledModules: Set<string>,
@@ -150,6 +152,11 @@ function checkVisibility(
       return enabledModules.has(rule.featureCode);
     case "moduleAndPermission":
       return enabledModules.has(rule.featureCode) && heldPermissions.has(rule.permissionCode);
+    case "moduleAndAnyPermission":
+      return (
+        enabledModules.has(rule.featureCode) &&
+        rule.permissionCodes.some((code) => heldPermissions.has(code))
+      );
   }
 }
 
