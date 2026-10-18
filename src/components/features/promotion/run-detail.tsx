@@ -7,6 +7,7 @@ import { ActionBar } from "@/components/features/promotion/action-bar";
 import { CannotEvaluateTab } from "@/components/features/promotion/cannot-evaluate-tab";
 import { CriteriaDialog } from "@/components/features/promotion/criteria-dialog";
 import { DecisionsTab } from "@/components/features/promotion/decisions-tab";
+import { ExecuteDialog } from "@/components/features/promotion/execute-dialog";
 import { STATUS_LABEL, STATUS_ORDER, statusBadgeVariant } from "@/components/features/promotion/labels";
 import { formatScore } from "@/components/features/promotion/override-dialog";
 import { PlacementTab } from "@/components/features/promotion/placement-tab";
@@ -34,6 +35,7 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
   const years = useAcademicYears();
   const targetHomerooms = useHomeroomsForYear(detail.data?.run.target_academic_year_id ?? undefined);
   const [reevaluating, setReevaluating] = React.useState(false);
+  const [executing, setExecuting] = React.useState(false);
   const [tab, setTab] = React.useState("decisions");
   const [unsavedPlacement, setUnsavedPlacement] = React.useState(false);
 
@@ -110,7 +112,7 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
             detail={d}
             access={access}
             onReevaluate={() => setReevaluating(true)}
-            onExecute={() => setTab("placement")}
+            onExecute={() => setExecuting(true)}
             executeDisabled={unsavedPlacement}
           />
         </CardHeader>
@@ -186,7 +188,13 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
         initial={d.criteria}
         overriddenCount={d.overridden}
       />
-      {/* EXECUTE_DIALOG — added in Task 9 */}
+      <ExecuteDialog
+        open={executing}
+        onOpenChange={setExecuting}
+        detail={d}
+        decisions={decisions.data ?? []}
+        targetYearName={run.target_academic_year_id ? yearName(run.target_academic_year_id) : ""}
+      />
     </div>
   );
 }
