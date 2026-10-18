@@ -79,7 +79,8 @@ test("tenant admin walks academic ops pages including import errors", async ({ p
 
   await page.goto("/homerooms");
   await page.getByLabel("Nama kelas").fill("7A");
-  await page.getByLabel("Tingkat").fill("7");
+  await page.getByLabel("Tingkat").click();
+  await page.getByRole("option").first().click();
   await page.getByLabel("Kapasitas").fill("32");
   await page.getByRole("combobox", { name: /tahun aktif/i }).click();
   await page.getByRole("option", { name: "2026/2027" }).click();

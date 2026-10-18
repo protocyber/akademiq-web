@@ -130,7 +130,17 @@ export type StudentFamilyLink = {
 };
 
 export type Guardian = { tenant_id: string; user_id: string; student_id: string; created_at: string };
-export type Homeroom = { homeroom_id: string; name: string; grade_level: string; capacity: number; academic_year_id: string; enrolled_count: number; homeroom_teacher_id?: string | null };
+export type Homeroom = {
+  homeroom_id: string;
+  name: string;
+  grade_level: string;
+  grade_level_id: string | null;
+  ordinal: number | null;
+  capacity: number;
+  academic_year_id: string;
+  enrolled_count: number;
+  homeroom_teacher_id?: string | null;
+};
 export type TeachingAssignment = { assignment_id: string; teacher_id: string; subject_id: string; homeroom_id: string; academic_year_id: string; created_at: string };
 
 export type Paginated<T> = {
@@ -169,6 +179,20 @@ export function useHomerooms() {
   return useQuery({
     queryKey: [...HOMEROOMS_QUERY_KEY, "all"],
     queryFn: () => apiFetch<Homeroom[]>({ service: "academic-ops", path: `/api/v1/academic-ops/homerooms${DROPDOWN_PAGE_SIZE}`, authenticated: true }),
+  });
+}
+
+/** Homerooms of one academic year (at most 100 — a school year has far fewer). */
+export function useHomeroomsForYear(academicYearId?: string) {
+  return useQuery({
+    queryKey: [...HOMEROOMS_QUERY_KEY, "year", academicYearId],
+    queryFn: () =>
+      apiFetch<Homeroom[]>({
+        service: "academic-ops",
+        path: `/api/v1/academic-ops/homerooms?academic_year_id=${academicYearId}&page=1&page_size=100`,
+        authenticated: true,
+      }),
+    enabled: Boolean(academicYearId),
   });
 }
 

@@ -15,6 +15,8 @@ import {
   Users,
 } from "lucide-react";
 
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -39,7 +41,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Combobox } from "@/components/ui/select";
+import { Combobox, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SearchInput } from "@/components/ui/search-input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/toaster";
@@ -61,6 +63,7 @@ import {
   useTeachers,
   type Homeroom,
 } from "@/lib/query/queries/use-academic-ops";
+import { useGradeLevels } from "@/lib/query/queries/use-academic-config";
 import { useAcademicScope } from "@/hooks/use-academic-scope";
 import { homeroomSchema, type HomeroomForm } from "@/lib/schemas/academic-ops";
 import {
@@ -269,7 +272,12 @@ function HomeroomsTable({
           Tingkat {sortIcon("grade_level")}
         </Button>
       ),
-      cell: ({ row }) => <span className="tabular-nums">{row.original.grade_level}</span>,
+      cell: ({ row }) => (
+        <span className="flex items-center gap-2">
+          <span className="tabular-nums">{row.original.grade_level}</span>
+          {row.original.grade_level_id ? null : <Badge variant="outline">Belum tertaut</Badge>}
+        </span>
+      ),
     },
     {
       id: "capacity",
@@ -654,7 +662,7 @@ function RosterDialog({
   );
 }
 
-function HomeroomDialog({
+export function HomeroomDialog({
   homeroom,
   canManage,
   upgradeMessage,
@@ -684,10 +692,14 @@ function HomeroomDialog({
   const [homeroomTeacherId, setHomeroomTeacherId] = React.useState<string | null>(
     homeroom?.homeroom_teacher_id ?? null,
   );
+  const dialogYearId = homeroom?.academic_year_id ?? yearId ?? undefined;
+  const gradeLevels = useGradeLevels(dialogYearId);
+  const levels = gradeLevels.data ?? [];
+
   const defaultValues = React.useMemo<HomeroomForm>(
     () => ({
       name: homeroom?.name ?? "",
-      grade_level: homeroom?.grade_level ?? "",
+      grade_level_id: homeroom?.grade_level_id ?? "",
       capacity: homeroom?.capacity ?? 32,
       academic_year_id: homeroom?.academic_year_id ?? yearId ?? "",
     }),
@@ -713,7 +725,7 @@ function HomeroomDialog({
           homeroomTeacherId === "__clear__" ? null : homeroomTeacherId;
         await update.mutateAsync({
           name: values.name,
-          grade_level: values.grade_level,
+          grade_level_id: values.grade_level_id,
           capacity: values.capacity,
           homeroom_teacher_id: resolvedTeacherId,
         });
@@ -724,7 +736,7 @@ function HomeroomDialog({
           academic_year_id: yearId!,
         });
         toast.success("Kelas dibuat.");
-        form.reset({ name: "", grade_level: "", capacity: 32, academic_year_id: yearId ?? "" });
+        form.reset({ name: "", grade_level_id: "", capacity: 32, academic_year_id: yearId ?? "" });
         setHomeroomTeacherId(null);
       }
       setOpen(false);
@@ -763,13 +775,38 @@ function HomeroomDialog({
             />
             <FormField
               control={form.control}
-              name="grade_level"
+              name="grade_level_id"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tingkat</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="7" />
-                  </FormControl>
+                  {levels.length === 0 && !gradeLevels.isLoading ? (
+                    <p className="text-sm text-muted-foreground">
+                      Tahun ajaran ini belum punya tingkat kelas.{" "}
+                      <Link href="/settings/academic/grade-levels" className="underline">
+                        Atur tingkat kelas
+                      </Link>
+                    </p>
+                  ) : (
+                    <Select value={field.value} onValueChange={field.onChange} disabled={gradeLevels.isLoading}>
+                      <FormControl>
+                        <SelectTrigger aria-label="Tingkat">
+                          <SelectValue placeholder="Pilih tingkat kelas" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {levels.map((level) => (
+                          <SelectItem key={level.grade_level_id} value={level.grade_level_id}>
+                            {level.label} ({level.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {homeroom && !homeroom.grade_level_id ? (
+                    <p className="text-xs text-muted-foreground">
+                      Saat ini: {homeroom.grade_level} (belum tertaut)
+                    </p>
+                  ) : null}
                   <FormMessage />
                 </FormItem>
               )}

@@ -135,7 +135,7 @@ export const archiveReasonSchema = z.object({
 
 export const homeroomSchema = z.object({
   name: z.string().min(1),
-  grade_level: z.string().min(1),
+  grade_level_id: z.string().uuid("Pilih tingkat kelas"),
   capacity: z.coerce.number().int().positive(),
   academic_year_id: uuid,
 });
