@@ -56,6 +56,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   PENDING_INVITATION_EXISTS:
     'Email ini sudah memiliki undangan tertunda. Batalkan undangan lama sebelum membuat yang baru.',
   PRIVILEGE_ESCALATION: 'Anda hanya bisa memberi izin yang juga Anda miliki.',
+  PROMOTION_RUN_EXISTS:
+    'Sudah ada evaluasi kenaikan kelas yang masih terbuka untuk tahun ajaran ini. Lanjutkan evaluasi tersebut.',
+  PROMOTION_RUN_INVALID_STATUS:
+    'Status evaluasi sudah berubah, mungkin dari tab atau pengguna lain. Data sudah dimuat ulang; periksa lalu coba lagi.',
+  PROMOTION_SELF_APPROVAL:
+    'Evaluasi harus disetujui oleh orang lain, bukan oleh pembuatnya.',
   ROLE_CODE_EXISTS: 'Kode role sudah digunakan.',
   ROLE_IN_USE: 'Role masih dipakai pengguna dan tidak bisa dihapus.',
   STUDENT_ENROLLED:
@@ -106,6 +112,41 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export function isApiError(error: unknown, code: string): boolean {
   return error instanceof ApiHttpError && error.code === code;
+}
+
+/** Headings for promotion `VALIDATION_ERROR` field keys, in display order. */
+const PROMOTION_FIELD_LABELS: [string, string][] = [
+  ['academic_year', 'Tahun ajaran'],
+  ['grade_levels', 'Tingkat kelas'],
+  ['report_type', 'Tipe rapor sumber kenaikan'],
+  ['homerooms', 'Kelas belum tertaut ke tingkat'],
+  ['grading_policy', 'Kebijakan nilai (KKM)'],
+  ['target_academic_year', 'Tahun tujuan'],
+  ['target_academic_year_id', 'Tahun tujuan'],
+  ['targets', 'Tujuan belum lengkap'],
+  ['enrollments', 'Bentrok enrollment'],
+  ['target_homerooms', 'Kelas tujuan tidak valid lagi'],
+  ['assignments', 'Penempatan'],
+];
+
+/**
+ * Field errors of a promotion `VALIDATION_ERROR`, grouped under Indonesian
+ * headings. Known keys come first in a fixed order; unknown keys follow under
+ * their own name so nothing is dropped. Messages are the backend's.
+ */
+export function promotionFieldGroups(
+  error: unknown,
+): { field: string; label: string; messages: string[] }[] {
+  if (!(error instanceof ApiHttpError) || !error.fields) return [];
+  const fields = error.fields;
+  const known = PROMOTION_FIELD_LABELS.filter(([field]) => fields[field]?.length).map(
+    ([field, label]) => ({ field, label, messages: fields[field] }),
+  );
+  const knownKeys = new Set(PROMOTION_FIELD_LABELS.map(([field]) => field));
+  const unknown = Object.entries(fields)
+    .filter(([field, messages]) => !knownKeys.has(field) && messages?.length)
+    .map(([field, messages]) => ({ field, label: field, messages }));
+  return [...known, ...unknown];
 }
 
 /**
