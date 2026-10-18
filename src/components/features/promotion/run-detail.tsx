@@ -9,6 +9,7 @@ import { CriteriaDialog } from "@/components/features/promotion/criteria-dialog"
 import { DecisionsTab } from "@/components/features/promotion/decisions-tab";
 import { STATUS_LABEL, STATUS_ORDER, statusBadgeVariant } from "@/components/features/promotion/labels";
 import { formatScore } from "@/components/features/promotion/override-dialog";
+import { PlacementTab } from "@/components/features/promotion/placement-tab";
 import type { PromotionAccess } from "@/components/features/promotion/promotion-page";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +35,7 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
   const targetHomerooms = useHomeroomsForYear(detail.data?.run.target_academic_year_id ?? undefined);
   const [reevaluating, setReevaluating] = React.useState(false);
   const [tab, setTab] = React.useState("decisions");
+  const [unsavedPlacement, setUnsavedPlacement] = React.useState(false);
 
   if (detail.isLoading) {
     return (
@@ -109,6 +111,7 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
             access={access}
             onReevaluate={() => setReevaluating(true)}
             onExecute={() => setTab("placement")}
+            executeDisabled={unsavedPlacement}
           />
         </CardHeader>
         <CardContent className="grid grid-cols-2 gap-4 text-sm md:grid-cols-6">
@@ -162,8 +165,12 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
         </TabsContent>
         {showPlacement ? (
           <TabsContent value="placement">
-            {/* PLACEMENT_TAB — replaced in Task 8 */}
-            <p className="text-sm text-muted-foreground">Penempatan belum tersedia.</p>
+            <PlacementTab
+              detail={d}
+              decisions={decisions.data ?? []}
+              editable={run.status === "approved" && access.canManage}
+              onDirtyChange={setUnsavedPlacement}
+            />
           </TabsContent>
         ) : null}
         <TabsContent value="cannot">
