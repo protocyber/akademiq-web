@@ -306,6 +306,14 @@ function SchoolProfileView({ profile }: { profile: SchoolProfile }) {
       </div>
 
       <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-foreground">Kepala Sekolah</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <ViewField label="Nama Kepala Sekolah" value={profile.principal_name} />
+          <ViewField label="NIP" value={profile.principal_nip} />
+        </div>
+      </div>
+
+      <div className="space-y-4">
         <h3 className="text-sm font-semibold text-foreground">Kontak</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <ViewField label="Nomor Telepon" value={profile.phone_number} />
@@ -356,6 +364,8 @@ function SchoolProfileForm({
       city_regency: profile.city_regency ?? "",
       province: profile.province ?? "",
       postal_code: profile.postal_code ?? "",
+      principal_name: profile.principal_name ?? "",
+      principal_nip: profile.principal_nip ?? "",
     },
   });
 
@@ -473,6 +483,41 @@ function SchoolProfileForm({
                       <SelectItem value="belum_terakreditasi">Belum Terakreditasi</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold text-foreground">Kepala Sekolah</h3>
+          <p className="text-xs text-muted-foreground">
+            Dipakai sebagai penanda tangan SK Kenaikan Kelas dan Surat Keterangan Lulus.
+          </p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="principal_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nama Kepala Sekolah</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Dra. Siti Rahayu, M.Pd." />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="principal_nip"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>NIP</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Kosongkan jika tidak ada" />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

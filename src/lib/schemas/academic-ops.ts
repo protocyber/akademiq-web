@@ -123,6 +123,8 @@ export const schoolProfileSchema = z.object({
   city_regency: optionalString,
   province: optionalString,
   postal_code: optionalString,
+  principal_name: z.string().max(200, "Maksimal 200 karakter").optional().or(z.literal("")),
+  principal_nip: z.string().max(64, "Maksimal 64 karakter").optional().or(z.literal("")),
 });
 
 // --- Archive ---

@@ -127,6 +127,12 @@ const PROMOTION_FIELD_LABELS: [string, string][] = [
   ['enrollments', 'Bentrok enrollment'],
   ['target_homerooms', 'Kelas tujuan tidak valid lagi'],
   ['assignments', 'Penempatan'],
+  ['letter_number', 'Nomor SK'],
+  ['certificate_number', 'Nomor surat'],
+  ['letter_date', 'Tanggal surat'],
+  ['city', 'Kota'],
+  ['principal', 'Kepala sekolah'],
+  ['items', 'Daftar lulusan'],
 ];
 
 /**
@@ -147,6 +153,20 @@ export function promotionFieldGroups(
     .filter(([field, messages]) => !knownKeys.has(field) && messages?.length)
     .map(([field, messages]) => ({ field, label: field, messages }));
   return [...known, ...unknown];
+}
+
+/** Shown when the school profile has no principal name (letters spec §2.5). */
+export const PRINCIPAL_MISSING_MESSAGE =
+  'Nama kepala sekolah belum diisi di Profil Sekolah. Lengkapi dulu sebelum menerbitkan surat.';
+
+/** Backend number-conflict message → Indonesian, per field or row. */
+export function letterNumberMessage(message: string): string {
+  if (message.includes('already used by another letter')) return 'Nomor sudah dipakai surat lain';
+  if (message.includes('used twice in this request')) return 'Nomor dipakai dua kali';
+  if (message.includes('not a graduate of this run')) return 'Bukan lulusan evaluasi ini';
+  if (message.includes('is required')) return 'Nomor wajib diisi';
+  if (message.includes('at most 64 characters')) return 'Maksimal 64 karakter';
+  return message;
 }
 
 /**

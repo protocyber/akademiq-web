@@ -35,4 +35,13 @@ describe("promotion error copy", () => {
   it("returns no groups for a non-validation error", () => {
     expect(promotionFieldGroups(new Error("boom"))).toEqual([]);
   });
+
+  it("labels the letter fields", () => {
+    const error = new ApiHttpError(400, {
+      code: "VALIDATION_ERROR",
+      message: "invalid",
+      fields: { principal: ["school profile has no principal name"], letter_number: ["is already used by another letter"] },
+    });
+    expect(promotionFieldGroups(error).map((g) => g.label)).toEqual(["Nomor SK", "Kepala sekolah"]);
+  });
 });

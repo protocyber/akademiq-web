@@ -21,6 +21,8 @@ export type SchoolProfile = {
   city_regency?: string | null;
   province?: string | null;
   postal_code?: string | null;
+  principal_name?: string | null;
+  principal_nip?: string | null;
 };
 
 export const SCHOOL_PROFILE_QUERY_KEY = ["billing", "school-profile"] as const;
