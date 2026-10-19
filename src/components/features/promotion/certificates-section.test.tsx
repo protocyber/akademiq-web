@@ -69,4 +69,25 @@ describe("CertificatesSection", () => {
     expect(screen.queryByLabelText("Nomor surat Budi")).toBeNull();
     expect(screen.getByText("X-1")).toBeTruthy();
   });
+
+  it("allows saving a correction to an already-issued certificate without a principal on file", async () => {
+    save.mockResolvedValueOnce({ updated: 1 });
+    render(<CertificatesSection runId="run-1" editable hasPrincipal={false} defaultCity="Surabaya" />);
+    fireEvent.change(screen.getByLabelText("Nomor surat Ani"), { target: { value: "X-2" } });
+    const saveButton = screen.getByRole("button", { name: "Simpan nomor" }) as HTMLButtonElement;
+    expect(saveButton.disabled).toBe(false);
+    fireEvent.click(saveButton);
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0]).toEqual({
+      letter_date: "2026-06-22",
+      city: null,
+      items: [{ student_id: B, certificate_number: "X-2" }],
+    });
+  });
+
+  it("disables Save when a first issue (no saved number) is edited without a principal on file", () => {
+    render(<CertificatesSection runId="run-1" editable hasPrincipal={false} defaultCity="Surabaya" />);
+    fireEvent.change(screen.getByLabelText("Nomor surat Budi"), { target: { value: "X-3" } });
+    expect((screen.getByRole("button", { name: "Simpan nomor" }) as HTMLButtonElement).disabled).toBe(true);
+  });
 });

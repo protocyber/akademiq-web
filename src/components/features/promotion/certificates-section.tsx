@@ -51,6 +51,10 @@ export function CertificatesSection({
   const changes = React.useMemo(() => certificateChanges(rows, draft), [rows, draft]);
   const duplicates = React.useMemo(() => duplicateNumbers(rows, draft), [rows, draft]);
   const dirty = changes.length > 0;
+  const byStudentId = React.useMemo(() => new Map(rows.map((r) => [r.student_id, r])), [rows]);
+  // A principal is only required when at least one changed row has no saved certificate number yet
+  // (a first issue). Corrections to already-issued certificates may be saved without one.
+  const needsPrincipal = changes.some((c) => !byStudentId.get(c.student_id)?.certificate_number);
 
   React.useEffect(() => {
     if (!dirty) return;
@@ -130,7 +134,7 @@ export function CertificatesSection({
               <Button size="sm" variant="outline" disabled={!hasPrincipal} onClick={() => setPatternOpen(true)}>
                 Isi nomor dari pola
               </Button>
-              <Button size="sm" disabled={!dirty || duplicates.size > 0 || !hasPrincipal} loading={save.isPending} onClick={onSave}>
+              <Button size="sm" disabled={!dirty || duplicates.size > 0 || (needsPrincipal && !hasPrincipal)} loading={save.isPending} onClick={onSave}>
                 Simpan nomor
               </Button>
             </>
