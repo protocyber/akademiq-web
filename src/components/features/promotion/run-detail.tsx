@@ -9,6 +9,7 @@ import { CriteriaDialog } from "@/components/features/promotion/criteria-dialog"
 import { DecisionsTab } from "@/components/features/promotion/decisions-tab";
 import { ExecuteDialog } from "@/components/features/promotion/execute-dialog";
 import { STATUS_LABEL, STATUS_ORDER, statusBadgeVariant } from "@/components/features/promotion/labels";
+import { LettersTab } from "@/components/features/promotion/letters-tab";
 import { formatScore } from "@/components/features/promotion/override-dialog";
 import { PlacementTab } from "@/components/features/promotion/placement-tab";
 import type { PromotionAccess } from "@/components/features/promotion/promotion-page";
@@ -73,6 +74,7 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
   const stage = STATUS_ORDER.indexOf(run.status);
   const homeroomNames = new Map((targetHomerooms.data ?? []).map((h) => [h.homeroom_id, h.name]));
   const showPlacement = run.status === "approved" || run.status === "executed";
+  const showLetters = run.status === "executed";
 
   return (
     <div className="space-y-4 px-6">
@@ -151,6 +153,7 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
         <TabsList>
           <TabsTrigger value="decisions">Keputusan</TabsTrigger>
           {showPlacement ? <TabsTrigger value="placement">Penempatan</TabsTrigger> : null}
+          {showLetters ? <TabsTrigger value="letters">Surat</TabsTrigger> : null}
           <TabsTrigger value="cannot">Tidak bisa dievaluasi ({d.cannot_evaluate.length})</TabsTrigger>
         </TabsList>
         <TabsContent value="decisions">
@@ -173,6 +176,11 @@ export function RunDetail({ runId, access }: { runId: string; access: PromotionA
               editable={run.status === "approved" && access.canManage}
               onDirtyChange={setUnsavedPlacement}
             />
+          </TabsContent>
+        ) : null}
+        {showLetters ? (
+          <TabsContent value="letters">
+            <LettersTab runId={runId} editable={access.canManage} />
           </TabsContent>
         ) : null}
         <TabsContent value="cannot">
