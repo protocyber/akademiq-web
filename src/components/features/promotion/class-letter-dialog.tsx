@@ -19,7 +19,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormLabelRequired, F
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toaster";
 import { ApiHttpError } from "@/lib/api/types";
-import { getErrorMessage, letterNumberMessage } from "@/lib/errors/messages";
+import { getErrorMessage, letterFieldMessage } from "@/lib/errors/messages";
 import { useIssueClassLetter } from "@/lib/query/mutations/use-promotion-letters";
 import type { ClassLetterSummary } from "@/lib/query/queries/use-promotion-letters";
 import { classLetterSchema, toCityPayload, type ClassLetterForm } from "@/lib/schemas/promotion-letters";
@@ -78,7 +78,7 @@ export function ClassLetterDialog({
       for (const key of ["letter_number", "letter_date", "city"] as const) {
         const message = fields?.[key]?.[0];
         if (message) {
-          form.setError(key, { type: "server", message: letterNumberMessage(message) });
+          form.setError(key, { type: "server", message: letterFieldMessage(key, message) });
           applied = true;
         }
       }

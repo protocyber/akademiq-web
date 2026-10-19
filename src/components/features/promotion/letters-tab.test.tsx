@@ -70,4 +70,22 @@ describe("LettersTab", () => {
     expect(issue.mock.calls[0][0]).toMatchObject({ homeroomId: H, letter_number: "421/001", city: null });
     expect(await screen.findByText("Nomor sudah dipakai surat lain")).toBeTruthy();
   });
+
+  it("maps a required-city error to the city field, not the number field", async () => {
+    summary.current = base("Dra. Siti Rahayu");
+    issue.mockRejectedValueOnce(
+      new ApiHttpError(400, {
+        code: "VALIDATION_ERROR",
+        message: "invalid",
+        fields: { city: ["is required"] },
+      }),
+    );
+    render(<LettersTab runId="run-1" editable />);
+    fireEvent.click(screen.getByRole("button", { name: "Terbitkan" }));
+    fireEvent.change(screen.getByLabelText(/Nomor SK/), { target: { value: "421/001" } });
+    fireEvent.click(screen.getByRole("button", { name: "Simpan" }));
+    await waitFor(() => expect(issue).toHaveBeenCalledTimes(1));
+    expect(await screen.findByText("Kota wajib diisi")).toBeTruthy();
+    expect(screen.queryByText("Nomor wajib diisi")).toBeNull();
+  });
 });

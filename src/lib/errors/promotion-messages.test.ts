@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { ApiHttpError } from "@/lib/api/types";
-import { getErrorMessage, promotionFieldGroups } from "@/lib/errors/messages";
+import { getErrorMessage, letterFieldMessage, letterNumberMessage, promotionFieldGroups } from "@/lib/errors/messages";
 
 describe("promotion error copy", () => {
   it("has Indonesian copy for the promotion codes", () => {
@@ -43,5 +43,27 @@ describe("promotion error copy", () => {
       fields: { principal: ["school profile has no principal name"], letter_number: ["is already used by another letter"] },
     });
     expect(promotionFieldGroups(error).map((g) => g.label)).toEqual(["Nomor SK", "Kepala sekolah"]);
+  });
+
+  it("maps letter_date and city server messages to Indonesian", () => {
+    expect(letterFieldMessage("letter_date", "is required")).toBe("Tanggal surat wajib diisi");
+    expect(letterFieldMessage("city", "is required")).toBe("Kota wajib diisi");
+  });
+
+  it("delegates letter_number and certificate_number to letterNumberMessage", () => {
+    expect(letterFieldMessage("letter_number", "is required")).toBe(letterNumberMessage("is required"));
+    expect(letterFieldMessage("certificate_number", "is already used by another letter")).toBe(
+      letterNumberMessage("is already used by another letter"),
+    );
+  });
+
+  it("passes unknown field messages through unchanged", () => {
+    expect(letterFieldMessage("principal", "school profile has no principal name")).toBe(
+      "school profile has no principal name",
+    );
+  });
+
+  it("maps the duplicate-student message in letterNumberMessage", () => {
+    expect(letterNumberMessage("student abc: listed more than once")).toBe("Siswa tercantum lebih dari sekali");
   });
 });

@@ -164,8 +164,17 @@ export function letterNumberMessage(message: string): string {
   if (message.includes('already used by another letter')) return 'Nomor sudah dipakai surat lain';
   if (message.includes('used twice in this request')) return 'Nomor dipakai dua kali';
   if (message.includes('not a graduate of this run')) return 'Bukan lulusan evaluasi ini';
+  if (message.includes('listed more than once')) return 'Siswa tercantum lebih dari sekali';
   if (message.includes('is required')) return 'Nomor wajib diisi';
   if (message.includes('at most 64 characters')) return 'Maksimal 64 karakter';
+  return message;
+}
+
+/** Field-aware wrapper around `letterNumberMessage`: `letter_date`/`city` get their own copy. */
+export function letterFieldMessage(field: string, message: string): string {
+  if (field === 'letter_number' || field === 'certificate_number') return letterNumberMessage(message);
+  if (field === 'letter_date' && message.includes('is required')) return 'Tanggal surat wajib diisi';
+  if (field === 'city' && message.includes('is required')) return 'Kota wajib diisi';
   return message;
 }
 

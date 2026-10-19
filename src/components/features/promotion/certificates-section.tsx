@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/toaster";
 import { ApiHttpError } from "@/lib/api/types";
-import { getErrorMessage, letterNumberMessage, promotionFieldGroups } from "@/lib/errors/messages";
+import { getErrorMessage, letterFieldMessage, letterNumberMessage, promotionFieldGroups } from "@/lib/errors/messages";
 import {
   buildCertificateNumbers,
   certificateChanges,
@@ -112,7 +112,7 @@ export function CertificatesSection({
       setRowErrors(byStudent);
       const other = promotionFieldGroups(error)
         .filter((g) => g.field !== "items")
-        .flatMap((g) => g.messages.map((m) => `${g.label}: ${m}`));
+        .flatMap((g) => g.messages.map((m) => `${g.label}: ${letterFieldMessage(g.field, m)}`));
       const lines = [...unmatched.map((m) => withStudentNames(m, names)), ...other];
       setFailure(lines.length > 0 || Object.keys(byStudent).length > 0 ? lines : [getErrorMessage(error, { fallback: "Nomor surat gagal disimpan." })]);
     }
