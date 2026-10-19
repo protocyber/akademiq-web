@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 
+import { CertificatesSection } from "@/components/features/promotion/certificates-section";
 import { ClassLetterDialog } from "@/components/features/promotion/class-letter-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -147,7 +148,14 @@ export function LettersTab({ runId, editable }: { runId: string; editable: boole
         </CardContent>
       </Card>
 
-      {/* CERTIFICATES_SECTION */}
+      {data.certificates.graduates > 0 ? (
+        <CertificatesSection
+          runId={runId}
+          editable={editable}
+          hasPrincipal={hasPrincipal}
+          defaultCity={profile?.city_regency ?? null}
+        />
+      ) : null}
 
       <ClassLetterDialog
         runId={runId}
