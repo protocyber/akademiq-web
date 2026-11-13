@@ -53,10 +53,20 @@ export function itemInfo(item: CopyItem, dry: DryRuns): ItemInfo {
   return { loading: false, error };
 }
 
-export function targetHasFromDry(dry: DryRuns): Partial<Record<CopyItem, boolean>> {
+/** Which items the target already holds, from the settled dry-run results. */
+export function targetHasFromResults(
+  results: Partial<Record<Service, CopyStepResult | undefined>>,
+): Partial<Record<CopyItem, boolean>> {
   const out: Partial<Record<CopyItem, boolean>> = {};
   for (const item of Object.keys(OWNERS) as CopyItem[]) {
-    out[item] = (itemInfo(item, dry).targetExisting ?? 0) > 0;
+    for (const service of OWNERS[item]) {
+      const row = results[service]?.results.find((r) => r.item === item);
+      if (row) {
+        out[item] = row.target_existing > 0;
+        break;
+      }
+    }
+    out[item] ??= false;
   }
   return out;
 }

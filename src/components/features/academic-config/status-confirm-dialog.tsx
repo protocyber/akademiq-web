@@ -21,7 +21,7 @@ type StatusConfirmDialogProps = {
 
 const STATUS_ORDER = ["Draft", "Active", "Closed", "Archived"];
 
-const STATUS_LABELS: Record<string, string> = {
+export const STATUS_LABELS: Record<string, string> = {
   Draft: "Draft",
   Active: "Aktif",
   Closed: "Ditutup",

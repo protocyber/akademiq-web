@@ -12,6 +12,11 @@ export const DEFAULT_ITEMS: CopyItem[] = [
   "evaluation_weights",
 ];
 
+/** Items each copy service owns (classes is reported by both config and ops). */
+export const CONFIG_ITEMS: CopyItem[] = ["terms", "grade_levels", "classes", "curriculum", "grading_policy"];
+export const OPS_ITEMS: CopyItem[] = ["classes", "homeroom_teachers", "teaching_assignments", "timetable"];
+export const GRADING_ITEMS: CopyItem[] = ["report_types", "evaluation_weights"];
+
 export const ITEM_LABELS: Record<CopyItem, string> = {
   terms: "Semester",
   grade_levels: "Tingkat",

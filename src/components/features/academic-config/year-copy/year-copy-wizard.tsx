@@ -32,12 +32,21 @@ import {
   type CopyStepResult,
   type CopyTermDate,
 } from "@/lib/query/queries/use-year-copy";
+import { STATUS_LABELS } from "@/components/features/academic-config/status-confirm-dialog";
 import { academicYearSchema, type AcademicYearForm } from "@/lib/schemas/academic-year";
 
-import { DEFAULT_ITEMS, resolveChecklist, shiftTermDates, type ShiftedTerm } from "./checklist";
+import {
+  CONFIG_ITEMS,
+  DEFAULT_ITEMS,
+  GRADING_ITEMS,
+  OPS_ITEMS,
+  resolveChecklist,
+  shiftTermDates,
+  type ShiftedTerm,
+} from "./checklist";
 import { runCopy, type CopyStep, type CopyStepState } from "./run-copy";
 import { StepIdentity } from "./step-identity";
-import { StepItems, targetHasFromDry } from "./step-items";
+import { StepItems, targetHasFromResults } from "./step-items";
 import { StepSource } from "./step-source";
 import { StepSummary, termDatesErrorOf, type PartDef, type PartProgress } from "./step-summary";
 import { StepTermDates } from "./step-term-dates";
@@ -54,10 +63,6 @@ const SOURCE = 1;
 const ITEMS = 2;
 const DATES = 3;
 const SUMMARY = 4;
-
-const CONFIG_ITEMS: CopyItem[] = ["terms", "grade_levels", "classes", "curriculum", "grading_policy"];
-const OPS_ITEMS: CopyItem[] = ["classes", "homeroom_teachers", "teaching_assignments", "timetable"];
-const GRADING_ITEMS: CopyItem[] = ["report_types", "evaluation_weights"];
 
 function initialProgress(run?: CopyRun): Partial<Record<CopyStep, PartProgress>> {
   if (!run) return {};
@@ -104,6 +109,7 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
   const targetYear = yearList.find((y) => y.academic_year_id === targetId);
   const targetName = targetYear?.name ?? createdYear?.name ?? "";
   const targetStart = targetYear?.start_date ?? createdYear?.start_date;
+  const targetStatus = STATUS_LABELS[targetYear?.status ?? "Draft"] ?? targetYear?.status ?? "Draft";
   const sourceCandidates = React.useMemo(
     () =>
       yearList
@@ -115,10 +121,12 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
   const sourceYear = yearList.find((y) => y.academic_year_id === effectiveSourceId);
 
   const dry = useCopyDryRuns(effectiveSourceId, targetId, step >= ITEMS && step <= SUMMARY);
+  const configData = dry.config.data;
+  const opsData = dry.ops.data;
+  const gradingData = dry.grading.data;
   const targetHas = React.useMemo(
-    () => targetHasFromDry(dry),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dry.config.data, dry.ops.data, dry.grading.data],
+    () => targetHasFromResults({ config: configData, ops: opsData, grading: gradingData }),
+    [configData, opsData, gradingData],
   );
   const rows = React.useMemo(() => resolveChecklist(selected, targetHas), [selected, targetHas]);
   const effectiveItems = React.useMemo(
@@ -127,14 +135,15 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
   );
   const hasTerms = effectiveItems.includes("terms");
 
-  const sourceTerms = useTerms(hasTerms && !resumeRun ? effectiveSourceId : undefined);
+  const sourceTerms = useTerms(hasTerms ? effectiveSourceId : undefined);
   const shifted: ShiftedTerm[] = React.useMemo(() => {
-    if (!sourceYear || !targetStart || !sourceTerms.data) return [];
-    return shiftTermDates(sourceYear.start_date, targetStart, sourceTerms.data).map((t) => ({
-      ...t,
-      ...edits[t.source_term_id],
-    }));
-  }, [sourceYear, targetStart, sourceTerms.data, edits]);
+    // A stored run already carries the dates the user chose; otherwise shift the source's.
+    let base: ShiftedTerm[] = [];
+    if (resumeRun?.term_dates && resumeRun.term_dates.length > 0) base = resumeRun.term_dates;
+    else if (sourceYear && targetStart && sourceTerms.data)
+      base = shiftTermDates(sourceYear.start_date, targetStart, sourceTerms.data);
+    return base.map((t) => ({ ...t, ...edits[t.source_term_id] }));
+  }, [resumeRun, sourceYear, targetStart, sourceTerms.data, edits]);
 
   const showClassesHint =
     !effectiveItems.includes("classes") &&
@@ -196,7 +205,20 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
     return defs.filter((p) => p.items.length > 0);
   }, [effectiveItems]);
 
+  const executing = React.useRef(false);
+  const startingRef = React.useRef(false);
+
   async function execute(run: CopyRun) {
+    if (executing.current) return;
+    executing.current = true;
+    try {
+      await executeRun(run);
+    } finally {
+      executing.current = false;
+    }
+  }
+
+  async function executeRun(run: CopyRun) {
     runRef.current = run;
     setProgress(initialProgress(run));
     setFinished(false);
@@ -234,7 +256,8 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
   }
 
   async function onStart() {
-    if (!effectiveSourceId || !targetId) return;
+    if (!effectiveSourceId || !targetId || executing.current || startingRef.current) return;
+    startingRef.current = true;
     setBusy(true);
     setStartError(null);
     setConflict(false);
@@ -244,7 +267,12 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
         return;
       }
       if (runRef.current && needsRestart.current) {
-        await updateRun.mutateAsync({ copyRunId: runRef.current.copy_run_id, status: "cancelled" });
+        try {
+          await updateRun.mutateAsync({ copyRunId: runRef.current.copy_run_id, status: "cancelled" });
+        } catch (err) {
+          setStartError(getErrorMessage(err, { fallback: "Tidak bisa memulai penyalinan." }));
+          return;
+        }
         needsRestart.current = false;
         runRef.current = undefined;
       }
@@ -276,6 +304,7 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
       setTrackRun(true);
       await execute(run);
     } finally {
+      startingRef.current = false;
       setBusy(false);
     }
   }
@@ -316,10 +345,17 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
   }
 
   const firstStep = existingTargetId ? SOURCE : IDENTITY;
-  const canBack = !resumeRun && step > firstStep && !running && !finished;
+  // A resumed run opens at the summary; it may only go back to the dates after a term_dates error.
+  const canBack =
+    !running &&
+    !finished &&
+    (resumeRun
+      ? hasTerms && termDatesError !== null && (step === SUMMARY || step === DATES)
+      : step > firstStep);
 
   function back() {
-    if (step === SUMMARY) goTo(hasTerms ? DATES : ITEMS);
+    if (resumeRun) goTo(SUMMARY);
+    else if (step === SUMMARY) goTo(hasTerms ? DATES : ITEMS);
     else goTo(step - 1);
   }
 
@@ -384,7 +420,7 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
           })}
         </ol>
         <p className="px-3 text-xs text-muted-foreground" data-testid="year-context">
-          Tujuan: {targetName || "—"} (Draft) · Sumber: {sourceYear?.name ?? "—"}
+          Tujuan: {targetName || "—"} ({targetStatus}) · Sumber: {sourceYear?.name ?? "—"}
         </p>
       </aside>
 

@@ -5,6 +5,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApiHttpError } from "@/lib/api/types";
+import { getErrorMessage } from "@/lib/errors/messages";
 import { makeQueryClient } from "@/lib/query/client";
 import type { CopyRun, CopyStepResult } from "@/lib/query/queries/use-year-copy";
 
@@ -293,5 +294,146 @@ describe("YearCopyWizard", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Kembali ke Tanggal semester" }));
     expect(current()).toContain("Tanggal semester");
     expect(screen.getByRole("alert")).toHaveTextContent("Semester 1 tumpang tindih");
+  });
+
+  it("resume with term_dates: error, back, dates shown, restart sends term_dates", async () => {
+    const stored = run({
+      term_dates: [
+        { source_term_id: "s1", name: "Semester 1", start_date: "2026-07-20", end_date: "2026-12-20" },
+        { source_term_id: "s2", name: "Semester 2", start_date: "2027-01-05", end_date: "2027-06-20" },
+      ],
+    });
+    m.runCopy.mockImplementationOnce(async (_r, _d, onProgress) => {
+      onProgress("config", "error", {
+        error: new ApiHttpError(400, {
+          code: "VALIDATION_ERROR",
+          message: "bad",
+          fields: { term_dates: ["Semester 1 tumpang tindih"] },
+        }),
+      });
+    });
+    m.startRun.mockResolvedValue(run({ copy_run_id: "run-2" }));
+    renderWizard({ resumeRun: stored });
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Kembali ke Tanggal semester" }));
+    expect(current()).toContain("Tanggal semester");
+    expect(screen.getByLabelText("Mulai Semester 1")).toHaveValue("2026-07-20");
+    fireEvent.change(screen.getByLabelText("Selesai Semester 1"), { target: { value: "2026-12-10" } });
+    next();
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan" }));
+    await waitFor(() => expect(m.startRun).toHaveBeenCalled());
+    expect(m.updateRun).toHaveBeenCalledWith({ copyRunId: "run-1", status: "cancelled" });
+    expect(m.startRun.mock.calls[0][0].term_dates).toEqual([
+      { source_term_id: "s1", name: "Semester 1", start_date: "2026-07-20", end_date: "2026-12-10" },
+      { source_term_id: "s2", name: "Semester 2", start_date: "2027-01-05", end_date: "2027-06-20" },
+    ]);
+  });
+
+  it("resume without stored term_dates seeds the dates from the shifted source terms", async () => {
+    m.runCopy.mockImplementationOnce(async (_r, _d, onProgress) => {
+      onProgress("config", "error", {
+        error: new ApiHttpError(400, {
+          code: "VALIDATION_ERROR",
+          message: "bad",
+          fields: { term_dates: ["x"] },
+        }),
+      });
+    });
+    renderWizard({ resumeRun: run() });
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Kembali ke Tanggal semester" }));
+    expect(screen.getByLabelText("Mulai Semester 1")).toHaveValue("2026-07-15");
+  });
+
+  it("a failed cancel PATCH shows the error and does not start a new run", async () => {
+    m.runCopy.mockImplementationOnce(async (_r, _d, onProgress) => {
+      onProgress("config", "error", {
+        error: new ApiHttpError(400, {
+          code: "VALIDATION_ERROR",
+          message: "bad",
+          fields: { term_dates: ["x"] },
+        }),
+      });
+    });
+    const cancelError = new ApiHttpError(500, { code: "INTERNAL_ERROR", message: "boom" });
+    m.updateRun.mockRejectedValue(cancelError);
+    renderWizard({ resumeRun: run() });
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Kembali ke Tanggal semester" }));
+    next();
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan" }));
+    await waitFor(() => expect(m.updateRun).toHaveBeenCalled());
+    expect(
+      await screen.findByText(getErrorMessage(cancelError, { fallback: "Tidak bisa memulai penyalinan." })),
+    ).toBeInTheDocument();
+    expect(m.startRun).not.toHaveBeenCalled();
+    // needsRestart is kept: a second attempt cancels again instead of re-running the old run
+    m.updateRun.mockResolvedValue({});
+    m.startRun.mockResolvedValue(run({ copy_run_id: "run-2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan" }));
+    await waitFor(() => expect(m.startRun).toHaveBeenCalledTimes(1));
+    expect(m.updateRun).toHaveBeenCalledTimes(2);
+  });
+
+  it("Coba lagi refetches and hands the fresh run (with finished parts) to the runner", async () => {
+    const fresh = run({ config_result: step([["terms", 2, 0]]) });
+    m.startRun.mockResolvedValue(run());
+    m.currentRun = { data: null, refetch: vi.fn().mockResolvedValue({ data: fresh }) };
+    m.runCopy.mockImplementationOnce(async (_r, _d, onProgress) => {
+      onProgress("grading", "error", { error: new ApiHttpError(500, { code: "INTERNAL_ERROR", message: "x" }) });
+    });
+    renderWizard({ targetYearId: TGT });
+    next();
+    await screen.findByTestId("count-terms");
+    next();
+    next();
+    fireEvent.click(screen.getByRole("button", { name: "Mulai salin" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Coba lagi" }));
+    await waitFor(() => expect(m.runCopy).toHaveBeenCalledTimes(2));
+    expect(m.currentRun.refetch).toHaveBeenCalled();
+    expect(m.runCopy.mock.calls[1][0]).toBe(fresh);
+  });
+
+  it("a locked item shows its reason", async () => {
+    renderWizard({ targetYearId: TGT });
+    next();
+    await screen.findByTestId("count-terms");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Kelas" }));
+    expect(screen.getAllByText("Butuh Kelas").length).toBeGreaterThan(0);
+    expect(screen.getByRole("checkbox", { name: "Wali kelas" })).toBeDisabled();
+  });
+
+  it("shows the real status of the target year", () => {
+    m.years = [year(SRC, "2025/2026", "2025-07-15", "Closed"), year(TGT, "2026/2027", "2026-07-15", "Active")];
+    renderWizard({ targetYearId: TGT });
+    expect(screen.getByTestId("year-context")).toHaveTextContent("Tujuan: 2026/2027 (Aktif)");
+  });
+
+  it("ignores a second execute while a run is in progress", async () => {
+    m.startRun.mockResolvedValue(run());
+    m.currentRun = { data: null, refetch: vi.fn().mockResolvedValue({ data: run() }) };
+    let release: () => void = () => {};
+    m.runCopy.mockImplementation(
+      (_r, _d, onProgress) =>
+        new Promise<void>((resolve) => {
+          onProgress("config", "running");
+          release = resolve;
+        }),
+    );
+    m.startRun.mockResolvedValue(run());
+    renderWizard({ targetYearId: TGT });
+    next();
+    await screen.findByTestId("count-terms");
+    next();
+    next();
+    const start = screen.getByRole("button", { name: "Mulai salin" });
+    fireEvent.click(start);
+    await waitFor(() => expect(m.runCopy).toHaveBeenCalledTimes(1));
+    fireEvent.click(start);
+    fireEvent.click(start);
+    await Promise.resolve();
+    expect(m.runCopy).toHaveBeenCalledTimes(1);
+    expect(m.startRun).toHaveBeenCalledTimes(1);
+    release();
   });
 });

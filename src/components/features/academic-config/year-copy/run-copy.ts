@@ -1,4 +1,6 @@
 import { ApiHttpError } from "@/lib/api/types";
+
+import { CONFIG_ITEMS, GRADING_ITEMS, OPS_ITEMS } from "./checklist";
 import type {
   CopyIdMap,
   CopyItem,
@@ -28,10 +30,6 @@ export type CopyProgress = (
   state: CopyStepState,
   result?: CopyStepResult | { error: unknown },
 ) => void;
-
-const CONFIG_ITEMS: CopyItem[] = ["terms", "grade_levels", "classes", "curriculum", "grading_policy"];
-const OPS_ITEMS: CopyItem[] = ["classes", "homeroom_teachers", "teaching_assignments", "timetable"];
-const GRADING_ITEMS: CopyItem[] = ["report_types", "evaluation_weights"];
 
 /** Seconds waited before each retry of COPY_DEPENDENCY_NOT_READY. */
 const RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 15000, 30000];
