@@ -6,6 +6,15 @@ type ErrorMessageOptions = {
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
+  ACADEMIC_YEAR_NOT_DRAFT:
+    'Penyalinan hanya bisa ke tahun ajaran berstatus Draft.',
+  ACADEMIC_YEAR_NOT_ACTIVE:
+    'Siswa hanya bisa didaftarkan ke kelas pada tahun ajaran Aktif.',
+  COPY_DEPENDENCY_NOT_READY:
+    'Data dari langkah sebelumnya belum sampai. Coba lagi sebentar lagi.',
+  COPY_RUN_IN_PROGRESS:
+    'Masih ada penyalinan yang belum selesai untuk tahun ini. Lanjutkan atau batalkan dulu.',
+  COPY_RUN_NOT_IN_PROGRESS: 'Penyalinan ini sudah selesai atau dibatalkan.',
   ACTIVE_YEAR_EXISTS:
     'Sudah ada tahun ajaran aktif. Arsipkan atau tutup tahun ajaran aktif sebelum mengaktifkan yang lain.',
   ACTIVE_TERM_EXISTS:
