@@ -1,6 +1,7 @@
 "use client";
 
 import { AcademicSettingsPage } from "@/components/features/academic-config/academic-settings";
+import { CopyAdminOnly, canCopyYear } from "@/components/features/academic-config/year-copy/copy-admin-only";
 import { YearCopyWizard } from "@/components/features/academic-config/year-copy/year-copy-wizard";
 
 export default function NewYearCopyPage() {
@@ -9,7 +10,9 @@ export default function NewYearCopyPage() {
       title="Tahun ajaran baru"
       description="Buat tahun ajaran baru dan salin pengaturannya dari tahun lain."
     >
-      {() => <YearCopyWizard />}
+      {({ canManageAcademicConfig }) =>
+        canCopyYear(canManageAcademicConfig) ? <YearCopyWizard /> : <CopyAdminOnly />
+      }
     </AcademicSettingsPage>
   );
 }

@@ -4,6 +4,7 @@ import * as React from "react";
 import { useParams } from "next/navigation";
 
 import { AcademicSettingsPage } from "@/components/features/academic-config/academic-settings";
+import { CopyAdminOnly, canCopyYear } from "@/components/features/academic-config/year-copy/copy-admin-only";
 import { YearCopyWizard } from "@/components/features/academic-config/year-copy/year-copy-wizard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,13 @@ export default function ExistingYearCopyPage() {
       title="Salin dari tahun lain"
       description="Salin pengaturan akademik dari tahun lain ke tahun ajaran Draft ini."
     >
-      {() => <ExistingYearCopy yearId={params.yearId} />}
+      {({ canManageAcademicConfig }) =>
+        canCopyYear(canManageAcademicConfig) ? (
+          <ExistingYearCopy yearId={params.yearId} />
+        ) : (
+          <CopyAdminOnly />
+        )
+      }
     </AcademicSettingsPage>
   );
 }

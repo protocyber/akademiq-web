@@ -9,12 +9,18 @@ const m = vi.hoisted(() => ({
   refetch: vi.fn(),
   mounts: vi.fn(),
   props: vi.fn(),
+  roles: ["tenant_admin"] as string[],
+  perms: ["academic.config.write"] as string[],
+}));
+vi.mock("@/lib/auth/access-claims", () => ({
+  hasAccessRole: (c: string) => m.roles.includes(c),
+  hasAccessPerm: (c: string) => m.perms.includes(c),
 }));
 
 vi.mock("next/navigation", () => ({ useParams: () => ({ yearId: m.yearId }) }));
 vi.mock("@/components/features/academic-config/academic-settings", () => ({
   AcademicSettingsPage: ({ children }: { children: (ctx: unknown) => React.ReactNode }) => (
-    <div>{children({})}</div>
+    <div>{children({ canManageAcademicConfig: true })}</div>
   ),
 }));
 vi.mock("@/lib/query/queries/use-year-copy", () => ({
@@ -42,6 +48,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   m.run = { data: null, isLoading: false };
   m.yearId = "year-1";
+  m.roles = ["tenant_admin"];
+  m.perms = ["academic.config.write"];
 });
 
 describe("ExistingYearCopyPage", () => {
@@ -103,5 +111,14 @@ describe("ExistingYearCopyPage", () => {
     m.run = { data: stored, isLoading: false, isError: false };
     rerender(<ExistingYearCopyPage />);
     expect(m.props).toHaveBeenLastCalledWith(stored);
+  });
+
+  it("shows an admin-only alert and no wizard for non-admins", () => {
+    m.roles = ["teacher"];
+    m.perms = [];
+    render(<ExistingYearCopyPage />);
+    expect(screen.getByText("Hanya admin sekolah yang dapat menyalin data tahun ajaran.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Kembali/ }).getAttribute("href")).toBe("/settings/academic/years");
+    expect(screen.queryByTestId("wizard")).toBeNull();
   });
 });

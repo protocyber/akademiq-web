@@ -38,7 +38,8 @@ vi.mock("@/lib/query/queries/use-academic-config", () => ({
   useAcademicYears: () => ({ data: m.years, isLoading: false }),
   useTerms: (yearId?: string) => ({ data: yearId ? m.terms : undefined, isLoading: false }),
 }));
-vi.mock("@/lib/query/queries/use-year-copy", () => ({
+vi.mock("@/lib/query/queries/use-year-copy", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/query/queries/use-year-copy")>()),
   useCurrentCopyRun: () => m.currentRun,
 }));
 vi.mock("./run-copy", () => ({ runCopy: m.runCopy }));
@@ -229,8 +230,22 @@ describe("YearCopyWizard", () => {
     expect(input.items).toContain("terms");
   });
 
+  it("resume reads a bare-array config_result and an object ops_result", () => {
+    const stored = run({
+      items: ["terms", "classes", "report_types"],
+      config_result: [
+        { item: "terms", source: 2, target_existing: 0, copied: 2, skipped: 1 },
+        { item: "classes", source: 3, target_existing: 0, copied: 3, skipped: 0 },
+      ],
+      ops_result: { results: [{ item: "classes", source: 3, target_existing: 0, copied: 3, skipped: 2 }] },
+    });
+    renderWizard({ resumeRun: stored });
+    expect(screen.getByTestId("part-config")).toHaveTextContent("5 disalin, 1 dilewati");
+    expect(screen.getByTestId("part-ops")).toHaveTextContent("3 disalin, 2 dilewati");
+  });
+
   it("resume opens Ringkasan and runs only the remaining parts", async () => {
-    const stored = run({ config_result: step([["terms", 2, 0]]) });
+    const stored = run({ config_result: step([["terms", 2, 0]]).results });
     renderWizard({ resumeRun: stored });
     expect(current()).toContain("Ringkasan");
     expect(screen.getByTestId("part-config")).toHaveTextContent("0 disalin, 0 dilewati");
@@ -376,7 +391,7 @@ describe("YearCopyWizard", () => {
   });
 
   it("Coba lagi refetches and hands the fresh run (with finished parts) to the runner", async () => {
-    const fresh = run({ config_result: step([["terms", 2, 0]]) });
+    const fresh = run({ config_result: step([["terms", 2, 0]]).results });
     m.startRun.mockResolvedValue(run());
     m.currentRun = { data: null, refetch: vi.fn().mockResolvedValue({ data: fresh }) };
     m.runCopy.mockImplementationOnce(async (_r, _d, onProgress) => {

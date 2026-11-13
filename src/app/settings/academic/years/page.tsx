@@ -44,6 +44,7 @@ import {
   AcademicSettingsPage,
   EntitlementTooltip,
 } from "@/components/features/academic-config/academic-settings";
+import { canCopyYear } from "@/components/features/academic-config/year-copy/copy-admin-only";
 import { getErrorMessage } from "@/lib/errors/messages";
 import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import {
@@ -131,6 +132,8 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
     [allYears.data],
   );
   const [editing, setEditing] = React.useState<AcademicYear | null>(null);
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const canCopy = canCopyYear(canManage);
 
   React.useEffect(() => {
     setRowSelection({});
@@ -155,7 +158,8 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         </Card>
       ) : null}
 
-      {yearList
+      {canCopy
+        ? yearList
         .filter((y) => y.status === "Draft")
         .map((y) => (
           <CopyRunResumeBanner
@@ -164,7 +168,8 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
             targetYearName={y.name}
             resolveYearName={yearNameById}
           />
-        ))}
+        ))
+        : null}
 
       <DataTableCard
         title="Tahun Ajaran"
@@ -172,7 +177,7 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         primaryActions={
           <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
             <span>
-              <Button disabled={!canManage} onClick={() => router.push("/settings/academic/years/copy")} className="gap-1">
+              <Button disabled={!canManage} onClick={() => (canCopy ? router.push("/settings/academic/years/copy") : setCreateOpen(true))} className="gap-1">
                 <Plus className="h-4 w-4" /> Buat Tahun Ajaran
               </Button>
             </span>
@@ -208,6 +213,7 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
             years={yearList}
             params={params}
             canManage={canManage}
+            canCopy={canCopy}
             rowSelection={rowSelection}
             onRowSelectionChange={setRowSelection}
             onParamsChange={(next) => replaceParams(router, next)}
@@ -221,6 +227,12 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         ) : null}
       </DataTableCard>
 
+      <YearFormModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        mode="create"
+        canManage={canManage}
+      />
       <YearFormModal
         open={Boolean(editing)}
         onOpenChange={(open) => {
@@ -249,6 +261,7 @@ function YearsTableSection({
   years,
   params,
   canManage,
+  canCopy,
   rowSelection,
   onRowSelectionChange,
   onParamsChange,
@@ -259,6 +272,7 @@ function YearsTableSection({
   years: AcademicYear[];
   params: AcademicYearsParams;
   canManage: boolean;
+  canCopy: boolean;
   rowSelection: RowSelectionState;
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onParamsChange: (next: AcademicYearsParams) => void;
@@ -354,7 +368,7 @@ function YearsTableSection({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>{year.name}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {year.status === "Draft" ? (
+                {canCopy && year.status === "Draft" ? (
                   <DropdownMenuItem
                     disabled={!canManage}
                     onClick={() => onCopy(year.academic_year_id)}

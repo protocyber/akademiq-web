@@ -6,7 +6,12 @@ import { CheckCircle2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { getErrorMessage } from "@/lib/errors/messages";
-import type { CopyItem, CopyStepResult } from "@/lib/query/queries/use-year-copy";
+import {
+  stepItemResults,
+  type CopyItem,
+  type CopyItemResult,
+  type CopyStepResult,
+} from "@/lib/query/queries/use-year-copy";
 import type { CopyStep, CopyStepState } from "./run-copy";
 
 import { ITEM_LABELS } from "./checklist";
@@ -14,14 +19,14 @@ import { itemInfo, type DryRuns } from "./step-items";
 
 export type PartProgress = {
   state: CopyStepState;
-  result?: CopyStepResult;
+  result?: CopyItemResult[] | CopyStepResult | null;
   error?: unknown;
 };
 
 export type PartDef = { key: CopyStep; label: string; items: CopyItem[] };
 
-export function sumResult(result?: CopyStepResult) {
-  return (result?.results ?? []).reduce(
+export function sumResult(result?: CopyItemResult[] | CopyStepResult | null) {
+  return stepItemResults(result).reduce(
     (acc, r) => ({ copied: acc.copied + r.copied, skipped: acc.skipped + r.skipped }),
     { copied: 0, skipped: 0 },
   );

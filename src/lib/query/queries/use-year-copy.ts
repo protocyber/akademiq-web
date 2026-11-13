@@ -40,6 +40,17 @@ export type CopyTermDate = {
 
 export type CopyStepResult = { results: CopyItemResult[]; [key: string]: unknown };
 
+/**
+ * Per-item results of a stored step. The backend keeps `config_result` as a bare
+ * array, while `ops_result` / `grading_result` are stored as `{ results: [...] }`.
+ */
+export function stepItemResults(
+  r: CopyItemResult[] | CopyStepResult | null | undefined,
+): CopyItemResult[] {
+  if (Array.isArray(r)) return r;
+  return Array.isArray(r?.results) ? r.results : [];
+}
+
 export type CopyRun = {
   copy_run_id: string;
   source_academic_year_id: string;
@@ -48,9 +59,9 @@ export type CopyRun = {
   term_dates: CopyTermDate[] | null;
   status: "in_progress" | "completed" | "cancelled";
   id_map: CopyIdMap | null;
-  config_result: CopyStepResult | null;
-  ops_result: CopyStepResult | null;
-  grading_result: CopyStepResult | null;
+  config_result: CopyItemResult[] | CopyStepResult | null;
+  ops_result: CopyItemResult[] | CopyStepResult | null;
+  grading_result: CopyItemResult[] | CopyStepResult | null;
   created_at: string;
   updated_at: string;
 };

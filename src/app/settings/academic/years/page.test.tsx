@@ -6,6 +6,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({
   push: vi.fn(),
   years: [] as unknown[],
+  roles: ["tenant_admin"] as string[],
+  perms: ["academic.config.write"] as string[],
+}));
+vi.mock("@/lib/auth/access-claims", () => ({
+  hasAccessRole: (c: string) => m.roles.includes(c),
+  hasAccessPerm: (c: string) => m.perms.includes(c),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -63,6 +69,8 @@ function openMenu(name: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  m.roles = ["tenant_admin"];
+  m.perms = ["academic.config.write"];
   m.years = [year("draft-1", "Draft"), year("active-1", "Active")];
 });
 
@@ -90,5 +98,31 @@ describe("AcademicYearsPage", () => {
   it("renders one resume banner per Draft year only", () => {
     render(<AcademicYearsPage />);
     expect(screen.getAllByTestId("banner").map((b) => b.textContent)).toEqual(["draft-1"]);
+  });
+
+  describe("without tenant_admin + academic.config.write", () => {
+    beforeEach(() => {
+      m.roles = ["teacher"];
+      m.perms = [];
+    });
+
+    it("renders no resume banner", () => {
+      render(<AcademicYearsPage />);
+      expect(screen.queryAllByTestId("banner")).toHaveLength(0);
+    });
+
+    it("hides the copy menu item", async () => {
+      render(<AcademicYearsPage />);
+      openMenu("draft-1");
+      await screen.findByText("Hapus");
+      expect(screen.queryByText("Salin dari tahun lain")).toBeNull();
+    });
+
+    it("Buat Tahun Ajaran opens the create modal instead of navigating", async () => {
+      render(<AcademicYearsPage />);
+      fireEvent.click(screen.getByRole("button", { name: /Buat Tahun Ajaran/ }));
+      expect(await screen.findByRole("dialog")).toBeTruthy();
+      expect(m.push).not.toHaveBeenCalled();
+    });
   });
 });

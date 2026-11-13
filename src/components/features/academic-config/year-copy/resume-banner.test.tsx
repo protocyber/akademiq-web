@@ -28,7 +28,9 @@ const run = {
   target_academic_year_id: "year-2",
   items: ["terms", "classes", "report_types"],
   status: "in_progress",
-  config_result: { results: [] },
+  config_result: [
+    { item: "terms", source: 2, target_existing: 0, copied: 2, skipped: 0 },
+  ],
   ops_result: null,
   grading_result: null,
 };
