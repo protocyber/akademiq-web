@@ -111,6 +111,16 @@ export function useStartCopyRun(targetYearId: string) {
   });
 }
 
+export function updateCopyRun(copyRunId: string, body: UpdateCopyRunInput) {
+  return apiFetch<CopyRun>({
+    service: "academic-config",
+    path: `/api/v1/academic-config/copy-runs/${copyRunId}`,
+    method: "PATCH",
+    authenticated: true,
+    body,
+  });
+}
+
 /** Updates a run; also refreshes the copied-data caches once the run completes. */
 export function useUpdateCopyRun() {
   const invalidate = useInvalidateAfterCopy();
@@ -122,15 +132,5 @@ export function useUpdateCopyRun() {
     onSuccess: (_run, vars) => {
       if ("status" in vars) invalidate();
     },
-  });
-}
-
-export function updateCopyRun(copyRunId: string, body: UpdateCopyRunInput) {
-  return apiFetch<CopyRun>({
-    service: "academic-config",
-    path: `/api/v1/academic-config/copy-runs/${copyRunId}`,
-    method: "PATCH",
-    authenticated: true,
-    body,
   });
 }

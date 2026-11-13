@@ -114,24 +114,31 @@ function pad(n: number, width = 2): string {
   return String(n).padStart(width, "0");
 }
 
-function shiftYears(date: string, years: number): string {
+function shiftMonths(date: string, months: number): string {
   const [y, m, d] = parse(date);
-  const ny = y + years;
-  const nd = Math.min(d, daysInMonth(ny, m)); // 29 Feb -> 28 Feb
-  return `${pad(ny, 4)}-${pad(m)}-${pad(nd)}`;
+  const total = y * 12 + (m - 1) + months;
+  const ny = Math.floor(total / 12);
+  const nm = (total % 12) + 1;
+  const nd = Math.min(d, daysInMonth(ny, nm)); // 29 Feb -> 28 Feb, 31 -> 30
+  return `${pad(ny, 4)}-${pad(nm)}-${pad(nd)}`;
 }
 
-/** Shifts term dates by the whole-year difference between the two year starts. */
+/**
+ * Shifts term dates by the whole-month distance between the two year starts,
+ * clamping the day to the month end (mirrors the backend `shift_date`).
+ */
 export function shiftTermDates(
   sourceYearStart: string,
   targetYearStart: string,
   terms: SourceTerm[],
 ): ShiftedTerm[] {
-  const offset = parse(targetYearStart)[0] - parse(sourceYearStart)[0];
+  const [sy, sm] = parse(sourceYearStart);
+  const [ty, tm] = parse(targetYearStart);
+  const months = (ty - sy) * 12 + (tm - sm);
   return terms.map((t) => ({
     source_term_id: t.term_id,
     name: t.name,
-    start_date: shiftYears(t.start_date, offset),
-    end_date: shiftYears(t.end_date, offset),
+    start_date: shiftMonths(t.start_date, months),
+    end_date: shiftMonths(t.end_date, months),
   }));
 }

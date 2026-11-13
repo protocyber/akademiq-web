@@ -164,4 +164,48 @@ describe("runCopy", () => {
     expect(events.at(-1)).toBe("ops:error");
     expect(deps.updateRun).not.toHaveBeenCalledWith({ status: "completed" });
   });
+
+  it("skips ops and grading when their results are stored", async () => {
+    const deps = makeDeps();
+    const run = makeRun({
+      config_result: { results: [] },
+      id_map: ID_MAP,
+      ops_result: { results: [] },
+      grading_result: { results: [] },
+    });
+    await runCopy(run, deps, () => {});
+    expect(deps.copyConfig).not.toHaveBeenCalled();
+    expect(deps.copyOps).not.toHaveBeenCalled();
+    expect(deps.copyGrading).not.toHaveBeenCalled();
+    expect(deps.updateRun).toHaveBeenLastCalledWith({ status: "completed" });
+  });
+
+  it("errors when grading has no term map", async () => {
+    const deps = makeDeps({
+      copyConfig: vi.fn().mockResolvedValue({
+        results: [],
+        id_map: { terms: {}, grade_levels: { g1: "h1" }, subjects: {} },
+      }),
+    });
+    const events: string[] = [];
+    await runCopy(makeRun(), deps, (step, state) => events.push(`${step}:${state}`));
+    expect(deps.copyGrading).not.toHaveBeenCalled();
+    expect(events.at(-1)).toBe("grading:error");
+    expect(deps.updateRun).not.toHaveBeenCalledWith({ status: "completed" });
+  });
+
+  it("retries the config step on not-ready", async () => {
+    const deps = makeDeps({
+      copyConfig: vi
+        .fn()
+        .mockRejectedValueOnce(notReady())
+        .mockResolvedValue({ results: [], id_map: ID_MAP }),
+    });
+    const events: string[] = [];
+    await runCopy(makeRun(), deps, (step, state) => events.push(`${step}:${state}`));
+    expect(deps.copyConfig).toHaveBeenCalledTimes(2);
+    expect(deps.sleep).toHaveBeenCalledWith(1000);
+    expect(events).toContain("config:waiting");
+    expect(deps.updateRun).toHaveBeenLastCalledWith({ status: "completed" });
+  });
 });
