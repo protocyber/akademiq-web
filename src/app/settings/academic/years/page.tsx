@@ -160,15 +160,15 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
 
       {canCopy
         ? yearList
-        .filter((y) => y.status === "Draft")
-        .map((y) => (
-          <CopyRunResumeBanner
-            key={y.academic_year_id}
-            targetYearId={y.academic_year_id}
-            targetYearName={y.name}
-            resolveYearName={yearNameById}
-          />
-        ))
+            .filter((y) => y.status === "Draft")
+            .map((y) => (
+              <CopyRunResumeBanner
+                key={y.academic_year_id}
+                targetYearId={y.academic_year_id}
+                targetYearName={y.name}
+                resolveYearName={yearNameById}
+              />
+            ))
         : null}
 
       <DataTableCard
