@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { ColumnDef, OnChangeFn, RowSelectionState } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil, Check } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown, MoreHorizontal, Plus, Trash2, Pencil, Check, Copy } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/date-utils";
@@ -69,6 +69,7 @@ import {
   type AcademicYearForm,
   type AcademicYearStatus,
 } from "@/lib/schemas/academic-year";
+import { CopyRunResumeBanner } from "@/components/features/academic-config/year-copy/resume-banner";
 import { StatusConfirmDialog } from "@/components/features/academic-config/status-confirm-dialog";
 import {
   parseAcademicYearsParams,
@@ -124,7 +125,11 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
   const years = useAcademicYearsTable(params);
   const yearList = years.data?.data ?? [];
 
-  const [createOpen, setCreateOpen] = React.useState(false);
+  const allYears = useAcademicYears();
+  const yearNameById = React.useCallback(
+    (id: string) => allYears.data?.find((y) => y.academic_year_id === id)?.name,
+    [allYears.data],
+  );
   const [editing, setEditing] = React.useState<AcademicYear | null>(null);
 
   React.useEffect(() => {
@@ -150,13 +155,24 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         </Card>
       ) : null}
 
+      {yearList
+        .filter((y) => y.status === "Draft")
+        .map((y) => (
+          <CopyRunResumeBanner
+            key={y.academic_year_id}
+            targetYearId={y.academic_year_id}
+            targetYearName={y.name}
+            resolveYearName={yearNameById}
+          />
+        ))}
+
       <DataTableCard
         title="Tahun Ajaran"
         description="Kalender akademik, kebijakan nilai, dan versi kurikulum."
         primaryActions={
           <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
             <span>
-              <Button disabled={!canManage} onClick={() => setCreateOpen(true)} className="gap-1">
+              <Button disabled={!canManage} onClick={() => router.push("/settings/academic/years/copy")} className="gap-1">
                 <Plus className="h-4 w-4" /> Buat Tahun Ajaran
               </Button>
             </span>
@@ -196,6 +212,7 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
             onRowSelectionChange={setRowSelection}
             onParamsChange={(next) => replaceParams(router, next)}
             onEdit={(year) => setEditing(year)}
+            onCopy={(id) => router.push(`/settings/academic/years/${id}/copy`)}
             onTriggerDelete={(singleId) => {
               if (singleId) setTargetId(singleId);
               setConfirmDelete(true);
@@ -204,12 +221,6 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         ) : null}
       </DataTableCard>
 
-      <YearFormModal
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        mode="create"
-        canManage={canManage}
-      />
       <YearFormModal
         open={Boolean(editing)}
         onOpenChange={(open) => {
@@ -242,6 +253,7 @@ function YearsTableSection({
   onRowSelectionChange,
   onParamsChange,
   onEdit,
+  onCopy,
   onTriggerDelete,
 }: {
   years: AcademicYear[];
@@ -251,6 +263,7 @@ function YearsTableSection({
   onRowSelectionChange: OnChangeFn<RowSelectionState>;
   onParamsChange: (next: AcademicYearsParams) => void;
   onEdit: (year: AcademicYear) => void;
+  onCopy: (yearId: string) => void;
   onTriggerDelete: (singleId?: string) => void;
 }) {
   function toggleSort(field: keyof typeof SORT_FIELDS) {
@@ -341,6 +354,14 @@ function YearsTableSection({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>{year.name}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                {year.status === "Draft" ? (
+                  <DropdownMenuItem
+                    disabled={!canManage}
+                    onClick={() => onCopy(year.academic_year_id)}
+                  >
+                    <Copy className="h-4 w-4" /> Salin dari tahun lain
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem
                   disabled={!canManage}
                   className="text-destructive focus:text-destructive"
