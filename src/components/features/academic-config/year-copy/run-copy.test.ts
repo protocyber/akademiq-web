@@ -151,6 +151,43 @@ describe("runCopy", () => {
     expect(deps.copyOps.mock.calls[0][0].items).toEqual(["classes", "teaching_assignments"]);
   });
 
+  it("fetches the id map from config when only downstream items are selected", async () => {
+    const deps = makeDeps();
+    const run = makeRun({ items: ["report_types", "evaluation_weights"] });
+    const events: string[] = [];
+    await runCopy(run, deps, (step, state) => events.push(`${step}:${state}`));
+    // Map-only call: config copies nothing, but returns the existing-target map.
+    expect(deps.copyConfig.mock.calls[0][0].items).toEqual(["report_types", "evaluation_weights"]);
+    expect(deps.copyGrading.mock.calls[0][0].id_map).toEqual(ID_MAP);
+    expect(events).toEqual(["grading:running", "grading:done"]);
+    expect(deps.updateRun).toHaveBeenLastCalledWith({ status: "completed" });
+  });
+
+  it("map-only config call never sends the implied classes item", async () => {
+    const deps = makeDeps();
+    const run = makeRun({ items: ["teaching_assignments"] });
+    await runCopy(run, deps, () => {});
+    expect(deps.copyConfig.mock.calls[0][0].items).toEqual(["teaching_assignments"]);
+    expect(deps.copyOps.mock.calls[0][0].items).toEqual(["classes", "teaching_assignments"]);
+  });
+
+  it("reports a map-only config failure on the step that needs it", async () => {
+    const deps = makeDeps({ copyConfig: vi.fn().mockRejectedValue(new Error("boom")) });
+    const run = makeRun({ items: ["report_types"] });
+    const events: string[] = [];
+    await runCopy(run, deps, (step, state) => events.push(`${step}:${state}`));
+    expect(deps.copyGrading).not.toHaveBeenCalled();
+    expect(events).toEqual(["grading:error"]);
+  });
+
+  it("does not refetch the map on resume when it is stored", async () => {
+    const deps = makeDeps();
+    const run = makeRun({ items: ["report_types"], config_result: [], id_map: ID_MAP });
+    await runCopy(run, deps, () => {});
+    expect(deps.copyConfig).not.toHaveBeenCalled();
+    expect(deps.copyGrading).toHaveBeenCalled();
+  });
+
   it("errors when ops has no grade level map", async () => {
     const deps = makeDeps({
       copyConfig: vi.fn().mockResolvedValue({

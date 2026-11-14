@@ -83,23 +83,39 @@ export async function runCopy(
 
   const fail = (step: CopyStep, error: unknown) => onProgress(step, "error", { error });
 
-  if (configItems.length > 0 && !run.config_result) {
-    onProgress("config", "running");
+  // Downstream services need the id map. With no config item selected, config
+  // is still called once (it copies nothing) so it maps existing target terms,
+  // grade levels and subjects; that call is reported on the first step needing it.
+  const downstream: CopyStep | null =
+    opsItems.length > 0 && !run.ops_result
+      ? "ops"
+      : gradingItems.length > 0 && !run.grading_result
+        ? "grading"
+        : null;
+  const mapOnly = configItems.length === 0 && downstream !== null && !run.config_result;
+
+  if ((configItems.length > 0 || mapOnly) && !run.config_result) {
+    const step: CopyStep = mapOnly ? downstream! : "config";
+    if (!mapOnly) onProgress("config", "running");
     try {
       const res = await withRetry(
         () =>
           deps.copyConfig({
             ...base,
-            items: configItems,
-            ...(run.term_dates ? { term_dates: run.term_dates } : {}),
+            // Never send a config-owned item (e.g. the implied `classes`) here:
+            // config would copy it.
+            items: mapOnly
+              ? [...opsItems, ...gradingItems].filter((i) => !CONFIG_ITEMS.includes(i))
+              : configItems,
+            ...(run.term_dates && !mapOnly ? { term_dates: run.term_dates } : {}),
           }),
         deps.sleep,
-        () => onProgress("config", "waiting"),
+        () => onProgress(step, "waiting"),
       );
       idMap = res.id_map ?? idMap;
-      onProgress("config", "done", res);
+      if (!mapOnly) onProgress("config", "done", res);
     } catch (error) {
-      fail("config", error);
+      fail(step, error);
       return;
     }
   }
