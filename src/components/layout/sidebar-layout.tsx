@@ -543,7 +543,13 @@ export function SidebarContent({
   }, [pathname]);
 
   const visibleEntries = React.useMemo(() => {
-    if (isLoading) return navEntries;
+    // Until modules and permissions are known, show only ungated items: showing
+    // everything and then filtering makes the full menu flash for limited roles.
+    if (isLoading) {
+      return navEntries.filter(
+        (entry) => entry.kind === "item" && entry.item.visibility.kind === "always",
+      );
+    }
 
     return navEntries.filter((entry) => {
       if (entry.kind === "item") {
@@ -604,9 +610,9 @@ export function SidebarContent({
           const group = entry.group;
           const GroupIcon = group.icon;
           const isExpanded = expandedGroups.has(group.label);
-          const visibleChildren = isLoading
-            ? group.children
-            : group.children.filter((child) => isItemVisible(child, heldPermissions, enabledModules));
+          const visibleChildren = group.children.filter((child) =>
+            isItemVisible(child, heldPermissions, enabledModules),
+          );
 
           return (
             <div key={group.label} className="space-y-0.5">
@@ -651,6 +657,13 @@ export function SidebarContent({
             </div>
           );
         })}
+        {isLoading ? (
+          <div data-testid="sidebar-nav-loading" aria-hidden className="space-y-2 px-4 pt-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-4 w-28" />
+          </div>
+        ) : null}
       </nav>
     </div>
   );
