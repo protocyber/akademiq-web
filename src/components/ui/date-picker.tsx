@@ -18,6 +18,8 @@ export interface DatePickerProps {
   className?: string;
   "aria-describedby"?: string;
   "aria-invalid"?: boolean;
+  /** Accessible name when there is no visible <label> (e.g. inside a table cell). */
+  "aria-label"?: string;
 }
 
 export function DatePicker({
@@ -29,6 +31,7 @@ export function DatePicker({
   className,
   "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
+  "aria-label": ariaLabel,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   const parsedDate = value ? parseISO(value) : undefined;
@@ -44,6 +47,7 @@ export function DatePicker({
           disabled={disabled}
           aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
+          aria-label={ariaLabel}
           className={cn(
             "w-full justify-start text-left font-normal px-3",
             !selected && "text-muted-foreground",

@@ -38,6 +38,17 @@ vi.mock("@/lib/query/queries/use-year-copy", async (importActual) => ({
   useCurrentCopyRun: () => m.currentRun,
 }));
 vi.mock("./run-copy", () => ({ runCopy: m.runCopy }));
+// The shared DatePicker (Radix popover calendar) as a plain input, so tests can type dates.
+vi.mock("@/components/ui/date-picker", () => ({
+  DatePicker: (p: { value?: string; onChange: (v: string) => void; "aria-label"?: string }) => (
+    <input
+      data-testid="date-picker"
+      aria-label={p["aria-label"]}
+      value={p.value ?? ""}
+      onChange={(e) => p.onChange(e.target.value)}
+    />
+  ),
+}));
 
 import { YearCopyWizard } from "./year-copy-wizard";
 
@@ -195,6 +206,8 @@ describe("YearCopyWizard", () => {
     next();
     expect(current()).toContain("Tanggal semester");
     expect(screen.getByLabelText("Mulai Semester 1")).toHaveValue("2026-07-15");
+    // Two terms, start + end each: all through the shared DatePicker.
+    expect(screen.getAllByTestId("date-picker")).toHaveLength(4);
     fireEvent.change(screen.getByLabelText("Selesai Semester 2"), { target: { value: "2027-06-25" } });
     next();
     fireEvent.click(screen.getByRole("button", { name: "Mulai salin" }));

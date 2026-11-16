@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -45,19 +45,17 @@ export function StepTermDates({
               <TableRow key={t.source_term_id}>
                 <TableCell className="font-medium">{t.name}</TableCell>
                 <TableCell>
-                  <Input
-                    type="date"
+                  <DatePicker
                     aria-label={`Mulai ${t.name}`}
                     value={t.start_date}
-                    onChange={(e) => onChange(t.source_term_id, { start_date: e.target.value })}
+                    onChange={(v) => onChange(t.source_term_id, { start_date: v })}
                   />
                 </TableCell>
                 <TableCell>
-                  <Input
-                    type="date"
+                  <DatePicker
                     aria-label={`Selesai ${t.name}`}
                     value={t.end_date}
-                    onChange={(e) => onChange(t.source_term_id, { end_date: e.target.value })}
+                    onChange={(v) => onChange(t.source_term_id, { end_date: v })}
                   />
                 </TableCell>
               </TableRow>
