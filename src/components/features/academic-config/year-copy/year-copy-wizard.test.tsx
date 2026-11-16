@@ -10,8 +10,7 @@ import { makeQueryClient } from "@/lib/query/client";
 import type { CopyRun, CopyStepResult } from "@/lib/query/queries/use-year-copy";
 
 const m = vi.hoisted(() => ({
-  push: vi.fn(),
-  createYear: vi.fn(),
+  onClose: vi.fn(),
   startRun: vi.fn(),
   updateRun: vi.fn(),
   copyConfig: vi.fn(),
@@ -23,10 +22,6 @@ const m = vi.hoisted(() => ({
   terms: [] as unknown[],
 }));
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: m.push }) }));
-vi.mock("@/lib/query/mutations/use-academic-config", () => ({
-  useCreateAcademicYear: () => ({ mutateAsync: m.createYear, isPending: false }),
-}));
 vi.mock("@/lib/query/mutations/use-year-copy", () => ({
   copyConfig: m.copyConfig,
   copyOps: m.copyOps,
@@ -89,10 +84,10 @@ function run(over: Partial<CopyRun> = {}): CopyRun {
   };
 }
 
-function renderWizard(props: React.ComponentProps<typeof YearCopyWizard> = {}) {
+function renderWizard(props: Partial<React.ComponentProps<typeof YearCopyWizard>> = {}) {
   return render(
     <QueryClientProvider client={makeQueryClient()}>
-      <YearCopyWizard {...props} />
+      <YearCopyWizard targetYearId={TGT} onClose={m.onClose} {...props} />
     </QueryClientProvider>,
   );
 }
@@ -124,19 +119,14 @@ beforeEach(() => {
 });
 
 describe("YearCopyWizard", () => {
-  it("new year starts at Identitas tahun and lists five steps", () => {
-    renderWizard();
+  it("starts at Tahun sumber and lists four steps, without a year identity step", () => {
+    renderWizard({ targetYearId: TGT });
     const list = screen.getByRole("list", { name: "Langkah penyalinan" });
     const labels = within(list).getAllByRole("listitem").map((li) => li.textContent?.replace(/^\d+/, ""));
-    expect(labels).toEqual([
-      "Identitas tahun",
-      "Tahun sumber",
-      "Data yang disalin",
-      "Tanggal semester",
-      "Ringkasan",
-    ]);
-    expect(current()).toContain("Identitas tahun");
-    expect(screen.getByText("Nama")).toBeInTheDocument();
+    expect(labels).toEqual(["Tahun sumber", "Data yang disalin", "Tanggal semester", "Ringkasan"]);
+    expect(current()).toContain("Tahun sumber");
+    expect(screen.queryByPlaceholderText("contoh: 2026/2027")).toBeNull();
+    expect(screen.getByRole("button", { name: "← Kembali" })).toBeDisabled();
   });
 
   it("existing Draft year starts at Tahun sumber", () => {
@@ -151,22 +141,10 @@ describe("YearCopyWizard", () => {
     expect(screen.getByRole("combobox", { name: "Tahun sumber" })).toHaveTextContent("2025/2026");
   });
 
-  it("Mulai kosong finishes after creating the year", async () => {
-    m.createYear.mockResolvedValue(year("new-id", "2027/2028", "2027-07-15"));
-    renderWizard();
-    fireEvent.change(screen.getByPlaceholderText("contoh: 2026/2027"), { target: { value: "2027/2028" } });
-    const dates = document.querySelectorAll('input[type="date"]');
-    fireEvent.change(dates[0], { target: { value: "2027-07-15" } });
-    fireEvent.change(dates[1], { target: { value: "2028-06-30" } });
-    next();
-    await waitFor(() => expect(current()).toContain("Tahun sumber"));
-    expect(m.createYear).toHaveBeenCalledWith({
-      name: "2027/2028",
-      start_date: "2027-07-15",
-      end_date: "2028-06-30",
-    });
+  it("Mulai kosong closes the wizard without copying", () => {
+    renderWizard({ targetYearId: TGT });
     fireEvent.click(screen.getByRole("button", { name: "Mulai kosong" }));
-    expect(m.push).toHaveBeenCalledWith("/settings/academic/years");
+    expect(m.onClose).toHaveBeenCalledTimes(1);
     expect(m.startRun).not.toHaveBeenCalled();
     expect(m.runCopy).not.toHaveBeenCalled();
     expect(m.copyConfig).not.toHaveBeenCalled();
@@ -254,6 +232,8 @@ describe("YearCopyWizard", () => {
     await waitFor(() => expect(m.runCopy).toHaveBeenCalledTimes(1));
     expect(m.runCopy.mock.calls[0][0]).toBe(stored);
     expect(m.startRun).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole("button", { name: "Tutup" }));
+    expect(m.onClose).toHaveBeenCalledTimes(1);
   });
 
   it("start conflict offers resume", async () => {

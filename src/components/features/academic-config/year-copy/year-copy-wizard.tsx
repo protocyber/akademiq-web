@@ -1,21 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
-import { useForm } from "react-hook-form";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/components/ui/toaster";
 import { ApiHttpError } from "@/lib/api/types";
 import { getErrorMessage } from "@/lib/errors/messages";
-import { applyServerFieldErrors } from "@/lib/forms/apply-server-field-errors";
 import { cn } from "@/lib/utils";
-import { useCreateAcademicYear } from "@/lib/query/mutations/use-academic-config";
 import {
   copyConfig,
   copyGrading,
@@ -33,7 +27,6 @@ import {
   type CopyTermDate,
 } from "@/lib/query/queries/use-year-copy";
 import { STATUS_LABELS } from "@/components/features/academic-config/status-confirm-dialog";
-import { academicYearSchema, type AcademicYearForm } from "@/lib/schemas/academic-year";
 
 import {
   CONFIG_ITEMS,
@@ -45,24 +38,21 @@ import {
   type ShiftedTerm,
 } from "./checklist";
 import { runCopy, type CopyStep, type CopyStepState } from "./run-copy";
-import { StepIdentity } from "./step-identity";
 import { StepItems, targetHasFromResults } from "./step-items";
 import { StepSource } from "./step-source";
 import { StepSummary, termDatesErrorOf, type PartDef, type PartProgress } from "./step-summary";
 import { StepTermDates } from "./step-term-dates";
 
 const STEPS = [
-  "Identitas tahun",
   "Tahun sumber",
   "Data yang disalin",
   "Tanggal semester",
   "Ringkasan",
 ] as const;
-const IDENTITY = 0;
-const SOURCE = 1;
-const ITEMS = 2;
-const DATES = 3;
-const SUMMARY = 4;
+const SOURCE = 0;
+const ITEMS = 1;
+const DATES = 2;
+const SUMMARY = 3;
 
 function initialProgress(run?: CopyRun): Partial<Record<CopyStep, PartProgress>> {
   if (!run) return {};
@@ -76,23 +66,17 @@ function initialProgress(run?: CopyRun): Partial<Record<CopyStep, PartProgress>>
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export type YearCopyWizardProps = {
-  targetYearId?: string;
+  /** The Draft year to copy into; it is created beforehand with the year form modal. */
+  targetYearId: string;
   resumeRun?: CopyRun;
+  /** Closes the wizard (it lives in a modal over the Tahun Ajaran page). */
+  onClose: () => void;
 };
 
-export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps) {
-  const router = useRouter();
-  const existingTargetId = resumeRun?.target_academic_year_id ?? targetYearId;
-  const [createdYear, setCreatedYear] = React.useState<{
-    id: string;
-    name: string;
-    start_date: string;
-  } | null>(null);
-  const targetId = existingTargetId ?? createdYear?.id;
+export function YearCopyWizard({ targetYearId, resumeRun, onClose }: YearCopyWizardProps) {
+  const targetId = resumeRun?.target_academic_year_id ?? targetYearId;
 
-  const [step, setStep] = React.useState<number>(
-    resumeRun ? SUMMARY : existingTargetId ? SOURCE : IDENTITY,
-  );
+  const [step, setStep] = React.useState<number>(resumeRun ? SUMMARY : SOURCE);
   const [maxStep, setMaxStep] = React.useState(step);
   const [sourceId, setSourceId] = React.useState<string | undefined>(
     resumeRun?.source_academic_year_id,
@@ -107,8 +91,8 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
   const years = useAcademicYears();
   const yearList = React.useMemo(() => years.data ?? [], [years.data]);
   const targetYear = yearList.find((y) => y.academic_year_id === targetId);
-  const targetName = targetYear?.name ?? createdYear?.name ?? "";
-  const targetStart = targetYear?.start_date ?? createdYear?.start_date;
+  const targetName = targetYear?.name ?? "";
+  const targetStart = targetYear?.start_date;
   const targetStatus = STATUS_LABELS[targetYear?.status ?? "Draft"] ?? targetYear?.status ?? "Draft";
   const sourceCandidates = React.useMemo(
     () =>
@@ -151,35 +135,8 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
       effectiveItems.includes(i as CopyItem),
     );
 
-  // --- identity step ----------------------------------------------------------
-  const form = useForm<AcademicYearForm>({
-    resolver: zodResolver(academicYearSchema),
-    defaultValues: { name: "", start_date: "", end_date: "" },
-  });
-  const createYear = useCreateAcademicYear();
-
-  const submitIdentity = form.handleSubmit(async (values) => {
-    if (targetId) {
-      goTo(SOURCE);
-      return;
-    }
-    try {
-      const created = await createYear.mutateAsync(values);
-      setCreatedYear({ id: created.academic_year_id, name: created.name, start_date: created.start_date });
-      goTo(SOURCE);
-    } catch (err) {
-      if ((err as { code?: string })?.code === "YEAR_NAME_EXISTS") {
-        form.setError("name", { message: "Nama tahun ajaran sudah digunakan." });
-        return;
-      }
-      if (applyServerFieldErrors(form, err).length === 0) {
-        toast.error(getErrorMessage(err, { fallback: "Tidak bisa membuat tahun ajaran." }));
-      }
-    }
-  });
-
   // --- run --------------------------------------------------------------------
-  const startRun = useStartCopyRun(targetId ?? "");
+  const startRun = useStartCopyRun(targetId);
   const updateRun = useUpdateCopyRun();
   const runRef = React.useRef<CopyRun | undefined>(resumeRun);
   const [trackRun, setTrackRun] = React.useState(Boolean(resumeRun));
@@ -344,14 +301,13 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
     setMaxStep((m) => Math.max(m, next));
   }
 
-  const firstStep = existingTargetId ? SOURCE : IDENTITY;
   // A resumed run opens at the summary; it may only go back to the dates after a term_dates error.
   const canBack =
     !running &&
     !finished &&
     (resumeRun
       ? hasTerms && termDatesError !== null && (step === SUMMARY || step === DATES)
-      : step > firstStep);
+      : step > SOURCE);
 
   function back() {
     if (resumeRun) goTo(SUMMARY);
@@ -360,8 +316,7 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
   }
 
   function next() {
-    if (step === IDENTITY) void submitIdentity();
-    else if (step === SOURCE) goTo(ITEMS);
+    if (step === SOURCE) goTo(ITEMS);
     else if (step === ITEMS) goTo(hasTerms ? DATES : SUMMARY);
     else if (step === DATES) {
       setTermDatesError(null);
@@ -380,15 +335,14 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
   const stepState = (i: number): "done" | "current" | "skipped" | "todo" => {
     if (i === step) return "current";
     if (i === DATES && !hasTerms && maxStep >= ITEMS && (step > DATES || i < maxStep)) return "skipped";
-    if (i === IDENTITY && existingTargetId) return "done";
     return i < step || (resumeRun && i < SUMMARY) ? "done" : "todo";
   };
 
   const loadingYears = years.isLoading;
 
   return (
-    <div className="grid gap-6 md:grid-cols-[260px_1fr]">
-      <aside className="space-y-4">
+    <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+      <aside className="space-y-4 md:border-r md:pr-4">
         <ol className="space-y-1" aria-label="Langkah penyalinan">
           {STEPS.map((label, i) => {
             const state = stepState(i);
@@ -424,25 +378,20 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
         </p>
       </aside>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{STEPS[step]}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {loadingYears && step !== IDENTITY ? (
+      <section className="min-w-0 space-y-6" aria-label={STEPS[step]}>
+        <h3 className="text-base font-semibold">{STEPS[step]}</h3>
+          {loadingYears ? (
             <div className="space-y-2">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
             </div>
-          ) : step === IDENTITY ? (
-            <StepIdentity form={form} locked={Boolean(targetId)} onSubmit={() => void submitIdentity()} />
           ) : step === SOURCE ? (
             <StepSource
               years={sourceCandidates}
               isLoading={false}
               value={effectiveSourceId}
               onChange={setSourceId}
-              onStartEmpty={() => router.push("/settings/academic/years")}
+              onStartEmpty={onClose}
             />
           ) : step === ITEMS ? (
             <StepItems
@@ -478,6 +427,7 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
               onRetry={() => void onRetry()}
               onResumeExisting={() => void onResumeExisting()}
               onBackToTermDates={() => goTo(DATES)}
+              onClose={onClose}
             />
           )}
 
@@ -502,19 +452,13 @@ export function YearCopyWizard({ targetYearId, resumeRun }: YearCopyWizardProps)
                   {startLabel}
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  onClick={next}
-                  loading={step === IDENTITY && createYear.isPending}
-                  disabled={nextDisabled}
-                >
+                <Button type="button" onClick={next} disabled={nextDisabled}>
                   Lanjut →
                 </Button>
               )}
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+      </section>
     </div>
   );
 }

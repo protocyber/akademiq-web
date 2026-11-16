@@ -8,6 +8,7 @@ const m = vi.hoisted(() => ({
   updateRun: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  onResume: vi.fn(),
 }));
 
 vi.mock("@/lib/query/queries/use-year-copy", () => ({
@@ -41,6 +42,7 @@ function renderBanner() {
       targetYearId="year-2"
       targetYearName="2026-2027"
       sourceYearName="2025-2026"
+      onResume={m.onResume}
     />,
   );
 }
@@ -59,10 +61,10 @@ describe("CopyRunResumeBanner", () => {
     ).toBeTruthy();
   });
 
-  it("Lanjutkan links to the year's copy page", () => {
+  it("Lanjutkan opens the copy wizard", () => {
     renderBanner();
-    const link = screen.getByRole("link", { name: "Lanjutkan" });
-    expect(link.getAttribute("href")).toBe("/settings/academic/years/year-2/copy");
+    fireEvent.click(screen.getByRole("button", { name: "Lanjutkan" }));
+    expect(m.onResume).toHaveBeenCalledTimes(1);
   });
 
   it("Batalkan cancels the run only after confirming", async () => {
@@ -85,7 +87,7 @@ describe("CopyRunResumeBanner", () => {
   });
 
   it("falls back to a generic source name", () => {
-    render(<CopyRunResumeBanner targetYearId="year-2" targetYearName="2026-2027" />);
+    render(<CopyRunResumeBanner targetYearId="year-2" targetYearName="2026-2027" onResume={m.onResume} />);
     expect(
       screen.getByText("Penyalinan dari tahun sumber belum selesai (1 dari 3 bagian)"),
     ).toBeTruthy();

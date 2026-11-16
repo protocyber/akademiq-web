@@ -71,6 +71,7 @@ import {
   type AcademicYearStatus,
 } from "@/lib/schemas/academic-year";
 import { CopyRunResumeBanner } from "@/components/features/academic-config/year-copy/resume-banner";
+import { YearCopyDialog } from "@/components/features/academic-config/year-copy/year-copy-dialog";
 import { StatusConfirmDialog } from "@/components/features/academic-config/status-confirm-dialog";
 import {
   parseAcademicYearsParams,
@@ -133,6 +134,7 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
   );
   const [editing, setEditing] = React.useState<AcademicYear | null>(null);
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [copyTarget, setCopyTarget] = React.useState<{ id: string; name: string } | null>(null);
   const canCopy = canCopyYear(canManage);
 
   React.useEffect(() => {
@@ -167,6 +169,7 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
                 targetYearId={y.academic_year_id}
                 targetYearName={y.name}
                 resolveYearName={yearNameById}
+                onResume={() => setCopyTarget({ id: y.academic_year_id, name: y.name })}
               />
             ))
         : null}
@@ -177,7 +180,7 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         primaryActions={
           <EntitlementTooltip enabled={canManage} message={upgradeMessage}>
             <span>
-              <Button disabled={!canManage} onClick={() => (canCopy ? router.push("/settings/academic/years/copy") : setCreateOpen(true))} className="gap-1">
+              <Button disabled={!canManage} onClick={() => setCreateOpen(true)} className="gap-1">
                 <Plus className="h-4 w-4" /> Buat Tahun Ajaran
               </Button>
             </span>
@@ -218,7 +221,9 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
             onRowSelectionChange={setRowSelection}
             onParamsChange={(next) => replaceParams(router, next)}
             onEdit={(year) => setEditing(year)}
-            onCopy={(id) => router.push(`/settings/academic/years/${id}/copy`)}
+            onCopy={(id) =>
+              setCopyTarget({ id, name: yearList.find((y) => y.academic_year_id === id)?.name ?? "" })
+            }
             onTriggerDelete={(singleId) => {
               if (singleId) setTargetId(singleId);
               setConfirmDelete(true);
@@ -232,6 +237,11 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         onOpenChange={setCreateOpen}
         mode="create"
         canManage={canManage}
+        onCreated={
+          canCopy
+            ? (created) => setCopyTarget({ id: created.academic_year_id, name: created.name })
+            : undefined
+        }
       />
       <YearFormModal
         open={Boolean(editing)}
@@ -242,6 +252,14 @@ function AcademicYearsContent({ canManage, upgradeMessage }: { canManage: boolea
         year={editing ?? undefined}
         canManage={canManage}
       />
+
+      {canCopy ? (
+        <YearCopyDialog
+          targetYearId={copyTarget?.id ?? null}
+          targetYearName={copyTarget?.name}
+          onClose={() => setCopyTarget(null)}
+        />
+      ) : null}
 
       <DeleteConfirmDialog
         open={confirmDelete}
@@ -478,12 +496,15 @@ function YearFormModal({
   mode,
   year,
   canManage,
+  onCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "create" | "edit";
   year?: AcademicYear;
   canManage: boolean;
+  /** Offered as the "Salin data dari tahun lain" toast action after a create. */
+  onCreated?: (year: AcademicYear) => void;
 }) {
   const [activeTab, setActiveTab] = React.useState<SettingsTab>("info");
   const yearId = year?.academic_year_id;
@@ -512,7 +533,13 @@ function YearFormModal({
           </TabsList>
 
           <TabsContent value="info">
-            <IdentitySection mode={mode} year={year} canManage={canManage} onDone={() => onOpenChange(false)} />
+            <IdentitySection
+              mode={mode}
+              year={year}
+              canManage={canManage}
+              onDone={() => onOpenChange(false)}
+              onCreated={onCreated}
+            />
           </TabsContent>
 
           {yearId ? (
@@ -613,11 +640,13 @@ function IdentitySection({
   year: initialYear,
   canManage,
   onDone,
+  onCreated,
 }: {
   mode: "create" | "edit";
   year?: AcademicYear;
   canManage: boolean;
   onDone: () => void;
+  onCreated?: (year: AcademicYear) => void;
 }) {
   const yearsQuery = useAcademicYears({ enabled: mode === "edit" });
   const liveYear = yearsQuery.data?.find((y) => y.academic_year_id === initialYear?.academic_year_id) ?? initialYear;
@@ -636,8 +665,13 @@ function IdentitySection({
   async function onSubmit(values: AcademicYearForm) {
     try {
       if (mode === "create") {
-        await create.mutateAsync(values);
-        toast.success("Tahun ajaran dibuat.");
+        const created = await create.mutateAsync(values);
+        toast.success(
+          "Tahun ajaran dibuat.",
+          onCreated
+            ? { action: { label: "Salin data dari tahun lain", onClick: () => onCreated(created) } }
+            : undefined,
+        );
         form.reset();
         onDone();
       } else if (mode === "edit" && liveYear) {

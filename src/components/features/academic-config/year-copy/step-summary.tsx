@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -60,6 +59,7 @@ export function StepSummary({
   onRetry,
   onResumeExisting,
   onBackToTermDates,
+  onClose,
   busy,
 }: {
   sourceName: string;
@@ -69,6 +69,7 @@ export function StepSummary({
   progress: Partial<Record<CopyStep, PartProgress>>;
   conflict: boolean;
   finished: boolean;
+  onClose: () => void;
   onRetry: () => void;
   onResumeExisting: () => void;
   onBackToTermDates: () => void;
@@ -148,9 +149,9 @@ export function StepSummary({
             <CheckCircle2 className="h-4 w-4" /> Penyalinan selesai
           </AlertTitle>
           <AlertDescription>
-            <Link href="/settings/academic/years" className="font-medium underline">
-              Kembali ke tahun ajaran {targetName}
-            </Link>
+            <Button type="button" variant="outline" size="sm" className="mt-2" onClick={onClose}>
+              Tutup
+            </Button>
           </AlertDescription>
         </Alert>
       ) : null}

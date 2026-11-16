@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -32,6 +31,7 @@ export function CopyRunResumeBanner({
   targetYearName,
   sourceYearName,
   resolveYearName,
+  onResume,
 }: {
   targetYearId: string;
   targetYearName: string;
@@ -39,6 +39,8 @@ export function CopyRunResumeBanner({
   sourceYearName?: string;
   /** Looks the source year name up by id when `sourceYearName` is not given. */
   resolveYearName?: (yearId: string) => string | undefined;
+  /** Opens the copy wizard modal for this year (it resumes the run). */
+  onResume: () => void;
 }) {
   const current = useCurrentCopyRun(targetYearId);
   const updateRun = useUpdateCopyRun();
@@ -70,13 +72,8 @@ export function CopyRunResumeBanner({
             {`Penyalinan dari ${source} belum selesai (${done} dari ${total} bagian)`}
           </span>
           <span className="flex items-center gap-2">
-            <Button asChild size="sm">
-              <Link
-                href={`/settings/academic/years/${targetYearId}/copy`}
-                aria-label="Lanjutkan"
-              >
-                Lanjutkan
-              </Link>
+            <Button size="sm" onClick={onResume}>
+              Lanjutkan
             </Button>
             <Button size="sm" variant="outline" onClick={() => setConfirmOpen(true)}>
               Batalkan
